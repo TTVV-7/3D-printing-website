@@ -1,6 +1,7 @@
 import { Header } from "./components/Header.jsx";
 import { Hero } from "./components/Hero.jsx";
 import { Services } from "./components/Services.jsx";
+import { Designer } from "./components/Designer.jsx";
 import { Materials } from "./components/Materials.jsx";
 import { Work } from "./components/Work.jsx";
 import { Process } from "./components/Process.jsx";
@@ -15,6 +16,7 @@ export function App() {
       <main>
         <Hero />
         <Services />
+        <Designer />
         <Materials />
         <Work />
         <Process />

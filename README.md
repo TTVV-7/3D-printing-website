@@ -22,6 +22,8 @@ so new requests show up in the same admin panel as before. Nothing to migrate.
 | --- | --- |
 | Business name, description, email, social links | `site.config.js` |
 | FAQ (also published to Google as structured data) | `site.config.js` |
+| Generator app link ("Design your own") | `site.config.js` → `designerUrl` |
+| Generator cards | `src/components/Designer.jsx` + `public/designer/` |
 | Portfolio photos | `public/work/` + `src/work.js` |
 | Specs & materials (confirm before launch) | `src/components/Materials.jsx` |
 | Link-preview image (1200×630) | `public/og-image.jpg` |

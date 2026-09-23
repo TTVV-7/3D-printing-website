@@ -25,6 +25,9 @@ export const site = {
   // domain; until then Vercel's production URL is used automatically.
   url: canonicalUrl(),
 
+  // The live generator app (3D-print-sandbox repo). Linked from "Design your own".
+  designerUrl: "https://3-d-print-sandbox.vercel.app",
+
   // Public contact email shown in the footer. Leave empty to rely on the form.
   email: "",
 
