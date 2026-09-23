@@ -1,0 +1,70 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    scroll-padding-top: 5rem;
+  }
+  body {
+    @apply bg-paper text-ink font-sans antialiased;
+  }
+  h1, h2, h3 {
+    @apply font-display tracking-tight;
+  }
+  ::selection {
+    @apply bg-flame text-white;
+  }
+}
+
+@layer components {
+  .container-page {
+    @apply mx-auto w-full max-w-6xl px-4 sm:px-6;
+  }
+  .eyebrow {
+    @apply font-mono text-xs uppercase tracking-[0.18em] text-flame;
+  }
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-full px-6 h-12 font-medium transition-colors
+      focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-flame focus-visible:ring-offset-2;
+  }
+  .btn-primary {
+    @apply btn bg-flame text-white hover:bg-flame-600;
+  }
+  .btn-outline-light {
+    @apply btn border border-white/25 text-white hover:bg-white/10;
+  }
+  .btn-outline-dark {
+    @apply btn border border-ink/20 text-ink hover:bg-ink/5;
+  }
+  .field {
+    @apply w-full rounded-xl border border-ink/15 bg-white px-3.5 py-2.5 text-sm text-ink placeholder:text-ink/35
+      focus:outline-none focus:border-flame focus:ring-2 focus:ring-flame/20 transition;
+  }
+}
+
+/* Horizontal "layer lines" -- the texture of an FDM print. */
+.layer-lines {
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent 5px,
+    rgb(255 255 255 / 0.05) 5px,
+    rgb(255 255 255 / 0.05) 6px
+  );
+}
+.layer-lines-dark {
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent 5px,
+    rgb(12 26 46 / 0.06) 5px,
+    rgb(12 26 46 / 0.06) 6px
+  );
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
