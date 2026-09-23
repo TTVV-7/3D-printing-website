@@ -4,7 +4,7 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Deep navy pulled from the MAP3D logo ring.
+        // Deep navy: the page ground and all body text.
         ink: {
           DEFAULT: "#0c1a2e",
           900: "#0c1a2e",

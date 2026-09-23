@@ -1,4 +1,5 @@
 import { site } from "../../site.config.js";
+import { Logo } from "./Logo.jsx";
 
 const LABELS = {
   instagram: "Instagram",
@@ -14,14 +15,11 @@ export function Footer() {
   return (
     <footer className="bg-ink text-white/60">
       <div className="container-page flex flex-col gap-8 py-12 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-3">
-          <img src="/logo.png" alt="" width="40" height="40" loading="lazy" className="h-10 w-10 rounded-full" />
-          <div>
-            <p className="font-display text-lg font-bold text-white">{site.name}</p>
-            <p className="text-sm">
-              3D printing · {site.city}, {site.region}
-            </p>
-          </div>
+        <div>
+          <Logo className="text-white" />
+          <p className="mt-2 text-sm">
+            Custom 3D printing · {site.city}, {site.region}
+          </p>
         </div>
 
         <nav className="flex flex-wrap gap-x-6 gap-y-2 text-sm" aria-label="Social and contact">

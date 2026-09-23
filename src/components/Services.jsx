@@ -72,7 +72,7 @@ export function Services() {
             </div>
             <div>
               <h3 className="text-xl font-semibold">Topographic maps & city models</h3>
-              <p className="text-white/65">Where MAP3D started: custom relief maps of the places that matter to you.</p>
+              <p className="text-white/65">Where it all started: custom relief maps of the places that matter to you.</p>
             </div>
           </div>
           <span className="text-sm font-medium text-flame whitespace-nowrap">See examples →</span>

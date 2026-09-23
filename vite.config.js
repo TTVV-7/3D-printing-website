@@ -51,7 +51,7 @@ const structuredData = [
 // with the right absolute URLs for whichever domain the build targets.
 function seo() {
   return {
-    name: "map3d-seo",
+    name: "site-seo",
     // "pre" so placeholders are filled before Vite parses the URLs in <link> tags.
     transformIndexHtml: {
       order: "pre",

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Menu, X } from "lucide-react";
 import { clsx } from "clsx";
+import { Logo } from "./Logo.jsx";
 
 const NAV = [
   { href: "#services", label: "Services" },
@@ -29,9 +30,8 @@ export function Header() {
       )}
     >
       <div className="container-page flex h-16 items-center justify-between gap-4 text-white">
-        <a href="#top" className="flex items-center gap-2.5" aria-label="MAP3D home">
-          <img src="/logo.png" alt="" width="36" height="36" className="h-9 w-9 rounded-full" />
-          <span className="font-display text-lg font-bold tracking-tight">MAP3D</span>
+        <a href="#top" aria-label="Print Yours home">
+          <Logo />
         </a>
 
         <nav className="hidden md:flex items-center gap-7 text-sm text-white/75" aria-label="Main">

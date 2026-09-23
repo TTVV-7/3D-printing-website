@@ -1,6 +1,6 @@
-# MAP3D website
+# Print Yours website
 
-Standalone marketing site for MAP3D, a 3D printing service in Vancouver.
+Marketing site for Print Yours (printyours.ca), a custom 3D printing service in Vancouver.
 Vite + React + Tailwind, deployed on Vercel.
 
 ```
@@ -34,6 +34,5 @@ so new requests show up in the same admin panel as before. Nothing to migrate.
 - `LocalBusiness` and `FAQPage` JSON-LD, generated at build time from `site.config.js`
 - `robots.txt` and `sitemap.xml` generated at build time
 
-All absolute URLs come from the `SITE_URL` env var. Set it in Vercel once you have a
-custom domain (e.g. `https://map3d.ca`); until then it falls back to the Vercel
-production URL.
+All absolute URLs default to `https://printyours.ca`; set the `SITE_URL` env var to
+override (e.g. for a staging domain).

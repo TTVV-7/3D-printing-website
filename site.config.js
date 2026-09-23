@@ -7,12 +7,11 @@
 function canonicalUrl() {
   const env = typeof process !== "undefined" ? process.env : {};
   if (env.SITE_URL) return env.SITE_URL;
-  if (env.VERCEL_PROJECT_PRODUCTION_URL) return `https://${env.VERCEL_PROJECT_PRODUCTION_URL}`;
-  return "http://localhost:5173";
+  return "https://printyours.ca";
 }
 
 export const site = {
-  name: "MAP3D",
+  name: "Print Yours",
   tagline: "Custom 3D printing in Vancouver",
   description:
     "Vancouver 3D printing service for replacement parts, prototypes and small production runs. " +
@@ -21,8 +20,8 @@ export const site = {
   region: "BC",
   country: "CA",
 
-  // Canonical address of the live site. Set SITE_URL in Vercel once you have a
-  // domain; until then Vercel's production URL is used automatically.
+  // Canonical address of the live site. SITE_URL overrides it (e.g. to test
+  // link previews on a staging domain).
   url: canonicalUrl(),
 
   // The live generator app (3D-print-sandbox repo). Linked from "Design your own".
