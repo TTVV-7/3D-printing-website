@@ -1,4 +1,4 @@
-import { Layers, Ruler, Clock, MapPin } from "lucide-react";
+import { Layers, Ruler, Clock, MapPin, ChevronDown } from "lucide-react";
 
 // ---------------------------------------------------------------------------
 // CONFIRM BEFORE LAUNCH: these are customer-facing claims. Build volume
@@ -6,7 +6,7 @@ import { Layers, Ruler, Clock, MapPin } from "lucide-react";
 // ---------------------------------------------------------------------------
 const SPECS = [
   { icon: Ruler, label: "Max part size", value: "256 × 256 × 256 mm" },
-  { icon: Layers, label: "Layer height", value: "0.12 – 0.28 mm" },
+  { icon: Layers, label: "Layer height", value: "0.08 – 0.20 mm" },
   { icon: Clock, label: "Turnaround", value: "Most jobs 3–5 days" },
   { icon: MapPin, label: "Delivery", value: "Vancouver pickup or shipped" },
 ];
@@ -53,7 +53,15 @@ export function Materials() {
             </dl>
           </div>
 
-          <div className="overflow-x-auto rounded-3xl bg-white ring-1 ring-ink/5">
+          <details className="group self-start rounded-3xl bg-white ring-1 ring-ink/5">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-6 py-5 [&::-webkit-details-marker]:hidden">
+              <span>
+                <span className="block font-display text-lg font-semibold">Compare materials</span>
+                <span className="block text-sm text-ink/55">Strength, heat, flex and finish for each filament</span>
+              </span>
+              <ChevronDown size={20} className="shrink-0 text-ink/50 transition group-open:rotate-180" />
+            </summary>
+            <div className="overflow-x-auto border-t border-ink/10">
             <table className="w-full min-w-[560px] text-left text-sm">
               <thead>
                 <tr className="border-b border-ink/10 font-mono text-[11px] uppercase tracking-widest text-ink/45">
@@ -79,7 +87,8 @@ export function Materials() {
                 ))}
               </tbody>
             </table>
-          </div>
+            </div>
+          </details>
         </div>
       </div>
     </section>

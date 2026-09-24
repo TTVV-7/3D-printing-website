@@ -13,9 +13,9 @@ const MATERIALS = [
 
 const QUALITIES = [
   { value: "", label: "Not sure, standard is fine" },
-  { value: "Draft 0.28mm", label: "Draft: 0.28 mm, fastest" },
-  { value: "Standard 0.20mm", label: "Standard: 0.20 mm" },
-  { value: "Fine 0.12mm", label: "Fine: 0.12 mm, best finish" },
+  { value: "Standard 0.20mm", label: "Standard: 0.20 mm, fastest" },
+  { value: "Fine 0.12mm", label: "Fine: 0.12 mm" },
+  { value: "Extra fine 0.08mm", label: "Extra fine: 0.08 mm, best finish" },
 ];
 
 const EMPTY = {
