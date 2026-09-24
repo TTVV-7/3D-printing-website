@@ -27,6 +27,10 @@ export const site = {
   // The live generator app (3D-print-sandbox repo). Linked from "Design your own".
   designerUrl: "https://3-d-print-sandbox.vercel.app",
 
+  // Google Search Console "HTML tag" verification: paste just the content="..."
+  // value here. Leave empty if you verified with a DNS record instead.
+  googleSiteVerification: "",
+
   // Public contact email shown in the footer. Leave empty to rely on the form.
   email: "",
 

@@ -27,12 +27,14 @@ so new requests show up in the same admin panel as before. Nothing to migrate.
 | Portfolio photos | `public/work/` + `src/work.js` |
 | Specs & materials (confirm before launch) | `src/components/Materials.jsx` |
 | Link-preview image (1200×630) | `public/og-image.jpg` |
+| Google Search Console verification | `site.config.js` → `googleSiteVerification` |
 
 ## SEO / sharing
 
 - Title, description, Open Graph and Twitter card tags in `index.html`
 - `LocalBusiness` and `FAQPage` JSON-LD, generated at build time from `site.config.js`
 - `robots.txt` and `sitemap.xml` generated at build time
+- Google Search Console verification tag: `site.config.js` → `googleSiteVerification`
 
 All absolute URLs default to `https://printyours.ca`; set the `SITE_URL` env var to
 override (e.g. for a staging domain).
