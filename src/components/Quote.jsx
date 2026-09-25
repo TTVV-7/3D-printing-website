@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { Loader2, CheckCircle2, AlertCircle, ArrowRight, Clock, BadgeCheck, MessageCircle } from "lucide-react";
+import { Loader2, CheckCircle2, AlertCircle, ArrowRight, Clock, BadgeCheck, MessageCircle, Mail } from "lucide-react";
 import { FileDrop } from "./FileDrop.jsx";
 import { printRequests as api } from "../lib/api.js";
+import { site } from "../../site.config.js";
 
 const MATERIALS = [
   { value: "", label: "Not sure, recommend one" },
@@ -159,6 +160,17 @@ export function Quote() {
               </li>
             ))}
           </ul>
+          {site.email && (
+            <p className="mt-8 flex items-start gap-3 text-ink/65">
+              <Mail size={18} className="mt-1 flex-shrink-0 text-flame" />
+              <span>
+                Form not working, or rather email? Send your files and details to{" "}
+                <a href={`mailto:${site.email}`} className="font-medium text-ink underline decoration-flame underline-offset-4 hover:text-flame">
+                  {site.email}
+                </a>
+              </span>
+            </p>
+          )}
         </div>
 
         <div className="rounded-3xl bg-white p-6 shadow-xl shadow-ink/5 ring-1 ring-ink/5 sm:p-8">
@@ -221,7 +233,13 @@ export function Quote() {
 
               {error && (
                 <p className="flex items-start gap-2 rounded-xl border border-red-100 bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">
-                  <AlertCircle size={15} className="mt-0.5 flex-shrink-0" /> {error}
+                  <AlertCircle size={15} className="mt-0.5 flex-shrink-0" />
+                  <span>
+                    {error}
+                    {site.email && (
+                      <> You can also email <a href={`mailto:${site.email}`} className="font-medium underline">{site.email}</a> directly.</>
+                    )}
+                  </span>
                 </p>
               )}
 
