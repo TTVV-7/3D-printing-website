@@ -59,6 +59,7 @@ function seo() {
         .replaceAll("%SITE_URL%", url)
         .replaceAll("%SITE_TITLE%", `${site.name} | ${site.tagline}`)
         .replaceAll("%SITE_DESCRIPTION%", site.description)
+        .replaceAll("%SITE_EMAIL%", site.email)
         .replace(
           "<!--STRUCTURED_DATA-->",
           `<script type="application/ld+json">${JSON.stringify(structuredData)}</script>`,

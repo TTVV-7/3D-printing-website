@@ -8,7 +8,6 @@ import { Process } from "./components/Process.jsx";
 import { Faq } from "./components/Faq.jsx";
 import { Quote } from "./components/Quote.jsx";
 import { Footer } from "./components/Footer.jsx";
-import { FloatingGolem } from "./components/FloatingGolem.jsx";
 
 export function App() {
   return (
@@ -18,14 +17,13 @@ export function App() {
         <Hero />
         <Designer />
         <Services />
-        <Materials />
         <Work />
+        <Materials />
         <Process />
         <Faq />
         <Quote />
       </main>
       <Footer />
-      <FloatingGolem />
     </>
   );
 }

@@ -1,7 +1,10 @@
 import { useState } from "react";
-import { Loader2, CheckCircle2, AlertCircle, ArrowRight } from "lucide-react";
+import { Loader2, CheckCircle2, AlertCircle, ArrowRight, ChevronDown } from "lucide-react";
+import { clsx } from "clsx";
 import { FileDrop } from "./FileDrop.jsx";
+import { QuoteGolem } from "./QuoteGolem.jsx";
 import { printRequests as api } from "../lib/api.js";
+import { site } from "../../site.config.js";
 
 const MATERIALS = [
   { value: "", label: "Not sure, recommend one" },
@@ -54,12 +57,32 @@ function Submitted({ entry, onReset }) {
   );
 }
 
-// The quote request form. `compact` drops the link, quality, deadline and
-// budget fields for places where the files do most of the talking (the
-// Design your own section). `titlePrefix` tags the request in the admin panel
-// so you can tell where it came from.
+function MaterialField({ value, onChange }) {
+  return (
+    <Field label="Material">
+      <select className="field" value={value} onChange={onChange}>
+        {MATERIALS.map((m) => <option key={m.label} value={m.value}>{m.label}</option>)}
+      </select>
+    </Field>
+  );
+}
+
+function QuantityField({ value, onChange }) {
+  return (
+    <Field label="Quantity">
+      <input className="field" type="number" min="1" value={value} onChange={onChange} />
+    </Field>
+  );
+}
+
+// The quote request form, shared by the Quote section and the Design your own
+// section. `compact` swaps the optional extras (link, quality, date, budget)
+// for just material and quantity. `titlePrefix` tags the request in the admin
+// panel so you can tell where it came from. `golem` perches the crystal golem
+// on the send button.
 export function QuoteForm({
   compact = false,
+  golem = false,
   detailsLabel = "Describe the part",
   detailsPlaceholder = "e.g. Replacement bracket for a shelf, about 8 cm wide, needs to hold ~2 kg.",
   filesHint = "(STL, 3MF, STEP, or a photo)",
@@ -72,6 +95,9 @@ export function QuoteForm({
   const [progress, setProgress] = useState(null);
   const [submitted, setSubmitted] = useState(null);
   const [error, setError] = useState(null);
+  // Phones get the four fields that matter; the rest opens on request.
+  // Wider screens always show everything.
+  const [more, setMore] = useState(false);
 
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
 
@@ -169,58 +195,77 @@ export function QuoteForm({
         />
       </Field>
 
-      {!compact && (
-        <Field label="Reference link" hint="(MakerWorld, Printables, Thingiverse…)">
-          <input className="field" type="url" value={form.url} onChange={set("url")} placeholder="https://" />
-        </Field>
-      )}
-
       <Field label="Files" hint={filesHint}>
         <FileDrop files={files} onChange={setFiles} disabled={submitting} />
       </Field>
 
-      <div className={compact ? "grid gap-4 grid-cols-[1fr_7rem]" : "grid gap-4 sm:grid-cols-3"}>
-        <Field label="Material">
-          <select className="field" value={form.material} onChange={set("material")}>
-            {MATERIALS.map((m) => <option key={m.label} value={m.value}>{m.label}</option>)}
-          </select>
-        </Field>
-        {!compact && (
-          <Field label="Quality">
-            <select className="field" value={form.quality} onChange={set("quality")}>
-              {QUALITIES.map((q) => <option key={q.label} value={q.value}>{q.label}</option>)}
-            </select>
-          </Field>
-        )}
-        <Field label="Quantity">
-          <input className="field" type="number" min="1" value={form.quantity} onChange={set("quantity")} />
-        </Field>
-      </div>
-
-      {!compact && (
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Needed by" hint="(optional)">
-            <input className="field" type="date" value={form.deadline} onChange={set("deadline")} />
-          </Field>
-          <Field label="Budget" hint="(optional)">
-            <input className="field" value={form.budget} onChange={set("budget")} placeholder="e.g. under $40" />
-          </Field>
+      {compact ? (
+        <div className="grid grid-cols-[1fr_7rem] gap-4">
+          <MaterialField value={form.material} onChange={set("material")} />
+          <QuantityField value={form.quantity} onChange={set("quantity")} />
         </div>
+      ) : (
+        <>
+          <button
+            type="button"
+            onClick={() => setMore((m) => !m)}
+            aria-expanded={more}
+            className="flex w-full items-center justify-between gap-2 rounded-xl border border-dashed border-ink/15 px-3.5 py-2.5 text-left text-sm font-medium text-ink/70 sm:hidden"
+          >
+            More details (link, material, quantity, date)
+            <ChevronDown size={16} className={clsx("transition-transform", more && "rotate-180")} />
+          </button>
+
+          <div className={clsx("space-y-4 sm:block", !more && "hidden")}>
+            <Field label="Reference link" hint="(MakerWorld, Printables, Thingiverse…)">
+              <input className="field" type="url" value={form.url} onChange={set("url")} placeholder="https://" />
+            </Field>
+
+            <div className="grid gap-4 sm:grid-cols-3">
+              <MaterialField value={form.material} onChange={set("material")} />
+              <Field label="Quality">
+                <select className="field" value={form.quality} onChange={set("quality")}>
+                  {QUALITIES.map((q) => <option key={q.label} value={q.value}>{q.label}</option>)}
+                </select>
+              </Field>
+              <QuantityField value={form.quantity} onChange={set("quantity")} />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <Field label="Needed by" hint="(optional)">
+                <input className="field" type="date" value={form.deadline} onChange={set("deadline")} />
+              </Field>
+              <Field label="Budget" hint="(optional)">
+                <input className="field" value={form.budget} onChange={set("budget")} placeholder="e.g. under $40" />
+              </Field>
+            </div>
+          </div>
+        </>
       )}
 
       {error && (
         <p className="flex items-start gap-2 rounded-xl border border-red-100 bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">
-          <AlertCircle size={15} className="mt-0.5 flex-shrink-0" /> {error}
+          <AlertCircle size={15} className="mt-0.5 flex-shrink-0" />
+          <span>
+            {error}
+            {site.email && (
+              <> You can also email <a href={`mailto:${site.email}`} className="font-medium underline">{site.email}</a> directly.</>
+            )}
+          </span>
         </p>
       )}
 
-      <button type="submit" disabled={submitting} className="btn-primary w-full disabled:opacity-60">
-        {submitting ? (
-          <><Loader2 size={18} className="animate-spin" /> {progress || "Sending…"}</>
-        ) : (
-          <>{submitLabel} <ArrowRight size={18} /></>
-        )}
-      </button>
+      {/* With the golem, leave room above the button for him to stand. */}
+      <div className={clsx("relative", golem && "pt-14")}>
+        {golem && <QuoteGolem />}
+        <button type="submit" disabled={submitting} className="btn-primary w-full disabled:opacity-60">
+          {submitting ? (
+            <><Loader2 size={18} className="animate-spin" /> {progress || "Sending…"}</>
+          ) : (
+            <>{submitLabel} <ArrowRight size={18} /></>
+          )}
+        </button>
+      </div>
       <p className="text-center text-xs text-ink/45">
         Your details are only used to reply to this request.
       </p>

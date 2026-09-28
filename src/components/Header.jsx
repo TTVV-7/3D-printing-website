@@ -4,9 +4,10 @@ import { clsx } from "clsx";
 import { Logo } from "./Logo.jsx";
 
 const NAV = [
+  { href: "#design", label: "Design your own" },
   { href: "#services", label: "Services" },
-  { href: "#materials", label: "Materials" },
   { href: "#work", label: "Work" },
+  { href: "#materials", label: "Materials" },
   { href: "#faq", label: "FAQ" },
 ];
 
@@ -35,18 +36,24 @@ export function Header() {
 
         <nav className="hidden md:flex items-center gap-7 text-sm text-white/75" aria-label="Main">
           {NAV.map((n) => (
-            <a key={n.href} href={n.href} className="hover:text-white transition-colors">
+            <a
+              key={n.href}
+              href={n.href}
+              // The Design your own button takes over on wide screens.
+              className={clsx("hover:text-white transition-colors", n.href === "#design" && "lg:hidden")}
+            >
               {n.label}
             </a>
           ))}
         </nav>
 
         <div className="flex items-center gap-2">
-          <a href="#design" className="btn-outline-light h-10 px-5 text-sm hidden sm:inline-flex">
+          <a href="#design" className="btn-outline-light h-10 px-5 text-sm hidden lg:inline-flex">
             <Sparkles size={15} className="text-flame" /> Design your own
           </a>
-          <a href="#quote" className="btn-primary h-10 px-5 text-sm hidden sm:inline-flex">
-            Get a free quote
+          <a href="#quote" className="btn-primary h-9 px-4 text-sm sm:h-10 sm:px-5">
+            <span className="sm:hidden">Quote</span>
+            <span className="hidden sm:inline">Get a free quote</span>
           </a>
           <button
             type="button"
@@ -62,12 +69,12 @@ export function Header() {
 
       {open && (
         <nav className="md:hidden container-page pb-5 flex flex-col gap-1 text-white" aria-label="Mobile">
-          {[{ href: "#design", label: "Design your own" }, ...NAV, { href: "#quote", label: "Get a free quote" }].map((n) => (
+          {NAV.map((n) => (
             <a
               key={n.href}
               href={n.href}
               onClick={() => setOpen(false)}
-              className="py-2.5 text-lg font-display border-b border-white/10 last:border-0 last:text-flame"
+              className="py-2.5 text-lg font-display border-b border-white/10 last:border-0"
             >
               {n.label}
             </a>

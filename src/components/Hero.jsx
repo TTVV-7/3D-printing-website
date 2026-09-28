@@ -15,7 +15,7 @@ export function Hero() {
         className="pointer-events-none absolute -left-40 bottom-0 h-96 w-96 rounded-full bg-sky/20 blur-[120px]"
       />
 
-      <div className="container-page relative grid items-center gap-12 pt-28 pb-20 sm:pt-32 lg:grid-cols-[1.15fr_1fr] lg:pb-28">
+      <div className="container-page relative grid items-center gap-12 pt-24 pb-16 sm:pt-32 sm:pb-20 lg:grid-cols-[1.15fr_1fr] lg:pb-28">
         <div>
           <p className="eyebrow">3D printing service · Vancouver, BC</p>
           <h1 className="mt-5 text-[2.75rem] leading-[1.02] font-bold sm:text-6xl lg:text-7xl">
@@ -47,8 +47,8 @@ export function Hero() {
           </ul>
         </div>
 
-        <figure className="relative mx-auto w-full max-w-md lg:max-w-none">
-          <div className="relative aspect-[4/5] overflow-hidden rounded-[2rem] ring-1 ring-white/15 shadow-2xl shadow-black/40 rotate-[1.5deg]">
+        <figure className="relative mx-auto w-full max-w-sm sm:max-w-md lg:max-w-none">
+          <div className="relative aspect-[4/3] overflow-hidden sm:aspect-[4/5] rounded-[2rem] ring-1 ring-white/15 shadow-2xl shadow-black/40 rotate-[1.5deg]">
             <img
               src="/work/downtown-vancouver.webp"
               alt="A multi-colour 3D-printed model of downtown Vancouver's skyline"
