@@ -1,11 +1,10 @@
 import { useEffect, useState } from "react";
-import { Menu, X } from "lucide-react";
+import { Menu, Sparkles, X } from "lucide-react";
 import { clsx } from "clsx";
 import { Logo } from "./Logo.jsx";
 
 const NAV = [
   { href: "#services", label: "Services" },
-  { href: "#design", label: "Design your own" },
   { href: "#materials", label: "Materials" },
   { href: "#work", label: "Work" },
   { href: "#faq", label: "FAQ" },
@@ -43,6 +42,9 @@ export function Header() {
         </nav>
 
         <div className="flex items-center gap-2">
+          <a href="#design" className="btn-outline-light h-10 px-5 text-sm hidden sm:inline-flex">
+            <Sparkles size={15} className="text-flame" /> Design your own
+          </a>
           <a href="#quote" className="btn-primary h-10 px-5 text-sm hidden sm:inline-flex">
             Get a free quote
           </a>
@@ -60,7 +62,7 @@ export function Header() {
 
       {open && (
         <nav className="md:hidden container-page pb-5 flex flex-col gap-1 text-white" aria-label="Mobile">
-          {[...NAV, { href: "#quote", label: "Get a free quote" }].map((n) => (
+          {[{ href: "#design", label: "Design your own" }, ...NAV, { href: "#quote", label: "Get a free quote" }].map((n) => (
             <a
               key={n.href}
               href={n.href}

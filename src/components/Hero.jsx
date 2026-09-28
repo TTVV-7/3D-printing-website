@@ -1,4 +1,4 @@
-import { ArrowRight, Check } from "lucide-react";
+import { ArrowRight, Check, Sparkles } from "lucide-react";
 
 const POINTS = ["Free quote in 1 business day", "Local pickup in Vancouver", "No model? I can design it"];
 
@@ -25,16 +25,16 @@ export function Hero() {
           </h1>
           <p className="mt-6 max-w-xl text-lg leading-relaxed text-white/70">
             Broken clip, missing knob, a first prototype or fifty of the same part. Send a
-            file, a link or just a photo and I'll quote it, print it and check it before it
-            goes out.
+            file, a link or just a photo and I'll quote it, or design your own keyring, sign or
+            stencil right in the browser.
           </p>
 
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
             <a href="#quote" className="btn-primary">
               Get a free quote <ArrowRight size={18} />
             </a>
-            <a href="#work" className="btn-outline-light">
-              See recent work
+            <a href="#design" className="btn-outline-light">
+              <Sparkles size={18} className="text-flame" /> Design your own
             </a>
           </div>
 

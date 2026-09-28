@@ -16,8 +16,8 @@ export function App() {
       <Header />
       <main>
         <Hero />
-        <Services />
         <Designer />
+        <Services />
         <Materials />
         <Work />
         <Process />
