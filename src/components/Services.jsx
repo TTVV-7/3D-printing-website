@@ -29,7 +29,7 @@ const SERVICES = [
 
 export function Services() {
   return (
-    <section id="services" className="py-20 sm:py-28">
+    <section id="services" className="py-16 sm:py-28">
       <div className="container-page">
         <div className="max-w-2xl">
           <p className="eyebrow">What I print</p>
@@ -40,18 +40,20 @@ export function Services() {
           </p>
         </div>
 
-        <div className="mt-12 grid gap-4 sm:grid-cols-2">
+        <div className="mt-10 grid gap-4 sm:mt-12 sm:grid-cols-2">
           {SERVICES.map(({ icon: Icon, title, body, tags }) => (
             <article
               key={title}
-              className="group relative rounded-3xl bg-white p-7 ring-1 ring-ink/5 transition hover:-translate-y-0.5 hover:shadow-xl hover:shadow-ink/5"
+              className="group relative rounded-3xl bg-white p-5 ring-1 ring-ink/5 transition hover:-translate-y-0.5 hover:shadow-xl hover:shadow-ink/5 sm:p-7"
             >
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-flame-100 text-flame transition group-hover:bg-flame group-hover:text-white">
-                <Icon size={22} />
+              <div className="flex items-center gap-4 sm:block">
+                <div className="flex h-11 w-11 flex-none items-center justify-center rounded-2xl bg-flame-100 text-flame transition group-hover:bg-flame group-hover:text-white sm:h-12 sm:w-12">
+                  <Icon size={22} />
+                </div>
+                <h3 className="text-xl font-semibold sm:mt-5 sm:text-2xl">{title}</h3>
               </div>
-              <h3 className="mt-5 text-2xl font-semibold">{title}</h3>
-              <p className="mt-2 leading-relaxed text-ink/65">{body}</p>
-              <ul className="mt-5 flex flex-wrap gap-2">
+              <p className="mt-3 leading-relaxed text-ink/65 sm:mt-2">{body}</p>
+              <ul className="mt-5 hidden flex-wrap gap-2 sm:flex">
                 {tags.map((t) => (
                   <li key={t} className="rounded-full bg-paper px-3 py-1 text-xs font-medium text-ink/60">
                     {t}
@@ -64,7 +66,7 @@ export function Services() {
 
         <a
           href="#work"
-          className="mt-4 flex flex-col gap-4 rounded-3xl bg-ink p-7 text-white sm:flex-row sm:items-center sm:justify-between layer-lines"
+          className="mt-4 flex flex-col gap-4 rounded-3xl bg-ink p-5 text-white sm:p-7 sm:flex-row sm:items-center sm:justify-between layer-lines"
         >
           <div className="flex items-center gap-4">
             <div className="flex h-12 w-12 flex-none items-center justify-center rounded-2xl bg-white/10 text-sky">
