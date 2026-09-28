@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Loader2, CheckCircle2, AlertCircle, ArrowRight, Clock, BadgeCheck, MessageCircle, Mail } from "lucide-react";
+import { Loader2, CheckCircle2, AlertCircle, ArrowRight, Clock, BadgeCheck, MessageCircle, ChevronDown, Mail } from "lucide-react";
+import { clsx } from "clsx";
 import { FileDrop } from "./FileDrop.jsx";
 import { printRequests as api } from "../lib/api.js";
 import { site } from "../../site.config.js";
@@ -68,6 +69,9 @@ export function Quote() {
   const [progress, setProgress] = useState(null);
   const [submitted, setSubmitted] = useState(null);
   const [error, setError] = useState(null);
+  // Phones get the four fields that matter; the rest opens on request.
+  // Wider screens always show everything.
+  const [more, setMore] = useState(false);
 
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
 
@@ -142,26 +146,26 @@ export function Quote() {
   }
 
   return (
-    <section id="quote" className="bg-paper-dark py-20 sm:py-28 layer-lines-dark">
-      <div className="container-page grid gap-10 lg:grid-cols-[1fr_1.6fr] lg:gap-16">
+    <section id="quote" className="bg-paper-dark py-16 sm:py-28 layer-lines-dark">
+      <div className="container-page grid gap-8 lg:grid-cols-[1fr_1.6fr] lg:gap-16">
         <div>
           <p className="eyebrow">Free quote</p>
           <h2 className="mt-3 text-4xl font-bold sm:text-5xl">What do you need printed?</h2>
-          <p className="mt-4 text-lg text-ink/65">
+          <p className="mt-4 text-ink/65 sm:text-lg">
             The more detail the better, but a rough description is enough to get started.
           </p>
-          <ul className="mt-8 space-y-4">
+          <ul className="mt-5 flex flex-wrap gap-x-4 gap-y-2 text-sm text-ink/70 lg:mt-8 lg:block lg:space-y-4 lg:text-base lg:text-ink">
             {PROMISES.map(({ icon: Icon, text }) => (
-              <li key={text} className="flex items-center gap-3 font-medium">
-                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-flame">
-                  <Icon size={18} />
+              <li key={text} className="flex items-center gap-1.5 lg:gap-3 lg:font-medium">
+                <span className="flex items-center justify-center text-flame lg:h-10 lg:w-10 lg:rounded-xl lg:bg-white">
+                  <Icon size={16} />
                 </span>
                 {text}
               </li>
             ))}
           </ul>
           {site.email && (
-            <p className="mt-8 flex items-start gap-3 text-ink/65">
+            <p className="mt-5 flex items-start gap-3 text-sm text-ink/65 lg:mt-8 lg:text-base">
               <Mail size={18} className="mt-1 flex-shrink-0 text-flame" />
               <span>
                 Form not working, or rather email? Send your files and details to{" "}
@@ -173,7 +177,7 @@ export function Quote() {
           )}
         </div>
 
-        <div className="rounded-3xl bg-white p-6 shadow-xl shadow-ink/5 ring-1 ring-ink/5 sm:p-8">
+        <div className="rounded-3xl bg-white p-5 shadow-xl shadow-ink/5 ring-1 ring-ink/5 sm:p-8">
           {submitted ? (
             <Submitted entry={submitted} onReset={() => setSubmitted(null)} />
           ) : (
@@ -198,37 +202,49 @@ export function Quote() {
                 />
               </Field>
 
-              <Field label="Reference link" hint="(MakerWorld, Printables, Thingiverse…)">
-                <input className="field" type="url" value={form.url} onChange={set("url")} placeholder="https://" />
-              </Field>
-
               <Field label="Files" hint="(STL, 3MF, STEP, or a photo)">
                 <FileDrop files={files} onChange={setFiles} disabled={submitting} />
               </Field>
 
-              <div className="grid gap-4 sm:grid-cols-3">
-                <Field label="Material">
-                  <select className="field" value={form.material} onChange={set("material")}>
-                    {MATERIALS.map((m) => <option key={m.label} value={m.value}>{m.label}</option>)}
-                  </select>
-                </Field>
-                <Field label="Quality">
-                  <select className="field" value={form.quality} onChange={set("quality")}>
-                    {QUALITIES.map((q) => <option key={q.label} value={q.value}>{q.label}</option>)}
-                  </select>
-                </Field>
-                <Field label="Quantity">
-                  <input className="field" type="number" min="1" value={form.quantity} onChange={set("quantity")} />
-                </Field>
-              </div>
+              <button
+                type="button"
+                onClick={() => setMore((m) => !m)}
+                aria-expanded={more}
+                className="flex w-full items-center justify-between gap-2 rounded-xl border border-dashed border-ink/15 px-3.5 py-2.5 text-left text-sm font-medium text-ink/70 sm:hidden"
+              >
+                More details (link, material, quantity, date)
+                <ChevronDown size={16} className={clsx("transition-transform", more && "rotate-180")} />
+              </button>
 
-              <div className="grid gap-4 sm:grid-cols-2">
-                <Field label="Needed by" hint="(optional)">
-                  <input className="field" type="date" value={form.deadline} onChange={set("deadline")} />
+              <div className={clsx("space-y-4 sm:block", !more && "hidden")}>
+                <Field label="Reference link" hint="(MakerWorld, Printables, Thingiverse…)">
+                  <input className="field" type="url" value={form.url} onChange={set("url")} placeholder="https://" />
                 </Field>
-                <Field label="Budget" hint="(optional)">
-                  <input className="field" value={form.budget} onChange={set("budget")} placeholder="e.g. under $40" />
-                </Field>
+
+                <div className="grid gap-4 sm:grid-cols-3">
+                  <Field label="Material">
+                    <select className="field" value={form.material} onChange={set("material")}>
+                      {MATERIALS.map((m) => <option key={m.label} value={m.value}>{m.label}</option>)}
+                    </select>
+                  </Field>
+                  <Field label="Quality">
+                    <select className="field" value={form.quality} onChange={set("quality")}>
+                      {QUALITIES.map((q) => <option key={q.label} value={q.value}>{q.label}</option>)}
+                    </select>
+                  </Field>
+                  <Field label="Quantity">
+                    <input className="field" type="number" min="1" value={form.quantity} onChange={set("quantity")} />
+                  </Field>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <Field label="Needed by" hint="(optional)">
+                    <input className="field" type="date" value={form.deadline} onChange={set("deadline")} />
+                  </Field>
+                  <Field label="Budget" hint="(optional)">
+                    <input className="field" value={form.budget} onChange={set("budget")} placeholder="e.g. under $40" />
+                  </Field>
+                </div>
               </div>
 
               {error && (
