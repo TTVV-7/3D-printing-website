@@ -10,6 +10,7 @@ import { Quote } from "./components/Quote.jsx";
 import { Footer } from "./components/Footer.jsx";
 import { FloatingGolem } from "./components/FloatingGolem.jsx";
 import { CookieBanner } from "./components/CookieBanner.jsx";
+import { ConsentAnalytics } from "./components/ConsentAnalytics.jsx";
 
 export function App() {
   return (
@@ -28,6 +29,7 @@ export function App() {
       <Footer />
       <FloatingGolem />
       <CookieBanner />
+      <ConsentAnalytics />
     </>
   );
 }
