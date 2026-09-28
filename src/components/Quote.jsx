@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Loader2, CheckCircle2, AlertCircle, ArrowRight, Clock, BadgeCheck, MessageCircle, ChevronDown, Mail } from "lucide-react";
 import { clsx } from "clsx";
 import { FileDrop } from "./FileDrop.jsx";
+import { QuoteGolem } from "./QuoteGolem.jsx";
 import { printRequests as api } from "../lib/api.js";
 import { site } from "../../site.config.js";
 
@@ -259,13 +260,17 @@ export function Quote() {
                 </p>
               )}
 
-              <button type="submit" disabled={submitting} className="btn-primary w-full disabled:opacity-60">
-                {submitting ? (
-                  <><Loader2 size={18} className="animate-spin" /> {progress || "Sending…"}</>
-                ) : (
-                  <>Send my request <ArrowRight size={18} /></>
-                )}
-              </button>
+              {/* Room above the button for the golem to stand. */}
+              <div className="relative pt-14">
+                <QuoteGolem />
+                <button type="submit" disabled={submitting} className="btn-primary w-full disabled:opacity-60">
+                  {submitting ? (
+                    <><Loader2 size={18} className="animate-spin" /> {progress || "Sending…"}</>
+                  ) : (
+                    <>Send my request <ArrowRight size={18} /></>
+                  )}
+                </button>
+              </div>
               <p className="text-center text-xs text-ink/45">
                 Your details are only used to reply to this request.
               </p>
