@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Menu, X } from "lucide-react";
+import { Menu, Sparkles, X } from "lucide-react";
 import { clsx } from "clsx";
 import { Logo } from "./Logo.jsx";
 
@@ -36,13 +36,21 @@ export function Header() {
 
         <nav className="hidden md:flex items-center gap-7 text-sm text-white/75" aria-label="Main">
           {NAV.map((n) => (
-            <a key={n.href} href={n.href} className="hover:text-white transition-colors">
+            <a
+              key={n.href}
+              href={n.href}
+              // The Design your own button takes over on wide screens.
+              className={clsx("hover:text-white transition-colors", n.href === "#design" && "lg:hidden")}
+            >
               {n.label}
             </a>
           ))}
         </nav>
 
         <div className="flex items-center gap-2">
+          <a href="#design" className="btn-outline-light h-10 px-5 text-sm hidden lg:inline-flex">
+            <Sparkles size={15} className="text-flame" /> Design your own
+          </a>
           <a href="#quote" className="btn-primary h-9 px-4 text-sm sm:h-10 sm:px-5">
             <span className="sm:hidden">Quote</span>
             <span className="hidden sm:inline">Get a free quote</span>
