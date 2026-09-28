@@ -1,6 +1,7 @@
 // Builds the spinning models in the "Design your own" section.
 //
-//   node scripts/designer-models.mjs
+//   node scripts/designer-models.mjs          # all of them
+//   node scripts/designer-models.mjs pet      # just the named ones
 //
 // Asks the live generator app (3D-print-sandbox) for its on-screen preview of
 // each sample, then writes one small GLB per sample to public/models/designer.
@@ -34,6 +35,10 @@ const SAMPLES = {
   stencil: {
     params: { kind: "stencil", name: "SHOP" },
     colours: ["#d8392b", "#d8392b", "#d8392b", "#d8392b"],
+  },
+  pet: {
+    params: { kind: "pet", name: "Biscuit", phone: "(555) 214-8890" },
+    colours: ["#ff6a1f", "#ff6a1f", "#0c1a2e", "#0c1a2e"],
   },
 };
 
@@ -143,7 +148,9 @@ function glb(geoms, { colours, glow = [] }) {
 }
 
 await mkdir(OUT, { recursive: true });
+const only = process.argv.slice(2);
 for (const [key, sample] of Object.entries(SAMPLES)) {
+  if (only.length && !only.includes(key)) continue;
   const data = glb(slotGeometries(await fetchPreview(sample.params), sample), sample);
   await writeFile(new URL(`${key}.glb`, OUT), data);
   console.log(`${key}.glb  ${(data.length / 1024).toFixed(0)} kB`);
