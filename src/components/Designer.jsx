@@ -41,6 +41,14 @@ const GENERATORS = [
     alt: "Red plastic stencil plate with the word SHOP cut through it",
     model: "/models/designer/stencil.glb",
   },
+  {
+    key: "pet",
+    title: "Pet tag",
+    body: "A bone-shaped collar tag with your pet's name on the front and your number on the back.",
+    image: "/designer/pet.webp",
+    alt: "Orange bone-shaped pet tag with the name Biscuit in dark letters",
+    model: "/models/designer/pet.glb",
+  },
 ];
 
 const STEPS = [
@@ -253,6 +261,7 @@ export function Designer() {
           <div className="rounded-3xl bg-white p-5 text-ink shadow-2xl shadow-black/30 sm:p-8">
             <QuoteForm
               compact
+              golem
               detailsLabel="What did you design?"
               detailsPlaceholder="e.g. Name keyring for Maya, pink letters on a white base."
               filesHint="(STL or 3MF from the designer)"
