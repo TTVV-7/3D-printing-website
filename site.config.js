@@ -27,8 +27,9 @@ export const site = {
   // The live generator app (3D-print-sandbox repo). Linked from "Design your own".
   designerUrl: "https://3-d-print-sandbox.vercel.app",
 
-  // Public contact email shown in the footer. Leave empty to rely on the form.
-  email: "",
+  // Public contact email: shown in the footer, beside the quote form and in the
+  // no-JavaScript fallback. Leave empty to rely on the form.
+  email: "thomas.verigin@gmail.com",
 
   // Social profiles: shown in the footer and linked from search results
   // (schema.org sameAs). Empty entries are hidden.
