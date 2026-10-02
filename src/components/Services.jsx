@@ -6,7 +6,7 @@ const ICONS = { print: Printer, design: PenTool, batch: Boxes };
 
 export function Services() {
   return (
-    <section id="services" className="py-20 sm:py-28">
+    <section id="services" className="py-16 sm:py-28">
       <div className="container-page">
         <div className="max-w-2xl">
           <p className="eyebrow">Services & pricing</p>
@@ -24,7 +24,7 @@ export function Services() {
               <article
                 key={key}
                 className={clsx(
-                  "flex flex-col rounded-3xl p-7 ring-1",
+                  "flex flex-col rounded-3xl p-5 ring-1 sm:p-7",
                   featured ? "bg-ink text-white ring-ink layer-lines" : "bg-white ring-ink/5",
                 )}
               >
@@ -54,7 +54,7 @@ export function Services() {
           })}
         </div>
 
-        <div className="mt-4 rounded-3xl bg-white p-7 ring-1 ring-ink/5">
+        <div className="mt-4 rounded-3xl bg-white p-5 ring-1 ring-ink/5 sm:p-7">
           <h3 className="text-xl font-semibold">Custom design prices</h3>
           <p className="mt-1 text-ink/60">
             Fixed per part, agreed before I start. If a job turns out bigger than quoted, that's on me.
@@ -77,7 +77,7 @@ export function Services() {
 
         <a
           href="#work"
-          className="mt-4 flex flex-col gap-4 rounded-3xl bg-ink p-7 text-white sm:flex-row sm:items-center sm:justify-between layer-lines"
+          className="mt-4 flex flex-col gap-4 rounded-3xl bg-ink p-5 text-white sm:p-7 sm:flex-row sm:items-center sm:justify-between layer-lines"
         >
           <div className="flex items-center gap-4">
             <div className="flex h-12 w-12 flex-none items-center justify-center rounded-2xl bg-white/10 text-sky">

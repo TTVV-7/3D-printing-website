@@ -7,8 +7,6 @@ import { Work } from "./components/Work.jsx";
 import { Reviews } from "./components/Reviews.jsx";
 import { Quote } from "./components/Quote.jsx";
 import { Footer } from "./components/Footer.jsx";
-import { FloatingGolem } from "./components/FloatingGolem.jsx";
-import { Analytics } from "@vercel/analytics/react";
 
 export function App() {
   return (
@@ -16,16 +14,14 @@ export function App() {
       <Header />
       <main>
         <Hero />
-        <Services />
         <Designer />
-        <Materials />
+        <Services />
         <Work />
+        <Materials />
         <Reviews />
         <Quote />
       </main>
       <Footer />
-      <FloatingGolem />
-      <Analytics />
     </>
   );
 }

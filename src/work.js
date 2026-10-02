@@ -10,6 +10,13 @@ export const work = [
     alt: "White 3D-printed skyscrapers of downtown Vancouver on a grey street grid with green parks",
   },
   {
+    title: "Art nouveau face vase",
+    kind: "Fine-detail print",
+    photo: "/work/art-vase.webp",
+    focus: "center 15%",
+    alt: "White 3D-printed vase sculpted as a woman's face with flowing hair and flowers, held in a hand",
+  },
+  {
     title: "Vancouver & North Shore mountains",
     kind: "Topographic relief map",
     photo: "/work/vancouver-mountains-2.webp",
@@ -21,5 +28,17 @@ export const work = [
     kind: "Topographic relief map",
     photo: "/work/vancouver-mountains-3.webp",
     alt: "Angled view of the printed Vancouver relief map showing raised North Shore mountains",
+  },
+  {
+    title: "Welsh dragon phone case",
+    kind: "Custom two-colour case",
+    photo: "/work/dragon-phone-case.webp",
+    alt: "White 3D-printed phone case with a raised red Welsh dragon and red camera surround",
+  },
+  {
+    title: "BONK bars",
+    kind: "Two-colour merch batch",
+    photo: "/work/bonk-bars.webp",
+    alt: "Red and white 3D-printed candy-bar keychains with the BONK logo in several sizes",
   },
 ];

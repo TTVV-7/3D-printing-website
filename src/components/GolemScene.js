@@ -1,5 +1,5 @@
-// three.js scene for the floating crystal golem. Kept in its own module so the
-// ~150 KB of three.js is only fetched after the page has finished loading.
+// three.js scene for the crystal golem on the quote button. Kept in its own
+// module so the ~150 KB of three.js is only fetched when the form is near.
 import {
   WebGLRenderer, Scene, PerspectiveCamera, PMREMGenerator, ACESFilmicToneMapping,
   SRGBColorSpace, Box3, Vector3, Group,
