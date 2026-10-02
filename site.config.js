@@ -87,31 +87,15 @@ export const pricing = {
   ],
 };
 
-// Printed in several places (schema.org FAQ, the FAQ section). Keep answers
-// honest -- search engines show these verbatim.
-export const faqs = [
-  {
-    q: "How much does a print cost?",
-    a: "Printing from your own file starts at $15 per order and most small parts are $15–40. Custom design is a fixed price from $60, depending on complexity. You get an exact quote before anything is printed, and quotes are free.",
-  },
-  {
-    q: "I don't have a 3D model. Can you still help?",
-    a: "Yes. Send photos of the broken part, rough measurements or a sketch. I can model simple replacement parts and brackets from scratch, and design work is a fixed price, quoted up front.",
-  },
-  {
-    q: "What file types do you accept?",
-    a: "STL, 3MF, STEP, OBJ, or a link to MakerWorld, Printables or Thingiverse. Photos and PDFs work too for describing what you need.",
-  },
-  {
-    q: "How fast can I get my part?",
-    a: "Most jobs are ready in 3–5 days after you approve the quote. If you have a deadline, put it in the request and I'll tell you honestly whether it's doable.",
-  },
-  {
-    q: "Do you do more than one copy?",
-    a: "Yes. Small production runs of a few to a few hundred identical parts are a good fit, e.g. enclosures, fixtures, merch or replacement stock for a small business.",
-  },
-  {
-    q: "Where are you and how do I get my part?",
-    a: "I'm in Vancouver, BC. You can pick up locally or have it shipped.",
-  },
-];
+// Customer reviews. The section stays hidden until there's at least one
+// review or one link. Copy reviews word-for-word from where they were left
+// and only post ones you have permission to share -- first name + initial is plenty.
+export const reviews = {
+  // Your Facebook Marketplace seller profile (Marketplace → your profile → Share → Copy link).
+  marketplaceUrl: "",
+  // Your Google Business Profile review link, once you have one.
+  googleUrl: "",
+  items: [
+    // { name: "Sarah K.", rating: 5, text: "Printed a replacement dishwasher clip in two days. Fits perfectly.", source: "Facebook Marketplace" },
+  ],
+};

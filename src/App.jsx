@@ -4,7 +4,7 @@ import { Services } from "./components/Services.jsx";
 import { Designer } from "./components/Designer.jsx";
 import { Materials } from "./components/Materials.jsx";
 import { Work } from "./components/Work.jsx";
-import { Faq } from "./components/Faq.jsx";
+import { Reviews } from "./components/Reviews.jsx";
 import { Quote } from "./components/Quote.jsx";
 import { Footer } from "./components/Footer.jsx";
 import { FloatingGolem } from "./components/FloatingGolem.jsx";
@@ -20,7 +20,7 @@ export function App() {
         <Designer />
         <Materials />
         <Work />
-        <Faq />
+        <Reviews />
         <Quote />
       </main>
       <Footer />

@@ -21,7 +21,8 @@ so new requests show up in the same admin panel as before. Nothing to migrate.
 | What | Where |
 | --- | --- |
 | Business name, description, email, social links | `site.config.js` |
-| FAQ (also published to Google as structured data) | `site.config.js` |
+| Prices | `site.config.js` → `pricing` |
+| Reviews and Marketplace link | `site.config.js` → `reviews` |
 | Generator app link ("Design your own") | `site.config.js` → `designerUrl` |
 | Generator cards | `src/components/Designer.jsx` + `public/designer/` |
 | Portfolio photos | `public/work/` + `src/work.js` |
@@ -31,7 +32,7 @@ so new requests show up in the same admin panel as before. Nothing to migrate.
 ## SEO / sharing
 
 - Title, description, Open Graph and Twitter card tags in `index.html`
-- `LocalBusiness` and `FAQPage` JSON-LD, generated at build time from `site.config.js`
+- `LocalBusiness` JSON-LD, generated at build time from `site.config.js`
 - `robots.txt` and `sitemap.xml` generated at build time
 - The page is prerendered at build time (`scripts/prerender.js`), so crawlers get the
   full text in the HTML instead of an empty `<div id="root">`

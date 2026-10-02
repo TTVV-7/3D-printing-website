@@ -8,7 +8,6 @@ const NAV = [
   { href: "#design", label: "Design your own" },
   { href: "#materials", label: "Materials" },
   { href: "#work", label: "Work" },
-  { href: "#faq", label: "FAQ" },
 ];
 
 export function Header() {
