@@ -9,6 +9,7 @@ import { Faq } from "./components/Faq.jsx";
 import { Quote } from "./components/Quote.jsx";
 import { Footer } from "./components/Footer.jsx";
 import { FloatingGolem } from "./components/FloatingGolem.jsx";
+import { Analytics } from "@vercel/analytics/react";
 
 export function App() {
   return (
@@ -26,6 +27,7 @@ export function App() {
       </main>
       <Footer />
       <FloatingGolem />
+      <Analytics />
     </>
   );
 }

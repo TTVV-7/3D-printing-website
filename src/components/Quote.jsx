@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Loader2, CheckCircle2, AlertCircle, ArrowRight, Clock, BadgeCheck, MessageCircle } from "lucide-react";
 import { FileDrop } from "./FileDrop.jsx";
+import { track } from "@vercel/analytics";
 import { printRequests as api } from "../lib/api.js";
 
 const MATERIALS = [
@@ -130,6 +131,13 @@ export function Quote() {
     try {
       await api.create(entry);
       api.notify(entry);
+      // Shows up under Analytics → Events in Vercel. No personal details sent.
+      track("Quote submitted", {
+        material: entry.material || "unsure",
+        quantity: entry.quantity,
+        hasFiles: uploaded.length > 0,
+        hasLink: Boolean(entry.url),
+      });
       setSubmitted(entry);
       setForm(EMPTY);
       setFiles([]);

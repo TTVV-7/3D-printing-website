@@ -33,6 +33,15 @@ so new requests show up in the same admin panel as before. Nothing to migrate.
 - Title, description, Open Graph and Twitter card tags in `index.html`
 - `LocalBusiness` and `FAQPage` JSON-LD, generated at build time from `site.config.js`
 - `robots.txt` and `sitemap.xml` generated at build time
+- The page is prerendered at build time (`scripts/prerender.js`), so crawlers get the
+  full text in the HTML instead of an empty `<div id="root">`
+
+## Stats
+
+Vercel Web Analytics (`<Analytics />` in `App.jsx`) records visitors, top pages and
+referrers. Turn it on once in the Vercel dashboard: project → Analytics → Enable.
+Each successful quote also sends a `Quote submitted` event (material, quantity, whether
+files/link were attached; no names or emails), visible under Analytics → Events.
 
 All absolute URLs default to `https://printyours.ca`; set the `SITE_URL` env var to
 override (e.g. for a staging domain).
