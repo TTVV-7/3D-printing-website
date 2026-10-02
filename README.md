@@ -28,6 +28,7 @@ so new requests show up in the same admin panel as before. Nothing to migrate.
 | Portfolio photos | `public/work/` + `src/work.js` |
 | Specs & materials (confirm before launch) | `src/components/Materials.jsx` |
 | Link-preview image (1200×630) | `public/og-image.jpg` |
+| Intro terrain (North Shore height map) | `node scripts/topo-heightmap.mjs` → `public/topo/` |
 
 ## SEO / sharing
 

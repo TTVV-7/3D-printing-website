@@ -2,20 +2,27 @@ import { useEffect, useRef, useState } from "react";
 import { ArrowRight, ChevronDown } from "lucide-react";
 import { clsx } from "clsx";
 
-// Full-screen opening: animated topographic contours (TopoScene.js) behind the
-// business name. Scrolling down leads into the Hero.
+// Full-screen opening: contour lines of the North Shore Mountains
+// (TopoScene.js) behind the business name. Scrolling down leads into the Hero.
 export function Intro() {
   const canvasRef = useRef(null);
+  const layerRef = useRef(null);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
     let scene;
     let cancelled = false;
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    // Set the layer readout directly so scrolling doesn't re-render React.
+    const onLayer = (m) => {
+      if (layerRef.current) layerRef.current.textContent = `${m} m`;
+    };
     import("./TopoScene.js")
-      .then(({ mountTopo }) => {
-        if (cancelled || !canvasRef.current) return;
-        scene = mountTopo(canvasRef.current, { reducedMotion });
+      .then(({ mountTopo }) => (cancelled ? null : mountTopo(canvasRef.current, { reducedMotion, onLayer })))
+      .then((s) => {
+        if (!s) return;
+        if (cancelled) return s.dispose();
+        scene = s;
         setReady(true);
       })
       .catch((err) => console.warn("Intro background skipped:", err));
@@ -56,6 +63,18 @@ export function Intro() {
           </a>
         </div>
       </div>
+
+      <p
+        aria-hidden
+        className={clsx(
+          "absolute bottom-6 right-4 hidden text-right font-mono text-[11px] uppercase leading-relaxed tracking-widest text-white/40 transition-opacity duration-1000 sm:right-8 sm:block",
+          ready ? "opacity-100" : "opacity-0",
+        )}
+      >
+        North Shore Mountains · 49.37°N 123.08°W
+        <br />
+        Printing layer <span ref={layerRef} className="text-flame" />
+      </p>
 
       <a
         href="#start"

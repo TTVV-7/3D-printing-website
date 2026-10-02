@@ -1,67 +1,15 @@
-// Animated topographic contour lines for the intro screen. A slowly drifting
-// noise field is traced with marching squares, like a relief map, and one
-// orange contour climbs through it like the layer a printer is on.
-// Plain 2D canvas, no dependencies.
-
-// --- 3D simplex noise (Stefan Gustavson's reference, trimmed) -------------
-const GRAD = [
-  [1, 1, 0], [-1, 1, 0], [1, -1, 0], [-1, -1, 0],
-  [1, 0, 1], [-1, 0, 1], [1, 0, -1], [-1, 0, -1],
-  [0, 1, 1], [0, -1, 1], [0, 1, -1], [0, -1, -1],
-];
-
-function makeNoise(seed = 1) {
-  const p = new Uint8Array(256);
-  for (let i = 0; i < 256; i++) p[i] = i;
-  let s = seed;
-  for (let i = 255; i > 0; i--) {
-    s = (s * 16807) % 2147483647;
-    const j = s % (i + 1);
-    [p[i], p[j]] = [p[j], p[i]];
-  }
-  const perm = new Uint8Array(512);
-  for (let i = 0; i < 512; i++) perm[i] = p[i & 255];
-
-  const F3 = 1 / 3;
-  const G3 = 1 / 6;
-
-  return function noise(x, y, z) {
-    const t = (x + y + z) * F3;
-    const i = Math.floor(x + t), j = Math.floor(y + t), k = Math.floor(z + t);
-    const u = (i + j + k) * G3;
-    const x0 = x - i + u, y0 = y - j + u, z0 = z - k + u;
-    let i1, j1, k1, i2, j2, k2;
-    if (x0 >= y0) {
-      if (y0 >= z0) [i1, j1, k1, i2, j2, k2] = [1, 0, 0, 1, 1, 0];
-      else if (x0 >= z0) [i1, j1, k1, i2, j2, k2] = [1, 0, 0, 1, 0, 1];
-      else [i1, j1, k1, i2, j2, k2] = [0, 0, 1, 1, 0, 1];
-    } else if (y0 < z0) [i1, j1, k1, i2, j2, k2] = [0, 0, 1, 0, 1, 1];
-    else if (x0 < z0) [i1, j1, k1, i2, j2, k2] = [0, 1, 0, 0, 1, 1];
-    else [i1, j1, k1, i2, j2, k2] = [0, 1, 0, 1, 1, 0];
-
-    const corners = [
-      [x0, y0, z0, 0, 0, 0],
-      [x0 - i1 + G3, y0 - j1 + G3, z0 - k1 + G3, i1, j1, k1],
-      [x0 - i2 + 2 * G3, y0 - j2 + 2 * G3, z0 - k2 + 2 * G3, i2, j2, k2],
-      [x0 - 1 + 3 * G3, y0 - 1 + 3 * G3, z0 - 1 + 3 * G3, 1, 1, 1],
-    ];
-    const ii = i & 255, jj = j & 255, kk = k & 255;
-    let n = 0;
-    for (const [cx, cy, cz, di, dj, dk] of corners) {
-      let tt = 0.6 - cx * cx - cy * cy - cz * cz;
-      if (tt < 0) continue;
-      const g = GRAD[perm[ii + di + perm[jj + dj + perm[kk + dk]]] % 12];
-      tt *= tt;
-      n += tt * tt * (g[0] * cx + g[1] * cy + g[2] * cz);
-    }
-    return 32 * n; // roughly -1..1
-  };
-}
+// The intro background: real contour lines of the North Shore Mountains
+// (Cypress to Seymour, Burrard Inlet along the bottom), traced from the
+// height map built by scripts/topo-heightmap.mjs. Scrolling pushes the view
+// in toward the peaks while an orange contour climbs from sea level to the
+// summits, like the mountains being printed layer by layer. The terrain
+// swells under the pointer. Plain 2D canvas, no dependencies; it only draws
+// when something changes.
 
 // --- Contours ------------------------------------------------------------
-const CELL = 14; // CSS px per grid cell
-const LEVELS = 18; // contour lines from low to high
-const LAYER_PERIOD = 14; // seconds for the orange layer to climb top to bottom
+const CELL = 12; // CSS px per grid cell
+const INTERVAL = 100; // metres between contour lines
+const TOP = 1700; // highest contour (Brunswick-ish; Grouse is ~1230 m)
 
 // Marching squares: append the segments where the field crosses `level`.
 function traceLevel(ctx, field, cols, rows, level) {
@@ -94,13 +42,38 @@ function traceLevel(ctx, field, cols, rows, level) {
   }
 }
 
-export function mountTopo(canvas, { reducedMotion = false } = {}) {
+async function loadHeights(url) {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`${url}: HTTP ${res.status}`);
+  const buf = new DataView(await res.arrayBuffer());
+  const w = buf.getUint16(0, true), h = buf.getUint16(2, true);
+  const heights = new Float32Array(w * h);
+  for (let i = 0; i < w * h; i++) heights[i] = buf.getUint8(4 + i) * 7 - 20; // see the script
+  // Two passes of a 3x3 blur smooth out the 7 m steps so lines don't zigzag.
+  for (let pass = 0; pass < 2; pass++) {
+    const src = heights.slice();
+    for (let y = 1; y < h - 1; y++) {
+      for (let x = 1; x < w - 1; x++) {
+        let sum = 0;
+        for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) sum += src[(y + dy) * w + x + dx];
+        heights[y * w + x] = sum / 9;
+      }
+    }
+  }
+  return { w, h, heights };
+}
+
+const lerp = (a, b, t) => a + (b - a) * t;
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+
+export async function mountTopo(canvas, { reducedMotion = false, onLayer } = {}) {
+  const map = await loadHeights("/topo/north-shore.bin");
   const ctx = canvas.getContext("2d");
-  const noise = makeNoise(7);
   let cols = 0, rows = 0, field = new Float32Array(0);
-  let width = 0, height = 0;
-  let raf = 0, running = false, last = 0;
-  const pointer = { x: -1e4, y: -1e4, strength: 0 };
+  let width = 0, height = 0, raf = 0;
+  const pointer = { x: 0, y: 0, strength: 0 };
+  let target = 0; // scroll progress through the intro, 0..1
+  let progress = 0; // eased toward target
 
   function resize() {
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -114,95 +87,109 @@ export function mountTopo(canvas, { reducedMotion = false } = {}) {
     field = new Float32Array(cols * rows);
   }
 
-  function draw(t) {
-    // Fill the height field: two octaves of drifting noise, plus a soft hill
-    // that rises under the pointer.
-    const s = 0.0028;
-    const z = t * 0.045;
-    const r2 = 160 * 160;
+  // Bilinear height at map pixel (u, v).
+  function sample(u, v) {
+    u = clamp(u, 0, map.w - 1.001);
+    v = clamp(v, 0, map.h - 1.001);
+    const x = Math.floor(u), y = Math.floor(v), fx = u - x, fy = v - y;
+    const i = y * map.w + x, H = map.heights;
+    return lerp(lerp(H[i], H[i + 1], fx), lerp(H[i + map.w], H[i + map.w + 1], fx), fy);
+  }
+
+  function draw() {
+    // Cover the canvas with the map, then zoom toward the peaks with scroll.
+    const p = progress;
+    const scale = Math.max(width / map.w, height / map.h) * lerp(1.05, 1.45, p);
+    const focusU = map.w * lerp(0.5, 0.47, p);
+    const focusV = map.h * lerp(0.5, 0.3, p);
+    const ox = clamp(width / 2 - focusU * scale, width - map.w * scale, 0);
+    const oy = clamp(height / 2 - focusV * scale, height - map.h * scale, 0);
+
+    const r2 = 190 * 190;
     for (let y = 0; y < rows; y++) {
       for (let x = 0; x < cols; x++) {
-        const wx = x * CELL, wy = y * CELL;
-        let v = noise(wx * s, wy * s, z) * 0.8 + noise(wx * s * 2.3, wy * s * 2.3, z * 1.4) * 0.25;
+        const sx = x * CELL, sy = y * CELL;
+        let h = sample((sx - ox) / scale, (sy - oy) / scale);
         if (pointer.strength > 0.01) {
-          const dx = wx - pointer.x, dy = wy - pointer.y;
-          v += 0.55 * pointer.strength * Math.exp(-(dx * dx + dy * dy) / r2);
+          const dx = sx - pointer.x, dy = sy - pointer.y;
+          h += 850 * pointer.strength * Math.exp(-(dx * dx + dy * dy) / r2);
         }
-        field[y * cols + x] = v;
+        field[y * cols + x] = h;
       }
     }
 
     ctx.clearRect(0, 0, width, height);
     ctx.lineCap = "round";
 
-    // Ordinary contours, with every fifth one heavier like an index contour.
-    for (let l = 0; l < LEVELS; l++) {
-      const level = -0.85 + (1.7 * l) / (LEVELS - 1);
-      const index = l % 5 === 0;
+    // Coastline.
+    ctx.beginPath();
+    traceLevel(ctx, field, cols, rows, 2);
+    ctx.strokeStyle = "rgba(90,169,230,0.45)";
+    ctx.lineWidth = 1.4;
+    ctx.stroke();
+
+    // Contours every 100 m, with every 500 m heavier like a printed map.
+    for (let m = INTERVAL; m <= TOP; m += INTERVAL) {
+      const index = m % 500 === 0;
       ctx.beginPath();
-      traceLevel(ctx, field, cols, rows, level);
-      ctx.strokeStyle = index ? "rgba(90,169,230,0.32)" : "rgba(90,169,230,0.14)";
+      traceLevel(ctx, field, cols, rows, m);
+      ctx.strokeStyle = index ? "rgba(90,169,230,0.34)" : "rgba(90,169,230,0.15)";
       ctx.lineWidth = index ? 1.4 : 1;
       ctx.stroke();
     }
 
-    // The layer being printed: one orange contour sweeping up the terrain.
-    const phase = reducedMotion ? 0.55 : (t / LAYER_PERIOD) % 1;
-    const layer = -0.8 + 1.6 * phase;
+    // The layer being printed.
+    const layer = lerp(150, 1450, p);
     ctx.beginPath();
     traceLevel(ctx, field, cols, rows, layer);
-    ctx.strokeStyle = "rgba(255,91,31,0.9)";
+    ctx.strokeStyle = "rgba(255,91,31,0.95)";
     ctx.lineWidth = 2;
     ctx.shadowColor = "rgba(255,91,31,0.8)";
     ctx.shadowBlur = 12;
     ctx.stroke();
     ctx.shadowBlur = 0;
+    onLayer?.(Math.round(layer / 10) * 10);
   }
 
-  function frame(now) {
-    raf = requestAnimationFrame(frame);
-    if (now - last < 33) return; // ~30 fps is plenty for a slow drift
-    last = now;
-    pointer.strength *= 0.97;
-    draw(now / 1000);
+  // Draw only while something is still settling, then go idle.
+  function frame() {
+    raf = 0;
+    progress = reducedMotion ? target : lerp(progress, target, 0.18);
+    pointer.strength *= 0.94;
+    draw();
+    if (Math.abs(progress - target) > 0.001 || pointer.strength > 0.01) kick();
   }
+  const kick = () => { if (!raf) raf = requestAnimationFrame(frame); };
 
-  function start() {
-    if (running || reducedMotion) return;
-    running = true;
-    raf = requestAnimationFrame(frame);
-  }
-  function stop() {
-    running = false;
-    cancelAnimationFrame(raf);
-  }
-
-  const onResize = () => { resize(); draw(performance.now() / 1000); };
+  const onScroll = () => {
+    const rect = canvas.getBoundingClientRect();
+    target = clamp(-rect.top / rect.height, 0, 1);
+    if (rect.bottom > 0) kick();
+  };
+  const onResize = () => { resize(); kick(); };
   const onMove = (e) => {
     const rect = canvas.getBoundingClientRect();
+    if (e.clientY > rect.bottom) return;
     pointer.x = e.clientX - rect.left;
     pointer.y = e.clientY - rect.top;
     pointer.strength = 1;
+    kick();
   };
-  const onVisibility = () => (document.hidden ? stop() : start());
-
-  // Only animate while the intro is on screen.
-  const io = new IntersectionObserver(([entry]) => (entry.isIntersecting ? start() : stop()));
 
   resize();
-  draw(performance.now() / 1000);
-  io.observe(canvas);
+  onScroll();
+  progress = target;
+  draw();
+  window.addEventListener("scroll", onScroll, { passive: true });
   window.addEventListener("resize", onResize);
   if (!reducedMotion) window.addEventListener("pointermove", onMove, { passive: true });
-  document.addEventListener("visibilitychange", onVisibility);
 
   return {
     dispose() {
-      stop();
-      io.disconnect();
+      cancelAnimationFrame(raf);
+      window.removeEventListener("scroll", onScroll);
       window.removeEventListener("resize", onResize);
       window.removeEventListener("pointermove", onMove);
-      document.removeEventListener("visibilitychange", onVisibility);
     },
   };
 }
