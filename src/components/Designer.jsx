@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { ArrowUpRight, Hand, Smartphone } from "lucide-react";
+import { ArrowRight, ArrowUpRight, Hand, Smartphone } from "lucide-react";
 import { clsx } from "clsx";
 import { site } from "../../site.config.js";
-import { QuoteForm } from "./QuoteForm.jsx";
 
 // Each of these is a shape in the generator app (3D-print-sandbox repo). The
 // models are that app's own output for the sample text; rebuild them with
@@ -51,10 +50,14 @@ const GENERATORS = [
   },
 ];
 
+// Switches the quote form at the bottom of the page into "design" mode
+// (see Quote.jsx) and lets the link scroll there.
+const sendDesign = () => window.dispatchEvent(new Event("quote:design"));
+
 const STEPS = [
   { title: "Design it", body: "Open the designer, type your text, pick a shape and colours." },
   { title: "Download the file", body: "Export the STL or 3MF when the preview looks right." },
-  { title: "Send it here", body: "Drop the file in the form and I'll reply with a fixed price." },
+  { title: "Send it to me", body: "Attach the file to a quote request and I'll reply with a fixed price." },
 ];
 
 function useStage(canvasRef, sectionRef) {
@@ -224,8 +227,8 @@ export function Designer() {
 
             <p className="mt-5 text-sm text-white/50">
               Have a design ready?{" "}
-              <a href="#design-quote" className="text-flame underline-offset-4 hover:underline">
-                Send it just below
+              <a href="#quote" onClick={sendDesign} className="text-flame underline-offset-4 hover:underline">
+                Send it here
               </a>{" "}
               and I'll quote it.
             </p>
@@ -234,41 +237,34 @@ export function Designer() {
 
         <div
           id="design-quote"
-          className="mt-14 grid scroll-mt-24 gap-8 rounded-[2rem] bg-white/[0.03] p-5 ring-1 ring-white/10 sm:p-10 lg:grid-cols-[1fr_1.3fr] lg:gap-14"
+          className="mt-14 scroll-mt-24 rounded-[2rem] bg-white/[0.03] p-5 ring-1 ring-white/10 sm:p-10"
         >
-          <div>
-            <p className="eyebrow">Send your design</p>
-            <h3 className="mt-3 text-3xl font-bold sm:text-4xl">Made something? Get it printed.</h3>
-            <p className="mt-4 text-white/65">
-              Attach the file from the designer right here and you'll get a fixed price within one
-              business day.
-            </p>
-            <ol className="mt-8 space-y-5">
-              {STEPS.map(({ title, body }, i) => (
-                <li key={title} className="flex gap-4">
-                  <span className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-flame/15 font-mono text-sm text-flame ring-1 ring-flame/40">
-                    {i + 1}
-                  </span>
-                  <div>
-                    <p className="font-semibold">{title}</p>
-                    <p className="mt-0.5 text-sm text-white/55">{body}</p>
-                  </div>
-                </li>
-              ))}
-            </ol>
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+            <div className="max-w-xl">
+              <p className="eyebrow">Send your design</p>
+              <h3 className="mt-3 text-3xl font-bold sm:text-4xl">Made something? Get it printed.</h3>
+              <p className="mt-4 text-white/65">
+                Send the file from the designer with a quote request and you'll get a fixed price
+                within one business day.
+              </p>
+            </div>
+            <a href="#quote" onClick={sendDesign} className="btn-primary self-start lg:self-auto">
+              Send my design <ArrowRight size={18} />
+            </a>
           </div>
-
-          <div className="rounded-3xl bg-white p-5 text-ink shadow-2xl shadow-black/30 sm:p-8">
-            <QuoteForm
-              compact
-              golem
-              detailsLabel="What did you design?"
-              detailsPlaceholder="e.g. Name keyring for Maya, pink letters on a white base."
-              filesHint="(STL or 3MF from the designer)"
-              submitLabel="Send my design"
-              titlePrefix="Design your own: "
-            />
-          </div>
+          <ol className="mt-8 grid gap-5 sm:grid-cols-3">
+            {STEPS.map(({ title, body }, i) => (
+              <li key={title} className="flex gap-4">
+                <span className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-flame/15 font-mono text-sm text-flame ring-1 ring-flame/40">
+                  {i + 1}
+                </span>
+                <div>
+                  <p className="font-semibold">{title}</p>
+                  <p className="mt-0.5 text-sm text-white/55">{body}</p>
+                </div>
+              </li>
+            ))}
+          </ol>
         </div>
       </div>
     </section>

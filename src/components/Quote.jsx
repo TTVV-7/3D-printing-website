@@ -1,4 +1,5 @@
-import { Clock, BadgeCheck, MessageCircle, Mail } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Clock, BadgeCheck, MessageCircle, Mail, X } from "lucide-react";
 import { QuoteForm } from "./QuoteForm.jsx";
 import { site } from "../../site.config.js";
 
@@ -8,7 +9,25 @@ const PROMISES = [
   { icon: MessageCircle, text: "Real person, no account, no spam" },
 ];
 
+// Form wording when someone arrives from "Send my design" in the Design your
+// own section. The prefix tags the request in the admin panel and email.
+const DESIGN = {
+  detailsLabel: "What did you design?",
+  detailsPlaceholder: "e.g. Name keyring for Maya, pink letters on a white base.",
+  filesHint: "(STL or 3MF from the designer)",
+  submitLabel: "Send my design",
+  titlePrefix: "Design your own: ",
+};
+
 export function Quote() {
+  const [design, setDesign] = useState(false);
+
+  useEffect(() => {
+    const on = () => setDesign(true);
+    window.addEventListener("quote:design", on);
+    return () => window.removeEventListener("quote:design", on);
+  }, []);
+
   return (
     <section id="quote" className="bg-paper-dark py-16 sm:py-28 layer-lines-dark">
       <div className="container-page grid gap-8 lg:grid-cols-[1fr_1.6fr] lg:gap-16">
@@ -42,7 +61,19 @@ export function Quote() {
         </div>
 
         <div className="rounded-3xl bg-white p-5 shadow-xl shadow-ink/5 ring-1 ring-ink/5 sm:p-8">
-          <QuoteForm golem />
+          {design && (
+            <p className="mb-4 flex items-center justify-between gap-3 rounded-xl bg-flame-100 px-4 py-2 text-sm font-medium text-ink">
+              Sending a design from the designer
+              <button
+                type="button"
+                onClick={() => setDesign(false)}
+                className="flex items-center gap-1 text-ink/55 hover:text-ink"
+              >
+                Not a design <X size={14} />
+              </button>
+            </p>
+          )}
+          <QuoteForm golem {...(design ? DESIGN : {})} />
         </div>
       </div>
     </section>
