@@ -5,10 +5,9 @@ import { Logo } from "./Logo.jsx";
 
 const NAV = [
   { href: "#design", label: "Design your own" },
-  { href: "#services", label: "Services" },
+  { href: "#services", label: "Pricing" },
   { href: "#work", label: "Work" },
   { href: "#materials", label: "Materials" },
-  { href: "#faq", label: "FAQ" },
 ];
 
 export function Header() {

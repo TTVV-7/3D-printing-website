@@ -1,6 +1,6 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
-import { site, faqs } from "./site.config.js";
+import { site } from "./site.config.js";
 
 // Quote requests, uploads and portfolio data are served by the existing store
 // backend (filament-shopping). In production vercel.json proxies /api there;
@@ -35,15 +35,6 @@ const structuredData = [
     ],
     knowsAbout: ["3D printing", "Rapid prototyping", "Replacement parts", "FDM printing", "CAD design"],
     ...(sameAs.length && { sameAs }),
-  },
-  {
-    "@context": "https://schema.org",
-    "@type": "FAQPage",
-    mainEntity: faqs.map(({ q, a }) => ({
-      "@type": "Question",
-      name: q,
-      acceptedAnswer: { "@type": "Answer", text: a },
-    })),
   },
 ];
 

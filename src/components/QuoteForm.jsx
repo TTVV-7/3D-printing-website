@@ -3,6 +3,7 @@ import { Loader2, CheckCircle2, AlertCircle, ArrowRight, ChevronDown } from "luc
 import { clsx } from "clsx";
 import { FileDrop } from "./FileDrop.jsx";
 import { QuoteGolem } from "./QuoteGolem.jsx";
+import { track } from "@vercel/analytics";
 import { printRequests as api } from "../lib/api.js";
 import { site } from "../../site.config.js";
 
@@ -75,13 +76,11 @@ function QuantityField({ value, onChange }) {
   );
 }
 
-// The quote request form, shared by the Quote section and the Design your own
-// section. `compact` swaps the optional extras (link, quality, date, budget)
-// for just material and quantity. `titlePrefix` tags the request in the admin
-// panel so you can tell where it came from. `golem` perches the crystal golem
+// The quote request form in the Quote section. Quote.jsx swaps the wording
+// when someone arrives from "Send my design". `titlePrefix` tags the request
+// in the admin panel so you can tell where it came from. `golem` perches the crystal golem
 // on the send button.
 export function QuoteForm({
-  compact = false,
   golem = false,
   detailsLabel = "Describe the part",
   detailsPlaceholder = "e.g. Replacement bracket for a shelf, about 8 cm wide, needs to hold ~2 kg.",
@@ -161,6 +160,14 @@ export function QuoteForm({
     try {
       await api.create(entry);
       api.notify(entry);
+      // Shows up under Analytics → Events in Vercel. No personal details sent.
+      track("Quote submitted", {
+        form: titlePrefix ? "design your own" : "quote",
+        material: entry.material || "unsure",
+        quantity: entry.quantity,
+        hasFiles: uploaded.length > 0,
+        hasLink: Boolean(entry.url),
+      });
       setSubmitted(entry);
       setForm(EMPTY);
       setFiles([]);
@@ -187,7 +194,7 @@ export function QuoteForm({
       <Field label={detailsLabel} required>
         <textarea
           className="field resize-y"
-          rows={compact ? 3 : 4}
+          rows={4}
           value={form.details}
           onChange={set("details")}
           required
@@ -199,49 +206,40 @@ export function QuoteForm({
         <FileDrop files={files} onChange={setFiles} disabled={submitting} />
       </Field>
 
-      {compact ? (
-        <div className="grid grid-cols-[1fr_7rem] gap-4">
+      <button
+        type="button"
+        onClick={() => setMore((m) => !m)}
+        aria-expanded={more}
+        className="flex w-full items-center justify-between gap-2 rounded-xl border border-dashed border-ink/15 px-3.5 py-2.5 text-left text-sm font-medium text-ink/70 sm:hidden"
+      >
+        More details (link, material, quantity, date)
+        <ChevronDown size={16} className={clsx("transition-transform", more && "rotate-180")} />
+      </button>
+
+      <div className={clsx("space-y-4 sm:block", !more && "hidden")}>
+        <Field label="Reference link" hint="(MakerWorld, Printables, Thingiverse…)">
+          <input className="field" type="url" value={form.url} onChange={set("url")} placeholder="https://" />
+        </Field>
+
+        <div className="grid gap-4 sm:grid-cols-3">
           <MaterialField value={form.material} onChange={set("material")} />
+          <Field label="Quality">
+            <select className="field" value={form.quality} onChange={set("quality")}>
+              {QUALITIES.map((q) => <option key={q.label} value={q.value}>{q.label}</option>)}
+            </select>
+          </Field>
           <QuantityField value={form.quantity} onChange={set("quantity")} />
         </div>
-      ) : (
-        <>
-          <button
-            type="button"
-            onClick={() => setMore((m) => !m)}
-            aria-expanded={more}
-            className="flex w-full items-center justify-between gap-2 rounded-xl border border-dashed border-ink/15 px-3.5 py-2.5 text-left text-sm font-medium text-ink/70 sm:hidden"
-          >
-            More details (link, material, quantity, date)
-            <ChevronDown size={16} className={clsx("transition-transform", more && "rotate-180")} />
-          </button>
 
-          <div className={clsx("space-y-4 sm:block", !more && "hidden")}>
-            <Field label="Reference link" hint="(MakerWorld, Printables, Thingiverse…)">
-              <input className="field" type="url" value={form.url} onChange={set("url")} placeholder="https://" />
-            </Field>
-
-            <div className="grid gap-4 sm:grid-cols-3">
-              <MaterialField value={form.material} onChange={set("material")} />
-              <Field label="Quality">
-                <select className="field" value={form.quality} onChange={set("quality")}>
-                  {QUALITIES.map((q) => <option key={q.label} value={q.value}>{q.label}</option>)}
-                </select>
-              </Field>
-              <QuantityField value={form.quantity} onChange={set("quantity")} />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <Field label="Needed by" hint="(optional)">
-                <input className="field" type="date" value={form.deadline} onChange={set("deadline")} />
-              </Field>
-              <Field label="Budget" hint="(optional)">
-                <input className="field" value={form.budget} onChange={set("budget")} placeholder="e.g. under $40" />
-              </Field>
-            </div>
-          </div>
-        </>
-      )}
+        <div className="grid grid-cols-2 gap-4">
+          <Field label="Needed by" hint="(optional)">
+            <input className="field" type="date" value={form.deadline} onChange={set("deadline")} />
+          </Field>
+          <Field label="Budget" hint="(optional)">
+            <input className="field" value={form.budget} onChange={set("budget")} placeholder="e.g. under $40" />
+          </Field>
+        </div>
+      </div>
 
       {error && (
         <p className="flex items-start gap-2 rounded-xl border border-red-100 bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">

@@ -4,7 +4,7 @@ const POINTS = ["Free quote in 1 business day", "Local pickup in Vancouver", "No
 
 export function Hero() {
   return (
-    <section id="top" className="relative overflow-hidden bg-ink text-white layer-lines">
+    <section id="start" className="relative scroll-mt-16 overflow-hidden bg-ink text-white layer-lines">
       {/* Nozzle-glow accent */}
       <div
         aria-hidden
@@ -18,11 +18,11 @@ export function Hero() {
       <div className="container-page relative grid items-center gap-12 pt-24 pb-16 sm:pt-32 sm:pb-20 lg:grid-cols-[1.15fr_1fr] lg:pb-28">
         <div>
           <p className="eyebrow">3D printing service · Vancouver, BC</p>
-          <h1 className="mt-5 text-[2.75rem] leading-[1.02] font-bold sm:text-6xl lg:text-7xl">
+          <h2 className="mt-5 text-[2.75rem] leading-[1.02] font-bold sm:text-6xl lg:text-7xl">
             Parts that fit.
             <br />
             Prototypes that <span className="text-flame">ship.</span>
-          </h1>
+          </h2>
           <p className="mt-6 max-w-xl text-lg leading-relaxed text-white/70">
             Broken clip, missing knob, a first prototype or fifty of the same part. Send a
             file, a link or just a photo and I'll quote it, or design your own keyring, sign or
