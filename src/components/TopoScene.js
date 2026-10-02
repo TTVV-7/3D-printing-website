@@ -2,8 +2,7 @@
 // (Cypress to Seymour, Burrard Inlet along the bottom), traced from the
 // height map built by scripts/topo-heightmap.mjs. Scrolling pushes the view
 // in toward the peaks while an orange contour climbs from sea level to the
-// summits, like the mountains being printed layer by layer. The terrain
-// swells under the pointer. Plain 2D canvas, no dependencies; it only draws
+// summits, like the mountains being printed layer by layer. Plain 2D canvas, no dependencies; it only draws
 // when something changes.
 
 // --- Contours ------------------------------------------------------------
@@ -71,7 +70,6 @@ export async function mountTopo(canvas, { reducedMotion = false, onLayer } = {})
   const ctx = canvas.getContext("2d");
   let cols = 0, rows = 0, field = new Float32Array(0);
   let width = 0, height = 0, raf = 0;
-  const pointer = { x: 0, y: 0, strength: 0 };
   let target = 0; // scroll progress through the intro, 0..1
   let progress = 0; // eased toward target
 
@@ -105,16 +103,9 @@ export async function mountTopo(canvas, { reducedMotion = false, onLayer } = {})
     const ox = clamp(width / 2 - focusU * scale, width - map.w * scale, 0);
     const oy = clamp(height / 2 - focusV * scale, height - map.h * scale, 0);
 
-    const r2 = 190 * 190;
     for (let y = 0; y < rows; y++) {
       for (let x = 0; x < cols; x++) {
-        const sx = x * CELL, sy = y * CELL;
-        let h = sample((sx - ox) / scale, (sy - oy) / scale);
-        if (pointer.strength > 0.01) {
-          const dx = sx - pointer.x, dy = sy - pointer.y;
-          h += 850 * pointer.strength * Math.exp(-(dx * dx + dy * dy) / r2);
-        }
-        field[y * cols + x] = h;
+        field[y * cols + x] = sample((x * CELL - ox) / scale, (y * CELL - oy) / scale);
       }
     }
 
@@ -151,13 +142,12 @@ export async function mountTopo(canvas, { reducedMotion = false, onLayer } = {})
     onLayer?.(Math.round(layer / 10) * 10);
   }
 
-  // Draw only while something is still settling, then go idle.
+  // Draw only while the scroll is still easing in, then go idle.
   function frame() {
     raf = 0;
     progress = reducedMotion ? target : lerp(progress, target, 0.18);
-    pointer.strength *= 0.94;
     draw();
-    if (Math.abs(progress - target) > 0.001 || pointer.strength > 0.01) kick();
+    if (Math.abs(progress - target) > 0.001) kick();
   }
   const kick = () => { if (!raf) raf = requestAnimationFrame(frame); };
 
@@ -167,14 +157,6 @@ export async function mountTopo(canvas, { reducedMotion = false, onLayer } = {})
     if (rect.bottom > 0) kick();
   };
   const onResize = () => { resize(); kick(); };
-  const onMove = (e) => {
-    const rect = canvas.getBoundingClientRect();
-    if (e.clientY > rect.bottom) return;
-    pointer.x = e.clientX - rect.left;
-    pointer.y = e.clientY - rect.top;
-    pointer.strength = 1;
-    kick();
-  };
 
   resize();
   onScroll();
@@ -182,14 +164,12 @@ export async function mountTopo(canvas, { reducedMotion = false, onLayer } = {})
   draw();
   window.addEventListener("scroll", onScroll, { passive: true });
   window.addEventListener("resize", onResize);
-  if (!reducedMotion) window.addEventListener("pointermove", onMove, { passive: true });
 
   return {
     dispose() {
       cancelAnimationFrame(raf);
       window.removeEventListener("scroll", onScroll);
       window.removeEventListener("resize", onResize);
-      window.removeEventListener("pointermove", onMove);
     },
   };
 }
