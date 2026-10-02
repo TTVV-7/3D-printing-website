@@ -4,7 +4,7 @@ import { clsx } from "clsx";
 import { Logo } from "./Logo.jsx";
 
 const NAV = [
-  { href: "#services", label: "Services" },
+  { href: "#services", label: "Pricing" },
   { href: "#design", label: "Design your own" },
   { href: "#materials", label: "Materials" },
   { href: "#work", label: "Work" },

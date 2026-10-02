@@ -41,16 +41,62 @@ export const site = {
   },
 };
 
+// Prices shown in the "Services & pricing" section. All CAD, before tax.
+// DRAFT numbers -- adjust to taste; the page reads straight from here.
+export const pricing = {
+  services: [
+    {
+      key: "print",
+      title: "Print from your file",
+      price: "from $15",
+      unit: "per order",
+      body: "You have an STL, 3MF or a MakerWorld / Printables link. I check it, pick settings and print it.",
+      includes: ["Most small parts land between $15 and $40", "Priced by material and print time", "Free reprint if it's not right"],
+    },
+    {
+      key: "design",
+      title: "Custom design",
+      price: "from $60",
+      unit: "fixed price",
+      body: "No model? Send photos, measurements or the broken part and I'll model it in CAD. Printing is priced separately.",
+      includes: ["One test print and one round of fit tweaks", "You keep the file", "Extra revisions $65/hr"],
+      featured: true,
+    },
+    {
+      key: "batch",
+      title: "Small batches",
+      price: "10–20% off",
+      unit: "per part",
+      body: "A handful to a few hundred identical parts, printed consistently. Good for small businesses and short runs.",
+      includes: ["10+ copies: 10% off", "50+ copies: 20% off", "Larger runs quoted individually"],
+    },
+  ],
+
+  // Fixed design prices. Most "simple" replacement parts are really standard:
+  // measuring, a test print and a fit tweak add up.
+  designTiers: [
+    { name: "Simple", price: "$60", examples: "Spacers, knobs, plates, basic brackets, anything from clear dimensions" },
+    { name: "Standard", price: "$120", examples: "Clips and snap fits, parts copied from a broken original, anything that has to fit something else" },
+    { name: "Complex", price: "from $200", examples: "Hinges, threads, multi-part assemblies, enclosures, organic shapes" },
+  ],
+
+  extras: [
+    "Rush (under 48 h): +50%",
+    "Local pickup in Vancouver: free",
+    "Shipping: at cost",
+  ],
+};
+
 // Printed in several places (schema.org FAQ, the FAQ section). Keep answers
 // honest -- search engines show these verbatim.
 export const faqs = [
   {
     q: "How much does a print cost?",
-    a: "It depends on size, material and print time. Send the details and you'll get a fixed price before anything is printed. Quotes are free and there's no obligation.",
+    a: "Printing from your own file starts at $15 per order and most small parts are $15–40. Custom design is a fixed price from $60, depending on complexity. You get an exact quote before anything is printed, and quotes are free.",
   },
   {
     q: "I don't have a 3D model. Can you still help?",
-    a: "Yes. Send photos of the broken part, rough measurements or a sketch. I can model simple replacement parts and brackets from scratch, and design work is quoted up front.",
+    a: "Yes. Send photos of the broken part, rough measurements or a sketch. I can model simple replacement parts and brackets from scratch, and design work is a fixed price, quoted up front.",
   },
   {
     q: "What file types do you accept?",
