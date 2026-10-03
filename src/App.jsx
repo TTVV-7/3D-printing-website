@@ -9,20 +9,32 @@ import { Faq } from "./components/Faq.jsx";
 import { Quote } from "./components/Quote.jsx";
 import { Footer } from "./components/Footer.jsx";
 import { FloatingGolem } from "./components/FloatingGolem.jsx";
+import { ServicePage } from "./components/ServicePage.jsx";
+import { pageBySlug } from "./pages.js";
 
-export function App() {
+// Each service page is a separate pre-rendered HTML file; links between them
+// are plain <a> tags, so there's no client-side router.
+export function App({ path = "/" }) {
+  const page = pageBySlug[path.replace(/^\/|\/$/g, "")];
+
   return (
     <>
       <Header />
       <main>
-        <Hero />
-        <Services />
-        <Designer />
-        <Materials />
-        <Work />
-        <Process />
-        <Faq />
-        <Quote />
+        {page ? (
+          <ServicePage page={page} />
+        ) : (
+          <>
+            <Hero />
+            <Services />
+            <Designer />
+            <Materials />
+            <Work />
+            <Process />
+            <Faq />
+            <Quote />
+          </>
+        )}
       </main>
       <Footer />
       <FloatingGolem />

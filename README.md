@@ -20,7 +20,8 @@ so new requests show up in the same admin panel as before. Nothing to migrate.
 
 | What | Where |
 | --- | --- |
-| Business name, description, email, social links | `site.config.js` |
+| Business name, title, description, email, social links, shipping area | `site.config.js` |
+| Service landing pages (copy, titles, FAQs) | `src/pages.js` |
 | FAQ (also published to Google as structured data) | `site.config.js` |
 | Generator app link ("Design your own") | `site.config.js` → `designerUrl` |
 | Generator cards | `src/components/Designer.jsx` + `public/designer/` |
@@ -30,8 +31,13 @@ so new requests show up in the same admin panel as before. Nothing to migrate.
 
 ## SEO / sharing
 
-- Title, description, Open Graph and Twitter card tags in `index.html`
-- `LocalBusiness` and `FAQPage` JSON-LD, generated at build time from `site.config.js`
+- Each service in `src/pages.js` gets its own URL (e.g. `/rapid-prototyping`) aimed at
+  what people search for. Add an entry and it's picked up by the sitemap, footer and
+  "Other services" links automatically.
+- `npm run build` pre-renders every page to real HTML (`scripts/prerender.js`), so
+  search engines and link previews see the content without running JavaScript.
+- Per-page title, description, canonical, Open Graph/Twitter tags and JSON-LD
+  (`LocalBusiness`, `Service`, `BreadcrumbList`, `FAQPage`) come from `src/seo.js`.
 - `robots.txt` and `sitemap.xml` generated at build time
 
 All absolute URLs default to `https://printyours.ca`; set the `SITE_URL` env var to

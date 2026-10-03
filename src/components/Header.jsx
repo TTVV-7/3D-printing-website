@@ -4,11 +4,11 @@ import { clsx } from "clsx";
 import { Logo } from "./Logo.jsx";
 
 const NAV = [
-  { href: "#services", label: "Services" },
-  { href: "#design", label: "Design your own" },
-  { href: "#materials", label: "Materials" },
-  { href: "#work", label: "Work" },
-  { href: "#faq", label: "FAQ" },
+  { href: "/#services", label: "Services" },
+  { href: "/#design", label: "Design your own" },
+  { href: "/#materials", label: "Materials" },
+  { href: "/#work", label: "Work" },
+  { href: "/#faq", label: "FAQ" },
 ];
 
 export function Header() {
@@ -30,7 +30,7 @@ export function Header() {
       )}
     >
       <div className="container-page flex h-16 items-center justify-between gap-4 text-white">
-        <a href="#top" aria-label="Print Yours home">
+        <a href="/" aria-label="Print Yours home">
           <Logo />
         </a>
 

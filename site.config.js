@@ -13,12 +13,19 @@ function canonicalUrl() {
 export const site = {
   name: "Print Yours",
   tagline: "Custom 3D printing in Vancouver",
+  // Home page <title>. Leads with what people type into Google.
+  title: "3D Printing Service in Vancouver, Shipped Canada-Wide | Print Yours",
   description:
-    "Vancouver 3D printing service for replacement parts, prototypes and small production runs. " +
-    "Send an STL, a link or just a description and get a free quote within one business day.",
+    "Custom 3D printing service in Vancouver, BC, shipping across Canada and the US. Replacement parts, " +
+    "prototypes and small production runs. Send an STL, a link or a photo for a free quote within one business day.",
   city: "Vancouver",
   region: "BC",
   country: "CA",
+
+  // Where you'll ship. Used in page copy, the FAQ and schema.org areaServed.
+  shipsTo: "Canada and the US",
+  // Nearby cities named on the page for local search ("3D printing Burnaby").
+  localArea: ["Vancouver", "Burnaby", "Richmond", "North Vancouver", "New Westminster", "Coquitlam", "Surrey"],
 
   // Canonical address of the live site. SITE_URL overrides it (e.g. to test
   // link previews on a staging domain).
@@ -65,7 +72,11 @@ export const faqs = [
     a: "Yes. Small production runs of a few to a few hundred identical parts are a good fit, e.g. enclosures, fixtures, merch or replacement stock for a small business.",
   },
   {
-    q: "Where are you and how do I get my part?",
-    a: "I'm in Vancouver, BC. You can pick up locally or have it shipped.",
+    q: "Do you ship outside Vancouver?",
+    a: "Yes. Parts ship anywhere in Canada and the US, and shipping is included in your quote. If you're in Metro Vancouver you can also pick up locally.",
+  },
+  {
+    q: "Can I just upload an STL and get it printed?",
+    a: "Yes. Attach an STL, 3MF, STEP or OBJ file to the quote form (or paste a MakerWorld, Printables or Thingiverse link) and you'll get a fixed price with material, colour and turnaround.",
   },
 ];

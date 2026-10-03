@@ -1,20 +1,20 @@
 import { Plus } from "lucide-react";
 import { faqs } from "../../site.config.js";
 
-export function Faq() {
+export function Faq({ items = faqs }) {
   return (
     <section id="faq" className="py-20 sm:py-28">
       <div className="container-page grid gap-10 lg:grid-cols-[1fr_2fr] lg:gap-16">
         <div>
           <p className="eyebrow">FAQ</p>
-          <h2 className="mt-3 text-4xl font-bold sm:text-5xl">Good questions.</h2>
+          <h2 className="mt-3 text-4xl font-bold sm:text-5xl">3D printing questions, answered.</h2>
           <p className="mt-4 text-ink/65">
             Anything else? Put it in the quote form. There's no commitment until you approve a price.
           </p>
         </div>
 
         <div className="divide-y divide-ink/10 border-y border-ink/10">
-          {faqs.map(({ q, a }) => (
+          {items.map(({ q, a }) => (
             <details key={q} className="group py-5">
               <summary className="flex cursor-pointer list-none items-center justify-between gap-4 font-display text-lg font-semibold [&::-webkit-details-marker]:hidden">
                 {q}

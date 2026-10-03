@@ -1,4 +1,5 @@
 import { site } from "../../site.config.js";
+import { pages } from "../pages.js";
 import { Logo } from "./Logo.jsx";
 
 const LABELS = {
@@ -20,7 +21,18 @@ export function Footer() {
           <p className="mt-2 text-sm">
             Custom 3D printing · {site.city}, {site.region}
           </p>
+          <p className="mt-1 max-w-sm text-xs text-white/40">
+            Pickup in {site.localArea.join(", ")}. Shipping across {site.shipsTo}.
+          </p>
         </div>
+
+        <nav className="flex flex-col gap-2 text-sm" aria-label="Services">
+          {pages.map((p) => (
+            <a key={p.slug} href={`/${p.slug}`} className="hover:text-white">
+              {p.nav}
+            </a>
+          ))}
+        </nav>
 
         <nav className="flex flex-wrap gap-x-6 gap-y-2 text-sm" aria-label="Social and contact">
           {site.email && (
@@ -33,7 +45,7 @@ export function Footer() {
               {LABELS[key] || key}
             </a>
           ))}
-          <a href="#quote" className="text-flame hover:text-white">
+          <a href="/#quote" className="text-flame hover:text-white">
             Get a quote
           </a>
         </nav>
