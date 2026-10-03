@@ -38,7 +38,7 @@ export const pages = [
       {
         h2: "Shipping across Canada and the US",
         body: [
-          "Parts are printed in Vancouver, BC and shipped by tracked mail. Shipping is included in the quote so the price you approve is the price you pay. Customers in Metro Vancouver can skip shipping and pick up.",
+          "Parts are printed in Vancouver, BC and shipped by tracked mail. Shipping is added on top of the print price and depends on the size and weight of the package, so your quote will show both. Customers in Metro Vancouver can skip shipping and pick up for free.",
         ],
       },
     ],

@@ -73,7 +73,7 @@ export const faqs = [
   },
   {
     q: "Do you ship outside Vancouver?",
-    a: "Yes. Parts ship anywhere in Canada and the US, and shipping is included in your quote. If you're in Metro Vancouver you can also pick up locally.",
+    a: "Yes. Parts ship anywhere in Canada and the US. Shipping is extra and depends on the size and weight of the order; your quote will include an estimate. If you're in Metro Vancouver you can pick up locally for free.",
   },
   {
     q: "Can I just upload an STL and get it printed?",
