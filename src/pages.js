@@ -246,7 +246,7 @@ export const pages = [
   {
     slug: "nfc-business-card",
     group: "product",
-    designer: "/",
+    designer: "/?shape=nfc-card",
     nav: "NFC business cards",
     title: "Custom NFC Business Cards Shaped Like Your Logo | Print Yours",
     description:
@@ -286,7 +286,7 @@ export const pages = [
   {
     slug: "custom-name-keychain",
     group: "product",
-    designer: "/",
+    designer: "/?shape=name-keychain",
     nav: "Name keychains",
     title: "Custom 3D Printed Name Keychains in 48 Fonts | Print Yours",
     description:
@@ -322,7 +322,7 @@ export const pages = [
   {
     slug: "custom-pet-tags",
     group: "product",
-    designer: "/",
+    designer: "/?shape=pet-tag",
     nav: "Pet tags",
     title: "Custom 3D Printed Pet ID Tags with QR Code or NFC | Print Yours",
     description:
@@ -397,7 +397,7 @@ export const pages = [
   {
     slug: "light-up-signs",
     group: "product",
-    designer: "/",
+    designer: "/?shape=light-up-sign",
     nav: "Light-up signs",
     title: "Custom Light-Up Signs, 3D Printed with Your Word or Logo | Print Yours",
     description:
@@ -433,7 +433,7 @@ export const pages = [
   {
     slug: "custom-stencils",
     group: "product",
-    designer: "/",
+    designer: "/?shape=stencil",
     nav: "Stencils",
     title: "Custom Stencils from Your Text or Logo, 3D Printed | Print Yours",
     description:
