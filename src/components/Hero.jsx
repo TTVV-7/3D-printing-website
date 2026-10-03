@@ -30,7 +30,7 @@ export function Hero() {
           </p>
 
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-            <a href="#quote" className="btn-primary">
+            <a href="/quote" className="btn-primary">
               Get a free quote <ArrowRight size={18} />
             </a>
             <a href="#work" className="btn-outline-light">

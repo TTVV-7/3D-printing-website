@@ -7,7 +7,36 @@ const url = site.url.replace(/\/$/, "");
 const sameAs = Object.values(site.social).filter(Boolean);
 const businessId = `${url}/#business`;
 
-export const routes = ["/", ...pages.map((p) => `/${p.slug}`)];
+// Home-page sections that are also pages of their own (see STANDALONE in App.jsx).
+const sitePages = {
+  "/quote": {
+    title: "Get a Free 3D Printing Quote in 1 Business Day | Print Yours",
+    description:
+      "Upload an STL, paste a link or send a photo and get a fixed-price 3D printing quote within one " +
+      "business day. Pickup in Vancouver or shipped across Canada and the US.",
+  },
+  "/work": {
+    title: "3D Printing Portfolio: Recent Projects | Print Yours",
+    description:
+      "Recent 3D printing projects from Print Yours in Vancouver: topographic maps, city models, " +
+      "replacement parts and custom designs.",
+  },
+  "/materials": {
+    title: "3D Printing Materials Compared: PLA, PETG, Nylon & TPU | Print Yours",
+    description:
+      "Which 3D printing filament should you use? Compare PLA, PETG, Nylon and TPU for strength, heat " +
+      "resistance, flexibility and finish, plus build size and layer heights.",
+  },
+  "/faq": {
+    title: "3D Printing FAQ: Cost, Files, Turnaround & Shipping | Print Yours",
+    description:
+      "How much does 3D printing cost, what files can you send, how fast is it and do we ship? Answers " +
+      "about custom 3D printing from Print Yours in Vancouver.",
+    schema: () => [faqSchema(faqs)],
+  },
+};
+
+export const routes = ["/", ...Object.keys(sitePages), ...pages.map((p) => `/${p.slug}`)];
 
 const esc = (s) =>
   String(s).replaceAll("&", "&amp;").replaceAll('"', "&quot;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
@@ -27,6 +56,7 @@ const business = {
   "@type": "LocalBusiness",
   "@id": businessId,
   name: site.name,
+  alternateName: site.alternateNames,
   description: site.description,
   url,
   image: `${url}/og-image.jpg`,
@@ -55,6 +85,15 @@ const business = {
   ...(sameAs.length && { sameAs }),
 };
 
+const breadcrumb = (name, item) => ({
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  itemListElement: [
+    { "@type": "ListItem", position: 1, name: "Home", item: `${url}/` },
+    { "@type": "ListItem", position: 2, name, item },
+  ],
+});
+
 function meta(route) {
   if (route === "/") {
     return {
@@ -63,7 +102,17 @@ function meta(route) {
       canonical: `${url}/`,
       image: `${url}/og-image.jpg`,
       preload: "/work/downtown-vancouver.webp",
-      schema: [business, faqSchema(faqs)],
+      schema: [business],
+    };
+  }
+  if (sitePages[route]) {
+    const sp = sitePages[route];
+    return {
+      title: sp.title,
+      description: sp.description,
+      canonical: url + route,
+      image: `${url}/og-image.jpg`,
+      schema: [business, breadcrumb(sp.title.split(/[:|]/)[0].trim(), url + route), ...(sp.schema?.() || [])],
     };
   }
   const page = pages.find((p) => `/${p.slug}` === route);
@@ -86,14 +135,7 @@ function meta(route) {
         provider: { "@id": businessId },
         areaServed: business.areaServed,
       },
-      {
-        "@context": "https://schema.org",
-        "@type": "BreadcrumbList",
-        itemListElement: [
-          { "@type": "ListItem", position: 1, name: "Home", item: `${url}/` },
-          { "@type": "ListItem", position: 2, name: page.nav, item: canonical },
-        ],
-      },
+      breadcrumb(page.nav, canonical),
       faqSchema(page.faqs),
     ],
   };

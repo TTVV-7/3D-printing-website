@@ -1,16 +1,19 @@
 import { Play } from "lucide-react";
 import { work } from "../work.js";
 
-export function Work() {
+export function Work({ standalone = false }) {
+  // Standalone = its own page (/quote, /work...): the heading becomes the h1.
+  const Heading = standalone ? "h1" : "h2";
+  const pad = standalone ? "pt-32 pb-20 sm:pt-36 sm:pb-28" : "py-20 sm:py-28";
   return (
-    <section id="work" className="py-20 sm:py-28">
+    <section id="work" className={pad}>
       <div className="container-page">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div className="max-w-2xl">
             <p className="eyebrow">Recent work</p>
-            <h2 className="mt-3 text-4xl font-bold sm:text-5xl">Fresh off the build plate.</h2>
+            <Heading className="mt-3 text-4xl font-bold sm:text-5xl">{standalone ? "3D printing projects, fresh off the build plate." : "Fresh off the build plate."}</Heading>
           </div>
-          <a href="#quote" className="btn-outline-dark self-start sm:self-auto">
+          <a href="/quote" className="btn-outline-dark self-start sm:self-auto">
             Start your project
           </a>
         </div>

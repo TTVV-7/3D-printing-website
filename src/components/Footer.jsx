@@ -1,5 +1,5 @@
 import { site } from "../../site.config.js";
-import { pages } from "../pages.js";
+import { services, products } from "../pages.js";
 import { Logo } from "./Logo.jsx";
 
 const LABELS = {
@@ -15,7 +15,7 @@ export function Footer() {
 
   return (
     <footer className="bg-ink text-white/60">
-      <div className="container-page flex flex-col gap-8 py-12 sm:flex-row sm:items-center sm:justify-between">
+      <div className="container-page grid gap-10 py-12 sm:grid-cols-2 lg:grid-cols-4">
         <div>
           <Logo className="text-white" />
           <p className="mt-2 text-sm">
@@ -26,15 +26,25 @@ export function Footer() {
           </p>
         </div>
 
-        <nav className="flex flex-col gap-2 text-sm" aria-label="Services">
-          {pages.map((p) => (
-            <a key={p.slug} href={`/${p.slug}`} className="hover:text-white">
-              {p.nav}
-            </a>
-          ))}
-        </nav>
+        {[
+          ["Services", services],
+          ["Design your own", products],
+        ].map(([label, list]) => (
+          <nav key={label} className="flex flex-col gap-2 text-sm" aria-label={label}>
+            <p className="font-mono text-[11px] uppercase tracking-widest text-white/40">{label}</p>
+            {list.map((p) => (
+              <a key={p.slug} href={`/${p.slug}`} className="hover:text-white">
+                {p.nav}
+              </a>
+            ))}
+          </nav>
+        ))}
 
-        <nav className="flex flex-wrap gap-x-6 gap-y-2 text-sm" aria-label="Social and contact">
+        <nav className="flex flex-col gap-2 text-sm" aria-label="More">
+          <p className="font-mono text-[11px] uppercase tracking-widest text-white/40">More</p>
+          <a href="/work" className="hover:text-white">Recent work</a>
+          <a href="/materials" className="hover:text-white">Materials</a>
+          <a href="/faq" className="hover:text-white">FAQ</a>
           {site.email && (
             <a href={`mailto:${site.email}`} className="hover:text-white">
               {site.email}
@@ -45,7 +55,7 @@ export function Footer() {
               {LABELS[key] || key}
             </a>
           ))}
-          <a href="/#quote" className="text-flame hover:text-white">
+          <a href="/quote" className="text-flame hover:text-white">
             Get a quote
           </a>
         </nav>

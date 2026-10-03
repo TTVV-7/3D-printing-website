@@ -1,15 +1,18 @@
 import { Plus } from "lucide-react";
 import { faqs } from "../../site.config.js";
 
-export function Faq({ items = faqs }) {
+export function Faq({ items = faqs, standalone = false }) {
+  // Standalone = its own page (/quote, /work...): the heading becomes the h1.
+  const Heading = standalone ? "h1" : "h2";
+  const pad = standalone ? "pt-32 pb-20 sm:pt-36 sm:pb-28" : "py-20 sm:py-28";
   return (
-    <section id="faq" className="py-20 sm:py-28">
+    <section id="faq" className={pad}>
       <div className="container-page grid gap-10 lg:grid-cols-[1fr_2fr] lg:gap-16">
         <div>
           <p className="eyebrow">FAQ</p>
-          <h2 className="mt-3 text-4xl font-bold sm:text-5xl">3D printing questions, answered.</h2>
+          <Heading className="mt-3 text-4xl font-bold sm:text-5xl">{standalone ? "3D printing FAQ: questions, answered." : "3D printing questions, answered."}</Heading>
           <p className="mt-4 text-ink/65">
-            Anything else? Put it in the quote form. There's no commitment until you approve a price.
+            Anything else? Put it in the <a href="/quote" className="text-flame underline-offset-4 hover:underline">quote form</a>. There's no commitment until you approve a price.
           </p>
         </div>
 

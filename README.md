@@ -21,10 +21,11 @@ so new requests show up in the same admin panel as before. Nothing to migrate.
 | What | Where |
 | --- | --- |
 | Business name, title, description, email, social links, shipping area | `site.config.js` |
-| Service landing pages (copy, titles, FAQs) | `src/pages.js` |
+| Service and product landing pages (copy, titles, FAQs) | `src/pages.js` |
+| Titles/descriptions for /quote, /work, /materials, /faq | `src/seo.js` → `sitePages` |
 | FAQ (also published to Google as structured data) | `site.config.js` |
 | Generator app link ("Design your own") | `site.config.js` → `designerUrl` |
-| Generator cards | `src/components/Designer.jsx` + `public/designer/` |
+| Generator cards (one per product page) | `src/pages.js` (group `"product"`) + `public/designer/` |
 | Portfolio photos | `public/work/` + `src/work.js` |
 | Specs & materials (confirm before launch) | `src/components/Materials.jsx` |
 | Link-preview image (1200×630) | `public/og-image.jpg` |

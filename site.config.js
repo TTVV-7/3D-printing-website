@@ -7,11 +7,14 @@
 function canonicalUrl() {
   const env = typeof process !== "undefined" ? process.env : {};
   if (env.SITE_URL) return env.SITE_URL;
-  return "https://printyours.ca";
+  // www is the live host: Vercel redirects printyours.ca -> www.printyours.ca.
+  return "https://www.printyours.ca";
 }
 
 export const site = {
   name: "Print Yours",
+  // Other names people search for; helps Google tie them to this business.
+  alternateNames: ["PrintYours", "Print Yours Vancouver", "printyours.ca"],
   tagline: "Custom 3D printing in Vancouver",
   // Home page <title>. Leads with what people type into Google.
   title: "3D Printing Service in Vancouver, Shipped Canada-Wide | Print Yours",

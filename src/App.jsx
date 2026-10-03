@@ -7,32 +7,39 @@ import { Work } from "./components/Work.jsx";
 import { Process } from "./components/Process.jsx";
 import { Faq } from "./components/Faq.jsx";
 import { Quote } from "./components/Quote.jsx";
+import { QuoteCta } from "./components/QuoteCta.jsx";
 import { Footer } from "./components/Footer.jsx";
 import { FloatingGolem } from "./components/FloatingGolem.jsx";
 import { ServicePage } from "./components/ServicePage.jsx";
 import { pageBySlug } from "./pages.js";
 
-// Each service page is a separate pre-rendered HTML file; links between them
-// are plain <a> tags, so there's no client-side router.
+// Sections that also stand alone as their own page. Keep in sync with
+// sitePages in src/seo.js.
+const STANDALONE = { quote: Quote, work: Work, materials: Materials, faq: Faq };
+
+// Every route is a separate pre-rendered HTML file; links between them are
+// plain <a> tags, so there's no client-side router.
 export function App({ path = "/" }) {
-  const page = pageBySlug[path.replace(/^\/|\/$/g, "")];
+  const slug = path.replace(/^\/|\/$/g, "");
+  const page = pageBySlug[slug];
+  const Standalone = STANDALONE[slug];
 
   return (
     <>
-      <Header />
+      <Header solid={!!Standalone} />
       <main>
         {page ? (
           <ServicePage page={page} />
+        ) : Standalone ? (
+          <Standalone standalone />
         ) : (
           <>
             <Hero />
             <Services />
             <Designer />
-            <Materials />
             <Work />
             <Process />
-            <Faq />
-            <Quote />
+            <QuoteCta />
           </>
         )}
       </main>

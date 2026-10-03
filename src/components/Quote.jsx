@@ -60,7 +60,10 @@ function Submitted({ entry, onReset }) {
   );
 }
 
-export function Quote() {
+export function Quote({ standalone = false }) {
+  // Standalone = its own page (/quote, /work...): the heading becomes the h1.
+  const Heading = standalone ? "h1" : "h2";
+  const pad = standalone ? "pt-32 pb-20 sm:pt-36 sm:pb-28" : "py-20 sm:py-28";
   const [form, setForm] = useState(EMPTY);
   const [files, setFiles] = useState([]);
   const [submitting, setSubmitting] = useState(false);
@@ -141,11 +144,11 @@ export function Quote() {
   }
 
   return (
-    <section id="quote" className="bg-paper-dark py-20 sm:py-28 layer-lines-dark">
+    <section id="quote" className={`bg-paper-dark layer-lines-dark ${pad}`}>
       <div className="container-page grid gap-10 lg:grid-cols-[1fr_1.6fr] lg:gap-16">
         <div>
           <p className="eyebrow">Free quote</p>
-          <h2 className="mt-3 text-4xl font-bold sm:text-5xl">What do you need printed?</h2>
+          <Heading className="mt-3 text-4xl font-bold sm:text-5xl">{standalone ? "Get a free 3D printing quote." : "What do you need printed?"}</Heading>
           <p className="mt-4 text-lg text-ink/65">
             The more detail the better, but a rough description is enough to get started.
           </p>

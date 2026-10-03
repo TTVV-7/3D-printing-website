@@ -6,12 +6,13 @@ import { Logo } from "./Logo.jsx";
 const NAV = [
   { href: "/#services", label: "Services" },
   { href: "/#design", label: "Design your own" },
-  { href: "/#materials", label: "Materials" },
-  { href: "/#work", label: "Work" },
-  { href: "/#faq", label: "FAQ" },
+  { href: "/materials", label: "Materials" },
+  { href: "/work", label: "Work" },
+  { href: "/faq", label: "FAQ" },
 ];
 
-export function Header() {
+// `solid` for pages with no dark hero behind the header (/quote, /faq...).
+export function Header({ solid = false }) {
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
 
@@ -26,7 +27,7 @@ export function Header() {
     <header
       className={clsx(
         "fixed inset-x-0 top-0 z-50 transition-colors duration-300",
-        scrolled || open ? "bg-ink/95 backdrop-blur border-b border-white/10" : "bg-transparent",
+        solid || scrolled || open ? "bg-ink/95 backdrop-blur border-b border-white/10" : "bg-transparent",
       )}
     >
       <div className="container-page flex h-16 items-center justify-between gap-4 text-white">
@@ -43,7 +44,7 @@ export function Header() {
         </nav>
 
         <div className="flex items-center gap-2">
-          <a href="#quote" className="btn-primary h-10 px-5 text-sm hidden sm:inline-flex">
+          <a href="/quote" className="btn-primary h-10 px-5 text-sm hidden sm:inline-flex">
             Get a free quote
           </a>
           <button
@@ -60,7 +61,7 @@ export function Header() {
 
       {open && (
         <nav className="md:hidden container-page pb-5 flex flex-col gap-1 text-white" aria-label="Mobile">
-          {[...NAV, { href: "#quote", label: "Get a free quote" }].map((n) => (
+          {[...NAV, { href: "/quote", label: "Get a free quote" }].map((n) => (
             <a
               key={n.href}
               href={n.href}

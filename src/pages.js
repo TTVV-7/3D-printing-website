@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Service landing pages. Each one is its own URL (printyours.ca/<slug>) built
+// Service and product landing pages. Each one is its own URL (printyours.ca/<slug>) built
 // around the phrases people search for, so the site can rank for more than
 // one thing. Pre-rendered to real HTML at build time and listed in the sitemap.
 //
@@ -241,6 +241,233 @@ export const pages = [
       { q: "Can you add text or mark a route?", a: "Yes. Titles, coordinates, and a route or pin in a contrasting colour can all be added." },
     ],
   },
+
+  // --- Products you design yourself in the generator (site.designerUrl) -----
+  {
+    slug: "nfc-business-card",
+    group: "product",
+    designer: "/",
+    nav: "NFC business cards",
+    title: "Custom NFC Business Cards Shaped Like Your Logo | Print Yours",
+    description:
+      "A 3D printed NFC business card cut to the shape of your logo, in your logo's colours. Tap a phone to " +
+      "open your website or contact. Design it online, shipped across Canada and the US.",
+    eyebrow: "NFC business cards · Design online",
+    h1: "NFC business cards in the shape of your logo",
+    intro:
+      "Upload your logo and the card comes out in its outline and its colours, with an NFC chip sealed " +
+      "inside. Tap it to any phone and it opens your link. Add a keyring hole and it lives on someone's keys " +
+      "instead of in a drawer.",
+    points: ["Upload SVG, PNG or JPEG", "NFC chip sealed inside", "Ships Canada & US"],
+    photo: "/designer/nfc-logo-card.webp",
+    photoFit: "contain", // render on white: show it whole, not cropped
+    photoAlt: "3D printed NFC business card in the shape of a company logo, front and back",
+    uses: [
+      { title: "Business cards that get kept", body: "A card on a keyring gets looked at every day. A paper card gets recycled." },
+      { title: "Trade shows & events", body: "Hand out a batch with your logo; every tap goes straight to your site or booking page." },
+      { title: "Real estate & trades", body: "Give clients a fob that opens your contact card or reviews page." },
+      { title: "Team & staff cards", body: "One logo, each card linked to a different person's details." },
+    ],
+    sections: [
+      {
+        h2: "Design it yourself in the browser",
+        body: [
+          "Open the designer, upload your logo, and watch the card rebuild in 3D. Pick where the keyring hole goes, whether the logo appears on both sides, and how high each colour stands off the card.",
+          "When it looks right, send it over with a quote request and I'll print, program and ship it.",
+        ],
+      },
+    ],
+    faqs: [
+      { q: "What phones can read an NFC business card?", a: "Almost all current iPhones and Android phones read NFC tags without an app. Hold the phone near the card and it offers to open the link." },
+      { q: "What file should my logo be?", a: "An SVG works best. PNG and JPEG logos are traced automatically; a clean logo on a plain background traces best." },
+      { q: "Can I order a batch for my team or an event?", a: "Yes. Cards are a good fit for small runs; ask for a quote with the quantity you need." },
+    ],
+  },
+  {
+    slug: "custom-name-keychain",
+    group: "product",
+    designer: "/",
+    nav: "Name keychains",
+    title: "Custom 3D Printed Name Keychains in 48 Fonts | Print Yours",
+    description:
+      "Design a custom name keychain online in any of 48 typefaces, from clean to script to blackletter. " +
+      "3D printed in your colours in Vancouver and shipped across Canada and the US.",
+    eyebrow: "Name keychains · Design online",
+    h1: "Custom name keychains, designed by you in the browser",
+    intro:
+      "Type a name, pick one of 48 typefaces, and the letters are welded into one solid keychain with a " +
+      "tab for the ring. Preview it in 3D, then order it printed in the colours you want.",
+    points: ["48 typefaces", "Live 3D preview", "Great for gifts & teams"],
+    photo: "/designer/keyring.webp",
+    photoAlt: "Green and white 3D printed name keychain spelling Freddie",
+    uses: [
+      { title: "Personal gifts", body: "Birthdays, stocking stuffers and teacher gifts with the person's name on them." },
+      { title: "Teams & classes", body: "A keychain for every player, student or bridesmaid, each with their own name." },
+      { title: "Bag & backpack tags", body: "Make school bags and gym bags easy to tell apart." },
+      { title: "Events & party favours", body: "Names for every guest at a wedding, shower or kids' party." },
+    ],
+    sections: [
+      {
+        h2: "Pick the style that suits the name",
+        body: [
+          "The 48 typefaces run from simple sans-serif to brush scripts, slab serifs, comic faces and blackletter. The designer adjusts the size and joins the letters so every keychain prints as one strong piece.",
+        ],
+      },
+    ],
+    faqs: [
+      { q: "Can I order keychains with different names?", a: "Yes. Design each name, then send them together in one quote request." },
+      { q: "How long is a name keychain?", a: "It depends on the name and typeface; the designer shows the size as you type. Long names can be printed smaller or on two lines." },
+    ],
+  },
+  {
+    slug: "custom-pet-tags",
+    group: "product",
+    designer: "/",
+    nav: "Pet tags",
+    title: "Custom 3D Printed Pet ID Tags with QR Code or NFC | Print Yours",
+    description:
+      "Design a custom dog or cat ID tag online: bone, paw, heart and more, with the name on the front and " +
+      "your number, a QR code or a sealed NFC chip on the back. Shipped across Canada and the US.",
+    eyebrow: "Pet ID tags · Design online",
+    h1: "Custom pet ID tags with a QR code or tap-to-call NFC",
+    intro:
+      "The pet's name on the front, the way home on the back. Choose a bone, paw print, heart, round, fish, " +
+      "cat head, shield or slide-on collar tag, add your phone number, and optionally a QR code or an NFC " +
+      "chip so anyone who finds your pet can tap and call you.",
+    points: ["8 shapes + slide-on", "QR code or NFC chip", "Lettering inlaid, won't rub off"],
+    photo: "/designer/pet-tags.webp",
+    photoFit: "contain", // render on white: show it whole, not cropped
+    photoAlt: "Eight 3D printed pet ID tags in navy and gold: round, bone, heart and slide-on shapes, front and back",
+    uses: [
+      { title: "Dog tags", body: "Bone, round and shield shapes on a ring, or a slide-on plate for a quieter collar." },
+      { title: "Cat tags", body: "Small round, fish and cat-head tags that are light enough for a cat collar." },
+      { title: "Tap-to-call NFC", body: "A chip sealed inside holds your number. A phone held to the tag offers to call it." },
+      { title: "QR code backs", body: "Link to a pet profile, medical notes or your contact page." },
+    ],
+    sections: [
+      {
+        h2: "Built to survive a dog",
+        body: [
+          "The lettering is inlaid into the tag in a second colour rather than printed on top, so it doesn't scratch or wear off. An NFC chip is sealed inside during printing, protected from rain, baths and teeth.",
+        ],
+      },
+    ],
+    faqs: [
+      { q: "What collar sizes do slide-on tags fit?", a: "Slide-on tags are made for collars from 10 to 38 mm wide; the designer sizes the slots to your collar." },
+      { q: "Do I need an app to read the NFC tag?", a: "No. Most current phones read it directly and offer to call the number stored on it." },
+    ],
+  },
+  {
+    slug: "custom-phone-case",
+    group: "product",
+    designer: "/case",
+    nav: "Phone cases",
+    title: "Custom 3D Printed iPhone Case with Your Own Artwork | Print Yours",
+    description:
+      "Upload your own artwork and get a custom 3D printed iPhone case with the design printed in colour " +
+      "into the back. Preview it on the phone in 3D, then order. Shipped across Canada and the US.",
+    eyebrow: "Phone cases · Design online",
+    h1: "Custom iPhone cases printed with your own artwork",
+    intro:
+      "Pick your iPhone model, drop in an SVG of your artwork or logo, and watch the back of the case redraw " +
+      "in colour. The design is printed into the case itself in multiple filaments, not stuck on as a sticker.",
+    points: ["Most recent iPhone models", "Your own SVG artwork", "3D preview on the phone"],
+    photo: "/designer/phone-case.webp",
+    photoFit: "contain", // render on white: show it whole, not cropped
+    photoAlt: "Preview of a custom 3D printed phone case with blue, red and white artwork on a grey back",
+    uses: [
+      { title: "Your own art", body: "Illustrations, patterns and lettering from your SVG files." },
+      { title: "Logo cases", body: "Branded cases for a business, a team or a giveaway." },
+      { title: "Gifts", body: "A case with a pet, a place or an inside joke on it." },
+      { title: "Matching sets", body: "The same design across a few different iPhone models." },
+    ],
+    sections: [
+      {
+        h2: "Colour that's part of the case",
+        body: [
+          "Each line of the back is laid down in the filament your artwork calls for, so the colours are part of the case rather than a print on top. The designer shows the case on the phone in 3D before you order.",
+        ],
+      },
+    ],
+    faqs: [
+      { q: "Which phones are supported?", a: "Most recent iPhone models. The designer lists every model it can make a case for." },
+      { q: "What artwork works best?", a: "Bold shapes and a handful of solid colours. Very fine detail and gradients are simplified to the colours available." },
+    ],
+  },
+  {
+    slug: "light-up-signs",
+    group: "product",
+    designer: "/",
+    nav: "Light-up signs",
+    title: "Custom Light-Up Signs, 3D Printed with Your Word or Logo | Print Yours",
+    description:
+      "A slim custom LED light box with your word or logo lit through the face. Great for shopfronts, " +
+      "counters, desks and doors. Design it online, made in Vancouver, shipped across Canada.",
+    eyebrow: "Light-up signs · Design online",
+    h1: "Custom light-up signs with your word or logo",
+    intro:
+      "A shallow light box with the letters lit through its face: a name over a door, a room number, an " +
+      "OPEN sign for the counter. An LED strip sits inside, and the letters are the only place the light gets out.",
+    points: ["Your word or logo", "LED lit", "Shops, desks & doors"],
+    photo: "/designer/sign.webp",
+    photoAlt: "Dark 3D printed sign enclosure with the word OPEN lit through its face",
+    uses: [
+      { title: "Shopfront & counter signs", body: "OPEN, your shop name or a menu callout." },
+      { title: "Room & door signs", body: "Names, room numbers and studio signs." },
+      { title: "Desk & stream setups", body: "Your name, handle or logo glowing behind you." },
+      { title: "Event signs", body: "Wedding names, bar signs and photo-booth backdrops." },
+    ],
+    sections: [
+      {
+        h2: "How the sign is made",
+        body: [
+          "The face is printed first: an opaque layer with the letters cut out, the letters filled back in with translucent filament, and a diffuser behind them so the light is even. The lead exits through a notch in the bottom wall.",
+        ],
+      },
+    ],
+    faqs: [
+      { q: "Does the sign come with lights?", a: "Ask in your quote request. Signs can be supplied as the printed enclosure only or with an LED strip fitted." },
+      { q: "Can I use my logo instead of text?", a: "Yes. Upload an SVG and the logo is cut through the face the same way as letters." },
+    ],
+  },
+  {
+    slug: "custom-stencils",
+    group: "product",
+    designer: "/",
+    nav: "Stencils",
+    title: "Custom Stencils from Your Text or Logo, 3D Printed | Print Yours",
+    description:
+      "Custom reusable plastic stencils of any word or SVG logo, with every letter bridged so the centres " +
+      "stay in. Design online, printed in Vancouver and shipped across Canada and the US.",
+    eyebrow: "Custom stencils · Design online",
+    h1: "Custom stencils from any word or logo",
+    intro:
+      "Type a word or upload an SVG and get a reusable plastic stencil plate with it cut clean through. " +
+      "Every island is bridged automatically, so the middles of letters like O, A and R stay in place.",
+    points: ["Text or SVG logo", "Reusable plastic", "Auto-bridged letters"],
+    photo: "/designer/stencil.webp",
+    photoAlt: "Red 3D printed plastic stencil plate with the word SHOP cut through it",
+    uses: [
+      { title: "Signs & walls", body: "Shop names, house numbers and wall lettering." },
+      { title: "Crates, boxes & gear", body: "Mark tool boxes, shipping crates and equipment." },
+      { title: "Crafts & merch", body: "Spray-paint or screen your logo on shirts, bags and wood." },
+      { title: "Cakes & coffee", body: "Dusting stencils for cakes and latte art (food-safe printing on request)." },
+    ],
+    sections: [
+      {
+        h2: "Stencils that don't fall apart",
+        body: [
+          "Letters with enclosed shapes normally lose their centres when cut. The designer adds thin bridges to every island so the stencil holds together and can be reused again and again.",
+        ],
+      },
+    ],
+    faqs: [
+      { q: "How big can a stencil be?", a: "A single plate can be up to about 25 cm across. Larger stencils can be split into sections that line up." },
+      { q: "Can I wash and reuse it?", a: "Yes. The plastic stencils clean up with water or the solvent for your paint." },
+    ],
+  },
 ];
 
 export const pageBySlug = Object.fromEntries(pages.map((p) => [p.slug, p]));
+export const services = pages.filter((p) => p.group !== "product");
+export const products = pages.filter((p) => p.group === "product");

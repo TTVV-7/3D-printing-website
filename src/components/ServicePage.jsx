@@ -1,5 +1,6 @@
-import { ArrowRight, Check, ChevronRight } from "lucide-react";
+import { ArrowRight, ArrowUpRight, Check, ChevronRight } from "lucide-react";
 import { pages } from "../pages.js";
+import { site } from "../../site.config.js";
 import { faqs as sharedFaqs } from "../../site.config.js";
 import { Materials } from "./Materials.jsx";
 import { Process } from "./Process.jsx";
@@ -10,7 +11,8 @@ import { Quote } from "./Quote.jsx";
 const COMMON = sharedFaqs.filter((f) => /cost|ship/i.test(f.q));
 
 export function ServicePage({ page }) {
-  const related = pages.filter((p) => p.slug !== page.slug);
+  const isProduct = page.group === "product";
+  const related = pages.filter((p) => p.slug !== page.slug && (p.group === "product") === isProduct);
 
   return (
     <>
@@ -35,12 +37,25 @@ export function ServicePage({ page }) {
             <p className="mt-6 max-w-2xl text-lg leading-relaxed text-white/70">{page.intro}</p>
 
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <a href="#quote" className="btn-primary">
-                Get a free quote <ArrowRight size={18} />
-              </a>
-              <a href="/#work" className="btn-outline-light">
-                See recent work
-              </a>
+              {page.designer ? (
+                <>
+                  <a href={site.designerUrl + page.designer} target="_blank" rel="noopener" className="btn-primary">
+                    Design yours now <ArrowUpRight size={18} />
+                  </a>
+                  <a href="#quote" className="btn-outline-light">
+                    Get a free quote
+                  </a>
+                </>
+              ) : (
+                <>
+                  <a href="#quote" className="btn-primary">
+                    Get a free quote <ArrowRight size={18} />
+                  </a>
+                  <a href="/work" className="btn-outline-light">
+                    See recent work
+                  </a>
+                </>
+              )}
             </div>
 
             <ul className="mt-9 flex flex-wrap gap-x-6 gap-y-2 text-sm text-white/65">
@@ -53,8 +68,13 @@ export function ServicePage({ page }) {
           </div>
 
           {page.photo && (
-            <div className="relative mx-auto aspect-[4/5] w-full max-w-md overflow-hidden rounded-[2rem] ring-1 ring-white/15 shadow-2xl shadow-black/40 rotate-[1.5deg] lg:max-w-none">
-              <img src={page.photo} alt={page.photoAlt} className="h-full w-full object-cover" fetchpriority="high" />
+            <div className={`relative mx-auto ${isProduct ? "aspect-[4/3]" : "aspect-[4/5]"} w-full max-w-md overflow-hidden rounded-[2rem] ring-1 ring-white/15 shadow-2xl shadow-black/40 rotate-[1.5deg] lg:max-w-none`}>
+              <img
+                src={page.photo}
+                alt={page.photoAlt}
+                className={`h-full w-full ${page.photoFit === "contain" ? "bg-white object-contain p-6" : "object-cover"}`}
+                fetchpriority="high"
+              />
             </div>
           )}
         </div>
@@ -100,13 +120,13 @@ export function ServicePage({ page }) {
         </div>
       </section>
 
-      {page.slug !== "custom-topographic-maps" && <Materials />}
+      {!isProduct && page.slug !== "custom-topographic-maps" && <Materials />}
       <Process />
       <Faq items={[...page.faqs, ...COMMON]} />
 
       <section className="pb-20 sm:pb-28">
         <div className="container-page">
-          <h2 className="text-2xl font-bold">Other 3D printing services</h2>
+          <h2 className="text-2xl font-bold">{isProduct ? "More things to design yourself" : "Other 3D printing services"}</h2>
           <ul className="mt-5 flex flex-wrap gap-2">
             {related.map((p) => (
               <li key={p.slug}>
