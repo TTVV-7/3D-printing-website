@@ -3,7 +3,8 @@ import { ArrowRight, ArrowUpRight, Hand, Smartphone } from "lucide-react";
 import { clsx } from "clsx";
 import { site } from "../../site.config.js";
 
-// Each of these is a shape in the generator app (3D-print-sandbox repo). The
+// Each of these is a shape in the generator app (3D-print-sandbox repo), and
+// its key is that app's ?shape= value, so "Customize yours" opens on it. The
 // models are that app's own output for the sample text; rebuild them with
 // `node scripts/designer-models.mjs`. The photo stands in until the 3D stage
 // is ready, and for good if the browser can't do WebGL.
@@ -212,7 +213,7 @@ export function Designer() {
             <p className="mt-4 text-sm leading-relaxed text-white/65 lg:hidden">{current.body}</p>
 
             <div className="mt-5 flex flex-col gap-3 sm:flex-row lg:mt-6 lg:flex-col xl:flex-row [&>a]:whitespace-nowrap">
-              <a href={site.designerUrl} target="_blank" rel="noopener" className="btn-primary">
+              <a href={`${site.designerUrl}/?shape=${current.key}`} target="_blank" rel="noopener" className="btn-primary">
                 Customize yours <ArrowUpRight size={18} />
               </a>
               <a
