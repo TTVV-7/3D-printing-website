@@ -1,6 +1,14 @@
 import { Play } from "lucide-react";
 import { work } from "../work.js";
 
+// First photo is the 2x2 feature tile; the rest fill a 3-column grid. If the
+// last row would only have two photos, the final one stretches to fill it.
+function tileSpan(i, count) {
+  if (i === 0) return "md:row-span-2 md:col-span-2";
+  if (i === count - 1 && i >= 3 && (count - 3) % 3 === 2) return "md:col-span-2";
+  return "";
+}
+
 export function Work() {
   return (
     <section id="work" className="py-20 sm:py-28">
@@ -15,11 +23,11 @@ export function Work() {
           </a>
         </div>
 
-        <div className="mt-12 grid gap-4 md:h-[36rem] md:grid-cols-3 md:grid-rows-2">
+        <div className="mt-12 grid gap-4 md:auto-rows-[17.5rem] md:grid-cols-3">
           {work.map((item, i) => (
             <figure
               key={item.title}
-              className={`group relative overflow-hidden rounded-3xl bg-ink ${i === 0 ? "md:row-span-2 md:col-span-2" : ""}`}
+              className={`group relative overflow-hidden rounded-3xl bg-ink ${tileSpan(i, work.length)}`}
             >
               <img
                 src={item.photo}
