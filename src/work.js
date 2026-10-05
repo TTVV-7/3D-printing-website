@@ -30,4 +30,11 @@ export const work = [
     alt: "Purple 3D-printed replacement clip installed on a drying rack post, and two new clips beside the cracked white original",
     wide: true,
   },
+  {
+    title: "Multi-colour cosplay mask",
+    kind: "Wearable prop",
+    photo: "/work/mask.webp",
+    alt: "3D-printed helmet-style mask in navy with a magenta faceplate and lavender cheek vents",
+    video: "/work/mask.mp4",
+  },
 ];

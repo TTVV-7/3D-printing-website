@@ -59,7 +59,7 @@ export function Work() {
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex h-10 w-10 flex-none items-center justify-center rounded-full bg-flame text-white hover:bg-flame-600"
-                    aria-label={`Watch the timelapse of ${item.title}`}
+                    aria-label={`Watch a video of ${item.title}`}
                   >
                     <Play size={16} className="ml-0.5" fill="currentColor" />
                   </a>
