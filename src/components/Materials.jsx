@@ -28,11 +28,18 @@ function Meter({ value, label }) {
   );
 }
 
+const METERS = [
+  ["strength", "Strength", "Strength"],
+  ["heat", "Heat", "Heat resistance"],
+  ["flex", "Flex", "Flexibility"],
+  ["finish", "Finish", "Surface finish"],
+];
+
 export function Materials() {
   return (
-    <section id="materials" className="bg-paper-dark py-20 sm:py-28 layer-lines-dark">
+    <section id="materials" className="bg-paper-dark py-16 sm:py-28 layer-lines-dark">
       <div className="container-page">
-        <div className="grid gap-10 lg:grid-cols-[1fr_2fr] lg:gap-16">
+        <div className="grid gap-8 lg:grid-cols-[1fr_2fr] lg:gap-16">
           <div>
             <p className="eyebrow">Materials & specs</p>
             <h2 className="mt-3 text-4xl font-bold sm:text-5xl">The right plastic for the job.</h2>
@@ -41,27 +48,48 @@ export function Materials() {
               in your quote.
             </p>
 
-            <dl className="mt-8 grid grid-cols-2 gap-3">
+            <dl className="mt-6 flex flex-wrap gap-2 lg:mt-8 lg:grid lg:grid-cols-2 lg:gap-3">
               {SPECS.map(({ icon: Icon, label, value }) => (
-                <div key={label} className="rounded-2xl bg-white/70 p-4">
-                  <dt className="flex items-center gap-1.5 text-xs text-ink/50">
-                    <Icon size={13} /> {label}
+                <div
+                  key={label}
+                  className="flex items-center gap-1.5 rounded-full bg-white/70 px-3 py-1.5 text-sm lg:block lg:rounded-2xl lg:p-4"
+                >
+                  <dt className="flex items-center gap-1.5 text-ink/50 lg:text-xs">
+                    <Icon size={13} />
+                    <span className="sr-only lg:not-sr-only">{label}</span>
                   </dt>
-                  <dd className="mt-1 font-display font-semibold leading-snug">{value}</dd>
+                  <dd className="font-medium leading-snug lg:mt-1 lg:font-display lg:font-semibold">{value}</dd>
                 </div>
               ))}
             </dl>
           </div>
 
-          <div className="overflow-x-auto rounded-3xl bg-white ring-1 ring-ink/5">
-            <table className="w-full min-w-[560px] text-left text-sm">
+          {/* Phones: one card per material, all four meters visible. */}
+          <ul className="grid gap-3 sm:grid-cols-2 md:hidden">
+            {MATERIALS.map((m) => (
+              <li key={m.name} className="rounded-2xl bg-white p-4 ring-1 ring-ink/5">
+                <p className="font-display text-lg font-semibold">{m.name}</p>
+                <p className="mt-0.5 text-sm text-ink/55">{m.best}</p>
+                <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2">
+                  {METERS.map(([key, label, long]) => (
+                    <div key={key} className="flex items-center justify-between gap-2">
+                      <dt className="font-mono text-[11px] uppercase tracking-widest text-ink/45">{label}</dt>
+                      <dd><Meter value={m[key]} label={long} /></dd>
+                    </div>
+                  ))}
+                </dl>
+              </li>
+            ))}
+          </ul>
+
+          <div className="hidden overflow-hidden rounded-3xl bg-white ring-1 ring-ink/5 md:block">
+            <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-ink/10 font-mono text-[11px] uppercase tracking-widest text-ink/45">
                   <th className="px-6 py-4 font-medium">Material</th>
-                  <th className="px-3 py-4 font-medium">Strength</th>
-                  <th className="px-3 py-4 font-medium">Heat</th>
-                  <th className="px-3 py-4 font-medium">Flex</th>
-                  <th className="px-3 py-4 font-medium">Finish</th>
+                  {METERS.map(([key, label]) => (
+                    <th key={key} className="px-3 py-4 font-medium">{label}</th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
@@ -71,10 +99,9 @@ export function Materials() {
                       <p className="font-display text-lg font-semibold">{m.name}</p>
                       <p className="mt-0.5 text-ink/55">{m.best}</p>
                     </td>
-                    <td className="px-3 py-6"><Meter value={m.strength} label="Strength" /></td>
-                    <td className="px-3 py-6"><Meter value={m.heat} label="Heat resistance" /></td>
-                    <td className="px-3 py-6"><Meter value={m.flex} label="Flexibility" /></td>
-                    <td className="px-3 py-6"><Meter value={m.finish} label="Surface finish" /></td>
+                    {METERS.map(([key, , long]) => (
+                      <td key={key} className="px-3 py-6"><Meter value={m[key]} label={long} /></td>
+                    ))}
                   </tr>
                 ))}
               </tbody>

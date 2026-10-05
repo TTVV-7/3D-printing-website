@@ -35,7 +35,7 @@ export function Work() {
           </a>
         </div>
 
-        <div className="mt-12 grid gap-4 md:auto-rows-[17.5rem] md:grid-cols-3">
+        <div className="mt-12 grid gap-4 md:auto-rows-[18rem] md:grid-cols-3">
           {work.map((item, i) => (
             <figure
               key={item.title}
@@ -45,6 +45,7 @@ export function Work() {
                 src={item.photo}
                 alt={item.alt}
                 loading="lazy"
+                style={item.focus ? { objectPosition: item.focus } : undefined}
                 className={`${item.wide ? "aspect-[12/5]" : "aspect-[4/3]"} w-full object-cover transition duration-500 group-hover:scale-[1.03] md:aspect-auto md:h-full`}
               />
               <div className="absolute inset-0 bg-gradient-to-t from-ink/85 via-ink/10 to-transparent" />

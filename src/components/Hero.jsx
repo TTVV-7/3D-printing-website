@@ -1,10 +1,10 @@
-import { ArrowRight, Check } from "lucide-react";
+import { ArrowRight, Check, Sparkles } from "lucide-react";
 
 const POINTS = ["Free quote in 1 business day", "Local pickup in Vancouver", "No model? I can design it"];
 
 export function Hero() {
   return (
-    <section id="top" className="relative overflow-hidden bg-ink text-white layer-lines">
+    <section id="start" className="relative scroll-mt-16 overflow-hidden bg-ink text-white layer-lines">
       {/* Nozzle-glow accent */}
       <div
         aria-hidden
@@ -15,26 +15,26 @@ export function Hero() {
         className="pointer-events-none absolute -left-40 bottom-0 h-96 w-96 rounded-full bg-sky/20 blur-[120px]"
       />
 
-      <div className="container-page relative grid items-center gap-12 pt-28 pb-20 sm:pt-32 lg:grid-cols-[1.15fr_1fr] lg:pb-28">
+      <div className="container-page relative grid items-center gap-12 pt-24 pb-16 sm:pt-32 sm:pb-20 lg:grid-cols-[1.15fr_1fr] lg:pb-28">
         <div>
           <p className="eyebrow">3D printing service · Vancouver, BC</p>
-          <h1 className="mt-5 text-[2.75rem] leading-[1.02] font-bold sm:text-6xl lg:text-7xl">
+          <h2 className="mt-5 text-[2.75rem] leading-[1.02] font-bold sm:text-6xl lg:text-7xl">
             Parts that fit.
             <br />
             Prototypes that <span className="text-flame">ship.</span>
-          </h1>
+          </h2>
           <p className="mt-6 max-w-xl text-lg leading-relaxed text-white/70">
             Broken clip, missing knob, a first prototype or fifty of the same part. Send a
-            file, a link or just a photo and I'll quote it, print it and check it before it
-            goes out.
+            file, a link or just a photo and I'll quote it, or design your own keyring, sign or
+            stencil right in the browser.
           </p>
 
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
             <a href="#quote" className="btn-primary">
               Get a free quote <ArrowRight size={18} />
             </a>
-            <a href="#work" className="btn-outline-light">
-              See recent work
+            <a href="#design" className="btn-outline-light">
+              <Sparkles size={18} className="text-flame" /> Design your own
             </a>
           </div>
 
@@ -47,8 +47,8 @@ export function Hero() {
           </ul>
         </div>
 
-        <figure className="relative mx-auto w-full max-w-md lg:max-w-none">
-          <div className="relative aspect-[4/5] overflow-hidden rounded-[2rem] ring-1 ring-white/15 shadow-2xl shadow-black/40 rotate-[1.5deg]">
+        <figure className="relative mx-auto w-full max-w-sm sm:max-w-md lg:max-w-none">
+          <div className="relative aspect-[4/3] overflow-hidden sm:aspect-[4/5] rounded-[2rem] ring-1 ring-white/15 shadow-2xl shadow-black/40 rotate-[1.5deg]">
             <img
               src="/work/downtown-vancouver.webp"
               alt="A multi-colour 3D-printed model of downtown Vancouver's skyline"
