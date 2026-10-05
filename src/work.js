@@ -23,15 +23,15 @@ export const work = [
     alt: "Angled view of the printed Vancouver relief map showing raised North Shore mountains",
   },
   {
-    title: "Wire shelf clip, installed",
+    title: "Drying rack clip, installed",
     kind: "Replacement part",
-    photo: "/work/shelf-clips-2.webp",
-    alt: "Purple 3D-printed clip holding a wire shelf to a metal post",
+    photo: "/work/drying-rack-clips-2.webp",
+    alt: "Purple 3D-printed replacement clip holding a drying rack rail to its metal post",
   },
   {
-    title: "Shelf clips, new vs. broken original",
+    title: "Drying rack clips, new vs. broken original",
     kind: "Replacement part",
-    photo: "/work/shelf-clips-1.webp",
-    alt: "Two purple 3D-printed shelf clips beside the cracked white original clip they replace",
+    photo: "/work/drying-rack-clips-1.webp",
+    alt: "Two purple 3D-printed drying rack clips beside the cracked white original clip they replace",
   },
 ];
