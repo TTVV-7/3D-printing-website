@@ -47,10 +47,10 @@ export function Intro() {
 
       <div className="container-page relative py-28">
         <p className="eyebrow">Print Yours · Vancouver, BC</p>
-        <h1 className="mt-5 max-w-4xl text-5xl leading-[1.02] font-bold sm:text-7xl lg:text-8xl">
+        <h1 className="mt-5 max-w-4xl text-4xl leading-[1.05] font-bold sm:text-5xl lg:text-6xl">
           Custom 3D printing in <span className="text-flame">Vancouver.</span>
         </h1>
-        <p className="mt-6 max-w-xl text-lg leading-relaxed text-white/70">
+        <p className="mt-6 max-w-xl text-base leading-relaxed sm:text-lg text-white/70">
           Replacement parts, prototypes and small batches, printed layer by layer and checked
           before they go out.
         </p>

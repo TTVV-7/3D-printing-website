@@ -138,7 +138,7 @@ export function Designer() {
       <div className="container-page relative">
         <div className="max-w-2xl">
           <p className="eyebrow">Design your own</p>
-          <h2 className="mt-3 text-4xl font-bold sm:text-5xl">Make it yours in the browser.</h2>
+          <h2 className="mt-3 text-3xl font-bold sm:text-4xl">Make it yours in the browser.</h2>
           <p className="mt-4 text-white/65 sm:text-lg">
             Type your name, pick a style and watch the 3D model rebuild live. Send it over and
             I'll print it.
@@ -242,7 +242,7 @@ export function Designer() {
           <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
             <div className="max-w-xl">
               <p className="eyebrow">Send your design</p>
-              <h3 className="mt-3 text-3xl font-bold sm:text-4xl">Made something? Get it printed.</h3>
+              <h3 className="mt-3 text-2xl font-bold sm:text-3xl">Made something? Get it printed.</h3>
               <p className="mt-4 text-white/65">
                 Send the file from the designer with a quote request and you'll get a fixed price
                 within one business day.

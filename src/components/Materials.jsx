@@ -42,7 +42,7 @@ export function Materials() {
         <div className="grid gap-8 lg:grid-cols-[1fr_2fr] lg:gap-16">
           <div>
             <p className="eyebrow">Materials & specs</p>
-            <h2 className="mt-3 text-4xl font-bold sm:text-5xl">The right plastic for the job.</h2>
+            <h2 className="mt-3 text-3xl font-bold sm:text-4xl">The right plastic for the job.</h2>
             <p className="mt-4 text-ink/65">
               Not sure what you need? Tell me what the part has to do and I'll recommend one
               in your quote.

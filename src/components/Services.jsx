@@ -10,8 +10,8 @@ export function Services() {
       <div className="container-page">
         <div className="max-w-2xl">
           <p className="eyebrow">Services & pricing</p>
-          <h2 className="mt-3 text-4xl font-bold sm:text-5xl">Clear prices, fixed before printing.</h2>
-          <p className="mt-4 text-lg text-ink/65">
+          <h2 className="mt-3 text-3xl font-bold sm:text-4xl">Clear prices, fixed before printing.</h2>
+          <p className="mt-4 text-ink/65 sm:text-lg">
             Every job gets an exact quote within one business day. Nothing is printed until you
             approve it. All prices in CAD.
           </p>
@@ -36,9 +36,9 @@ export function Services() {
                 >
                   <Icon size={22} />
                 </div>
-                <h3 className="mt-5 text-2xl font-semibold">{title}</h3>
+                <h3 className="mt-5 text-xl font-semibold">{title}</h3>
                 <p className="mt-3">
-                  <span className="font-display text-4xl font-bold">{price}</span>
+                  <span className="font-display text-3xl font-bold">{price}</span>
                   <span className={clsx("ml-2 text-sm", featured ? "text-white/55" : "text-ink/50")}>{unit}</span>
                 </p>
                 <p className={clsx("mt-3 leading-relaxed", featured ? "text-white/70" : "text-ink/65")}>{body}</p>

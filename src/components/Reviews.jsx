@@ -26,7 +26,7 @@ export function Reviews() {
         <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
           <div className="max-w-2xl">
             <p className="eyebrow">Reviews</p>
-            <h2 className="mt-3 text-4xl font-bold sm:text-5xl">What customers say.</h2>
+            <h2 className="mt-3 text-3xl font-bold sm:text-4xl">What customers say.</h2>
           </div>
           {links.length > 0 && (
             <div className="flex flex-col gap-2 sm:items-end">
