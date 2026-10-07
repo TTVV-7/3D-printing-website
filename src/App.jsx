@@ -1,6 +1,5 @@
 import { Header } from "./components/Header.jsx";
 import { Intro } from "./components/Intro.jsx";
-import { Hero } from "./components/Hero.jsx";
 import { Services } from "./components/Services.jsx";
 import { Designer } from "./components/Designer.jsx";
 import { Materials } from "./components/Materials.jsx";
@@ -15,7 +14,6 @@ export function App() {
       <Header />
       <main>
         <Intro />
-        <Hero />
         <Designer />
         <Services />
         <Work />

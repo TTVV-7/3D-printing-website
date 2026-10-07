@@ -76,9 +76,9 @@ export const pricing = {
   // Fixed design prices. Most "simple" replacement parts are really standard:
   // measuring, a test print and a fit tweak add up.
   designTiers: [
-    { name: "Simple", price: "$60", examples: "Spacers, knobs, plates, basic brackets, anything from clear dimensions" },
-    { name: "Standard", price: "$120", examples: "Clips and snap fits, parts copied from a broken original, anything that has to fit something else" },
-    { name: "Complex", price: "from $200", examples: "Hinges, threads, multi-part assemblies, enclosures, organic shapes" },
+    { name: "Simple", price: "$60", examples: "Spacers, knobs, plates, basic brackets" },
+    { name: "Standard", price: "$120", examples: "Clips, snap fits, copies of a broken part" },
+    { name: "Complex", price: "from $200", examples: "Hinges, threads, assemblies, organic shapes" },
   ],
 
   extras: [

@@ -211,27 +211,19 @@ export function Designer() {
 
             <p className="mt-4 text-sm leading-relaxed text-white/65 lg:hidden">{current.body}</p>
 
-            <div className="mt-5 flex flex-col gap-3 sm:flex-row lg:mt-6 lg:flex-col xl:flex-row [&>a]:whitespace-nowrap">
-              <a href={site.designerUrl} target="_blank" rel="noopener" className="btn-primary">
+            <div className="mt-5 flex flex-col gap-4 sm:flex-row sm:items-center lg:mt-6">
+              <a href={site.designerUrl} target="_blank" rel="noopener" className="btn-primary whitespace-nowrap">
                 Customize yours <ArrowUpRight size={18} />
               </a>
               <a
                 href={`${site.designerUrl}/case`}
                 target="_blank"
                 rel="noopener"
-                className="btn-outline-light"
+                className="inline-flex items-center gap-2 self-center text-sm font-medium text-white/70 hover:text-white sm:self-auto"
               >
-                <Smartphone size={18} /> Custom phone case
+                <Smartphone size={16} /> Or design a phone case
               </a>
             </div>
-
-            <p className="mt-5 text-sm text-white/50">
-              Have a design ready?{" "}
-              <a href="#quote" onClick={sendDesign} className="text-flame underline-offset-4 hover:underline">
-                Send it here
-              </a>{" "}
-              and I'll quote it.
-            </p>
           </div>
         </div>
 
@@ -248,7 +240,7 @@ export function Designer() {
                 within one business day.
               </p>
             </div>
-            <a href="#quote" onClick={sendDesign} className="btn-primary self-start lg:self-auto">
+            <a href="#quote" onClick={sendDesign} className="btn-outline-light self-start lg:self-auto">
               Send my design <ArrowRight size={18} />
             </a>
           </div>

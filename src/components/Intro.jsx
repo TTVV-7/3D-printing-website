@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import { ArrowRight, ChevronDown } from "lucide-react";
+import { ArrowRight, Check, ChevronDown, Sparkles } from "lucide-react";
 import { clsx } from "clsx";
 
+const POINTS = ["Free quote in 1 business day", "Local pickup in Vancouver", "No model? I can design it"];
+
 // Full-screen opening: contour lines of the North Shore Mountains
-// (TopoScene.js) behind the business name. Scrolling down leads into the Hero.
+// (TopoScene.js) behind the business name. Scrolling down leads into the designer.
 export function Intro() {
   const canvasRef = useRef(null);
   const layerRef = useRef(null);
@@ -51,17 +53,26 @@ export function Intro() {
           Custom 3D printing in <span className="text-flame">Vancouver.</span>
         </h1>
         <p className="mt-6 max-w-xl text-base leading-relaxed sm:text-lg text-white/70">
-          Replacement parts, prototypes and small batches, printed layer by layer and checked
-          before they go out.
+          Broken clip, missing knob, a first prototype or fifty of the same part. Send a file, a
+          link or just a photo and I'll quote it, or design your own keyring, sign or stencil
+          right in the browser.
         </p>
         <div className="mt-8 flex flex-col gap-3 sm:flex-row">
           <a href="#quote" className="btn-primary">
             Get a free quote <ArrowRight size={18} />
           </a>
-          <a href="#start" className="btn-outline-light">
-            See what I do
+          <a href="#design" className="btn-outline-light">
+            <Sparkles size={18} className="text-flame" /> Design your own
           </a>
         </div>
+
+        <ul className="mt-9 flex flex-wrap gap-x-6 gap-y-2 text-sm text-white/65">
+          {POINTS.map((p) => (
+            <li key={p} className="flex items-center gap-2">
+              <Check size={16} className="text-flame" /> {p}
+            </li>
+          ))}
+        </ul>
       </div>
 
       <p
@@ -77,7 +88,7 @@ export function Intro() {
       </p>
 
       <a
-        href="#start"
+        href="#design"
         aria-label="Scroll down"
         className="absolute bottom-6 left-1/2 flex -translate-x-1/2 flex-col items-center gap-1 font-mono text-[11px] uppercase tracking-widest text-white/50 hover:text-white"
       >

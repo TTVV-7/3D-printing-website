@@ -23,7 +23,7 @@ function tileSpans(items) {
 export function Work() {
   const spans = tileSpans(work);
   return (
-    <section id="work" className="py-20 sm:py-28">
+    <section id="work" className="py-16 sm:py-24">
       <div className="container-page">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div className="max-w-2xl">

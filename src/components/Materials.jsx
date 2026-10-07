@@ -37,7 +37,7 @@ const METERS = [
 
 export function Materials() {
   return (
-    <section id="materials" className="bg-paper-dark py-16 sm:py-28 layer-lines-dark">
+    <section id="materials" className="bg-paper-dark py-16 sm:py-24 layer-lines-dark">
       <div className="container-page">
         <div className="grid gap-8 lg:grid-cols-[1fr_2fr] lg:gap-16">
           <div>

@@ -21,7 +21,7 @@ export function Reviews() {
   if (!items.length && !links.length) return null;
 
   return (
-    <section id="reviews" className="py-20 sm:py-28">
+    <section id="reviews" className="py-16 sm:py-24">
       <div className="container-page">
         <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
           <div className="max-w-2xl">
