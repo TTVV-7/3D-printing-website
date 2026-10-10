@@ -1,5 +1,6 @@
 // Portfolio shown in the "Recent work" section. Add a photo to public/work/
-// (webp or jpg, ~1000px wide) and an entry here. Photos of real parts you've
+// (webp or jpg, ~1000px wide) and an entry here. Set `wide: true` on landscape
+// or side-by-side photos to give them a double-width tile. Photos of real parts you've
 // made -- brackets, enclosures, prototypes -- sell the service better than
 // anything else on the page.
 export const work = [
@@ -40,5 +41,19 @@ export const work = [
     kind: "Two-colour merch batch",
     photo: "/work/bonk-bars.webp",
     alt: "Red and white 3D-printed candy-bar keychains with the BONK logo in several sizes",
+  },
+  {
+    title: "Drying rack clips",
+    kind: "Replacement part",
+    photo: "/work/drying-rack-clips.webp",
+    alt: "Purple 3D-printed replacement clip installed on a drying rack post, and two new clips beside the cracked white original",
+    wide: true,
+  },
+  {
+    title: "Multi-colour cosplay mask",
+    kind: "Wearable prop",
+    photo: "/work/mask.webp",
+    alt: "3D-printed helmet-style mask in navy with a magenta faceplate and lavender cheek vents",
+    video: "/work/mask.mp4",
   },
 ];

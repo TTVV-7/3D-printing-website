@@ -55,21 +55,10 @@ export function Services() {
         </div>
 
         <div className="mt-4 rounded-3xl bg-white p-5 ring-1 ring-ink/5 sm:p-7">
-          <h3 className="text-xl font-semibold">Custom design prices</h3>
+          <h3 className="text-xl font-semibold">Custom design: $50 per design</h3>
           <p className="mt-1 text-ink/60">
-            Fixed per part, agreed before I start. If a job turns out bigger than quoted, that's on me.
+            One flat price per part, simple or complex, agreed before I start. Printing is priced separately.
           </p>
-          <dl className="mt-5 grid gap-4 sm:grid-cols-3">
-            {pricing.designTiers.map((t) => (
-              <div key={t.name} className="rounded-2xl bg-paper p-5">
-                <dt className="flex items-baseline justify-between gap-2">
-                  <span className="font-semibold">{t.name}</span>
-                  <span className="font-display text-xl font-bold text-flame">{t.price}</span>
-                </dt>
-                <dd className="mt-2 text-sm leading-relaxed text-ink/60">{t.examples}</dd>
-              </div>
-            ))}
-          </dl>
           <ul className="mt-5 flex flex-wrap gap-x-6 gap-y-2 text-sm text-ink/60">
             {pricing.extras.map((e) => <li key={e}>{e}</li>)}
           </ul>

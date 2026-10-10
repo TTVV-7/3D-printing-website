@@ -57,8 +57,8 @@ export const pricing = {
     {
       key: "design",
       title: "Custom design",
-      price: "from $60",
-      unit: "fixed price",
+      price: "$50",
+      unit: "per design",
       body: "No model? Send photos, measurements or the broken part and I'll model it in CAD. Printing is priced separately.",
       includes: ["One test print and one round of fit tweaks", "You keep the file", "Extra revisions $65/hr"],
       featured: true,
@@ -71,14 +71,6 @@ export const pricing = {
       body: "A handful to a few hundred identical parts, printed consistently. Good for small businesses and short runs.",
       includes: ["10+ copies: 10% off", "50+ copies: 20% off", "Larger runs quoted individually"],
     },
-  ],
-
-  // Fixed design prices. Most "simple" replacement parts are really standard:
-  // measuring, a test print and a fit tweak add up.
-  designTiers: [
-    { name: "Simple", price: "$60", examples: "Spacers, knobs, plates, basic brackets, anything from clear dimensions" },
-    { name: "Standard", price: "$120", examples: "Clips and snap fits, parts copied from a broken original, anything that has to fit something else" },
-    { name: "Complex", price: "from $200", examples: "Hinges, threads, multi-part assemblies, enclosures, organic shapes" },
   ],
 
   extras: [

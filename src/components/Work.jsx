@@ -1,7 +1,27 @@
 import { Play } from "lucide-react";
 import { work } from "../work.js";
 
+// Desktop grid is 3 columns. The first photo is a 2x2 feature tile with the
+// next two stacked beside it; after that, photos flow in rows of 3 (`wide`
+// ones take 2 columns). The last photo in a row stretches to fill any gap.
+const SPAN = { 1: "", 2: "md:col-span-2", 3: "md:col-span-3" };
+
+function tileSpans(items) {
+  const spans = items.map((item, i) => (i === 0 ? 4 : item.wide ? 2 : 1));
+  let col = 0;
+  for (let i = 3; i < items.length; i++) {
+    if (col + spans[i] > 3) {
+      spans[i - 1] += 3 - col;
+      col = 0;
+    }
+    col = (col + spans[i]) % 3;
+  }
+  if (items.length > 3 && col !== 0) spans[items.length - 1] += 3 - col;
+  return spans.map((n) => (n === 4 ? "md:row-span-2 md:col-span-2" : SPAN[n]));
+}
+
 export function Work() {
+  const spans = tileSpans(work);
   return (
     <section id="work" className="py-20 sm:py-28">
       <div className="container-page">
@@ -19,14 +39,14 @@ export function Work() {
           {work.map((item, i) => (
             <figure
               key={item.title}
-              className={`group relative overflow-hidden rounded-3xl bg-ink ${i === 0 ? "md:row-span-2 md:col-span-2" : ""}`}
+              className={`group relative overflow-hidden rounded-3xl bg-ink ${spans[i]}`}
             >
               <img
                 src={item.photo}
                 alt={item.alt}
                 loading="lazy"
                 style={item.focus ? { objectPosition: item.focus } : undefined}
-                className="aspect-[4/3] w-full object-cover transition duration-500 group-hover:scale-[1.03] md:aspect-auto md:h-full"
+                className={`${item.wide ? "aspect-[12/5]" : "aspect-[4/3]"} w-full object-cover transition duration-500 group-hover:scale-[1.03] md:aspect-auto md:h-full`}
               />
               <div className="absolute inset-0 bg-gradient-to-t from-ink/85 via-ink/10 to-transparent" />
               <figcaption className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-3 p-5 text-white">
@@ -40,7 +60,7 @@ export function Work() {
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex h-10 w-10 flex-none items-center justify-center rounded-full bg-flame text-white hover:bg-flame-600"
-                    aria-label={`Watch the timelapse of ${item.title}`}
+                    aria-label={`Watch a video of ${item.title}`}
                   >
                     <Play size={16} className="ml-0.5" fill="currentColor" />
                   </a>
