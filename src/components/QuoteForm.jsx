@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Loader2, CheckCircle2, AlertCircle, ArrowRight, ChevronDown } from "lucide-react";
 import { clsx } from "clsx";
 import { FileDrop } from "./FileDrop.jsx";
+import { InstantEstimate, useInstantEstimate } from "./InstantEstimate.jsx";
 import { QuoteGolem } from "./QuoteGolem.jsx";
 import { track } from "@vercel/analytics";
 import { printRequests as api } from "../lib/api.js";
@@ -98,6 +99,8 @@ export function QuoteForm({
   // Wider screens always show everything.
   const [more, setMore] = useState(false);
 
+  const estimate = useInstantEstimate(files, form);
+
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
 
   async function handleSubmit(e) {
@@ -132,6 +135,12 @@ export function QuoteForm({
 
     setProgress(null);
 
+    // The instant estimate, if any, rides along in the cost fields so it
+    // shows next to the request in the admin panel. It's never binding.
+    const est = estimate.order;
+    const firstMesh = estimate.parts[0]?.file.name ?? null;
+    const round2 = (n) => Math.round(n * 100) / 100;
+
     // Same shape the store backend has always accepted.
     const entry = {
       id,
@@ -147,13 +156,13 @@ export function QuoteForm({
       budget: form.budget.trim() || null,
       files: uploaded,
       title: titlePrefix + (form.details.trim().slice(0, 120) || form.url.trim()),
-      stlName: null,
+      stlName: firstMesh,
       thumbnailUrl: null,
-      weightG: null,
-      printTimeHrs: null,
-      filamentCost: null,
-      timeCost: null,
-      totalCost: null,
+      weightG: est ? Math.round(est.grams) : null,
+      printTimeHrs: est ? round2(est.hours) : null,
+      filamentCost: est ? round2(est.filamentCost) : null,
+      timeCost: est ? round2(est.timeCost) : null,
+      totalCost: est ? round2(est.total) : null,
       submittedAt: new Date().toISOString(),
     };
 
@@ -167,6 +176,7 @@ export function QuoteForm({
         quantity: entry.quantity,
         hasFiles: uploaded.length > 0,
         hasLink: Boolean(entry.url),
+        hasEstimate: Boolean(est),
       });
       setSubmitted(entry);
       setForm(EMPTY);
@@ -205,6 +215,8 @@ export function QuoteForm({
       <Field label="Files" hint={filesHint}>
         <FileDrop files={files} onChange={setFiles} disabled={submitting} />
       </Field>
+
+      <InstantEstimate estimate={estimate} material={form.material} quality={form.quality} />
 
       <button
         type="button"
