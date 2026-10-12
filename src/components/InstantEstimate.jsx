@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Loader2, AlertCircle, Calculator } from "lucide-react";
 import { clsx } from "clsx";
 import { estimate as cfg } from "../../site.config.js";
@@ -10,11 +10,12 @@ export const fileKey = (f) => `${f.name}-${f.size}`;
 const isMesh = (f) => MESH_EXTENSIONS.some((ext) => f.name.toLowerCase().endsWith(ext));
 
 // Measures every STL / 3MF in `files` once and works out the order estimate.
-// Returns { parts, order, lib } where `order` is null until something measurable
-// is attached. three.js and the maths load on the first model only.
+// Returns { parts, order, toggleInches } where `order` is null until something
+// measurable is attached and each measured part carries its `geometries` for
+// the preview. three.js and the maths load on the first model only.
 export function useInstantEstimate(files, options) {
   const [lib, setLib] = useState(null);
-  const [measures, setMeasures] = useState({}); // key -> { status, measure }
+  const [measures, setMeasures] = useState({}); // key -> { status, measure, geometries }
   const [inches, setInches] = useState({}); // key -> true when the user says so
 
   const meshes = files.filter(isMesh);
@@ -30,7 +31,7 @@ export function useInstantEstimate(files, options) {
       for (const f of todo) {
         let result;
         try {
-          result = { status: "ok", measure: await mod.measureFile(f) };
+          result = { status: "ok", ...(await mod.measureFile(f)) };
         } catch {
           result = { status: "error" };
         }
@@ -47,7 +48,10 @@ export function useInstantEstimate(files, options) {
       const entry = measures[key] || { status: "loading" };
       if (entry.status !== "ok" || !lib) return { file: f, key, status: entry.status };
       const measure = lib.scaleMeasure(entry.measure, inches[key] ? INCH : 1);
-      return { file: f, key, status: "ok", measure, checks: lib.checkMeasure(measure, cfg), inches: !!inches[key] };
+      return {
+        file: f, key, status: "ok", measure, geometries: entry.geometries,
+        checks: lib.checkMeasure(measure, cfg), inches: !!inches[key],
+      };
     });
     const priced = parts.filter((p) => p.status === "ok" && !p.checks.unreliable);
     const order = lib && priced.length ? lib.estimateOrder(priced, options, cfg) : null;
@@ -60,7 +64,60 @@ export function useInstantEstimate(files, options) {
 const fmtSize = (size) => size.map((d) => (d < 10 ? d.toFixed(1) : Math.round(d))).join(" × ") + " mm";
 const fmtMoney = (n) => `$${Math.round(n)}`;
 
-function PartRow({ part, onToggleInches }) {
+// The spinning model. Mounts three.js once, then swaps in whichever part is
+// selected. If WebGL isn't available the box simply has no preview.
+function Preview({ part }) {
+  const canvasRef = useRef(null);
+  const stage = useRef(null);
+  const [ready, setReady] = useState(false);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    (async () => {
+      try {
+        const { mountPreview } = await import("./PreviewScene.js");
+        if (cancelled || !canvasRef.current) return;
+        const s = mountPreview(canvasRef.current, { reducedMotion });
+        if (cancelled) return s.dispose();
+        stage.current = s;
+        setReady(true);
+      } catch (err) {
+        console.warn("3D preview skipped:", err);
+        setFailed(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+      stage.current?.dispose();
+      stage.current = null;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (ready && part) stage.current.show(part.geometries);
+  }, [ready, part?.key, part?.geometries]);
+
+  if (failed) return null;
+  return (
+    <div className="relative mb-3 h-48 overflow-hidden rounded-xl bg-white ring-1 ring-ink/5 sm:h-56">
+      <canvas
+        ref={canvasRef}
+        className="h-full w-full cursor-grab touch-none active:cursor-grabbing"
+        aria-label={part ? `3D preview of ${part.file.name}` : "3D preview"}
+      />
+      {(!ready || !part) && (
+        <Loader2 size={20} className="absolute left-1/2 top-1/2 -ml-2.5 -mt-2.5 animate-spin text-ink/25" />
+      )}
+      {ready && part && (
+        <span className="pointer-events-none absolute bottom-2 right-3 text-[11px] text-ink/35">Drag to rotate</span>
+      )}
+    </div>
+  );
+}
+
+function PartRow({ part, onToggleInches, selected, onSelect }) {
   if (part.status === "loading") {
     return (
       <li className="flex items-center gap-2 text-ink/55">
@@ -81,7 +138,21 @@ function PartRow({ part, onToggleInches }) {
   return (
     <li className="space-y-1">
       <div className="flex flex-wrap items-baseline justify-between gap-x-3">
-        <span className="truncate font-medium">{part.file.name}</span>
+        {onSelect ? (
+          <button
+            type="button"
+            onClick={onSelect}
+            aria-pressed={selected}
+            className={clsx(
+              "truncate text-left font-medium underline-offset-4",
+              selected ? "text-flame" : "hover:underline",
+            )}
+          >
+            {part.file.name}
+          </button>
+        ) : (
+          <span className="truncate font-medium">{part.file.name}</span>
+        )}
         <span className="text-xs text-ink/50">{fmtSize(measure.size)}</span>
       </div>
       {(checks.tiny || part.inches) && (
@@ -110,7 +181,12 @@ function PartRow({ part, onToggleInches }) {
 // goes through the normal review and the customer gets a firm quote by email.
 export function InstantEstimate({ estimate, material, quality }) {
   const { parts, order, toggleInches } = estimate;
+  const [selectedKey, setSelectedKey] = useState(null);
   if (!parts.length) return null;
+
+  // Preview the chosen part, or the first one that's been read.
+  const viewable = parts.filter((p) => p.status === "ok");
+  const shown = viewable.find((p) => p.key === selectedKey) || viewable[0];
 
   const materialName = cfg.materials[material] ? material : cfg.defaultMaterial;
   const qualityName = quality ? quality.split(" ")[0].toLowerCase() : "standard";
@@ -121,9 +197,21 @@ export function InstantEstimate({ estimate, material, quality }) {
         <Calculator size={15} className="text-flame" /> Instant estimate
       </p>
 
-      <ul className="mt-3 space-y-2.5">
-        {parts.map((p) => <PartRow key={p.key} part={p} onToggleInches={toggleInches} />)}
-      </ul>
+      <div className="mt-3">
+        {viewable.length > 0 && <Preview part={shown} />}
+        <ul className="space-y-2.5">
+          {parts.map((p) => (
+            <PartRow
+              key={p.key}
+              part={p}
+              onToggleInches={toggleInches}
+              selected={p === shown}
+              // Only worth a button when there's more than one to pick from.
+              onSelect={viewable.length > 1 && p.status === "ok" ? () => setSelectedKey(p.key) : null}
+            />
+          ))}
+        </ul>
+      </div>
 
       {order && (
         <div className="mt-4 border-t border-ink/10 pt-3">

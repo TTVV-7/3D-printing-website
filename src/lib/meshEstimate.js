@@ -31,8 +31,10 @@ function addGeometry(acc, geometry, matrix) {
   }
 }
 
-// Returns { volume (mm³), area (mm²), size [x, y, z] (mm), triangles },
-// assuming the file is in millimetres. Throws if the file can't be read.
+// Returns { measure, geometries }: measure is { volume (mm³), area (mm²),
+// size [x, y, z] (mm), triangles } assuming the file is in millimetres, and
+// geometries are the parsed meshes (transforms applied) for the 3D preview.
+// Throws if the file can't be read.
 export async function measureFile(file) {
   const buffer = await file.arrayBuffer();
   const acc = {
@@ -40,26 +42,32 @@ export async function measureFile(file) {
     min: new Vector3(Infinity, Infinity, Infinity),
     max: new Vector3(-Infinity, -Infinity, -Infinity),
   };
+  const geometries = [];
 
   if (file.name.toLowerCase().endsWith(".3mf")) {
     const group = new ThreeMFLoader().parse(buffer);
     group.updateMatrixWorld(true);
     group.traverse((o) => {
-      if (o.isMesh) addGeometry(acc, o.geometry, o.matrixWorld);
+      if (!o.isMesh) return;
+      addGeometry(acc, o.geometry, o.matrixWorld);
+      geometries.push(o.geometry.clone().applyMatrix4(o.matrixWorld));
     });
   } else {
-    addGeometry(acc, new STLLoader().parse(buffer), null);
+    const geometry = new STLLoader().parse(buffer);
+    addGeometry(acc, geometry, null);
+    geometries.push(geometry);
   }
 
   if (!acc.triangles) throw new Error("No triangles found");
   const size = acc.max.clone().sub(acc.min);
-  return {
+  const measure = {
     // Inside-out meshes come out negative; the magnitude is still right.
     volume: Math.abs(acc.volume),
     area: acc.area,
     size: [size.x, size.y, size.z],
     triangles: acc.triangles,
   };
+  return { measure, geometries };
 }
 
 // Applies a unit scale (25.4 for inches) to a measurement.
