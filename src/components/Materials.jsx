@@ -6,7 +6,7 @@ import { Layers, Ruler, Clock, MapPin } from "lucide-react";
 // ---------------------------------------------------------------------------
 const SPECS = [
   { icon: Ruler, label: "Max part size", value: "256 × 256 × 256 mm" },
-  { icon: Layers, label: "Layer height", value: "0.12 – 0.28 mm" },
+  { icon: Layers, label: "Layer height", value: "0.08 – 0.28 mm or adaptive" },
   { icon: Clock, label: "Turnaround", value: "Most jobs 3–5 days" },
   { icon: MapPin, label: "Delivery", value: "Vancouver pickup or shipped" },
 ];

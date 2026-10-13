@@ -21,6 +21,8 @@ const QUALITIES = [
   { value: "Draft 0.28mm", label: "Draft: 0.28 mm, fastest" },
   { value: "Standard 0.20mm", label: "Standard: 0.20 mm" },
   { value: "Fine 0.12mm", label: "Fine: 0.12 mm, best finish" },
+  { value: "Extra fine 0.08mm", label: "Extra fine: 0.08 mm, smoothest, slowest" },
+  { value: "Adaptive", label: "Adaptive: fine on curves, quick on straight walls" },
 ];
 
 const EMPTY = {
@@ -232,6 +234,14 @@ export function QuoteForm({
         <Field label="Reference link" hint="(MakerWorld, Printables, Thingiverse…)">
           <input className="field" type="url" value={form.url} onChange={set("url")} placeholder="https://" />
         </Field>
+        {/* Model sites don't allow fetching their files from here, so point
+            people at the upload for an instant price. */}
+        {form.url.trim() && !estimate.parts.length && (
+          <p className="-mt-2 text-xs text-ink/55">
+            Want an instant estimate? Download the STL or 3MF from that page and add it under Files.
+            Otherwise I'll price it from the link.
+          </p>
+        )}
 
         <div className="grid gap-4 sm:grid-cols-3">
           <MaterialField value={form.material} onChange={set("material")} />

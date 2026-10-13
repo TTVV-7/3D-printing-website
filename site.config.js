@@ -107,6 +107,9 @@ export const estimate = {
     "Draft 0.28mm": 40,
     "Standard 0.20mm": 28,
     "Fine 0.12mm": 16,
+    "Extra fine 0.08mm": 10,
+    // Varies with the model; somewhere between standard and fine on average.
+    Adaptive: 22,
   },
   machinePerHour: 3, // $ per hour of print time
   setupPerPart: 5, // $ per distinct file: checking, slicing, plate removal

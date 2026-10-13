@@ -189,7 +189,8 @@ export function InstantEstimate({ estimate, material, quality }) {
   const shown = viewable.find((p) => p.key === selectedKey) || viewable[0];
 
   const materialName = cfg.materials[material] ? material : cfg.defaultMaterial;
-  const qualityName = quality ? quality.split(" ")[0].toLowerCase() : "standard";
+  // "Extra fine 0.08mm" -> "extra fine", "Adaptive" -> "adaptive".
+  const qualityName = quality ? quality.replace(/\s*[\d.]+mm$/, "").toLowerCase() : "standard";
 
   return (
     <div className="rounded-2xl border border-ink/10 bg-paper/60 p-4 text-sm" aria-live="polite">
@@ -224,7 +225,7 @@ export function InstantEstimate({ estimate, material, quality }) {
             </span>
           </p>
           <p className="mt-1 text-xs leading-relaxed text-ink/55">
-            {materialName}, {qualityName} quality, {order.quantity} {order.quantity === 1 ? "copy" : "copies"}
+            {materialName}, {qualityName === "adaptive" ? "adaptive layer height" : `${qualityName} quality`}, {order.quantity} {order.quantity === 1 ? "copy" : "copies"}
             {order.discount > 0 && ` (${Math.round(order.discount * 100)}% bulk discount)`}. CAD before tax and shipping.
             {" "}A ballpark only: I'll check the model and confirm a fixed price within one business day.
           </p>
