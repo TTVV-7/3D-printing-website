@@ -3,7 +3,8 @@ import { ArrowRight, ArrowUpRight, Hand, Smartphone } from "lucide-react";
 import { clsx } from "clsx";
 import { site } from "../../site.config.js";
 
-// Each of these is a shape in the generator app (3D-print-sandbox repo). The
+// Each of these is a shape in the generator app (3D-print-sandbox repo), and
+// its key is that app's ?shape= value, so "Customize yours" opens on it. The
 // models are that app's own output for the sample text; rebuild them with
 // `node scripts/designer-models.mjs`. The photo stands in until the 3D stage
 // is ready, and for good if the browser can't do WebGL.
@@ -138,7 +139,7 @@ export function Designer() {
       <div className="container-page relative">
         <div className="max-w-2xl">
           <p className="eyebrow">Design your own</p>
-          <h2 className="mt-3 text-4xl font-bold sm:text-5xl">Make it yours in the browser.</h2>
+          <h2 className="mt-3 text-3xl font-bold sm:text-4xl">Make it yours in the browser.</h2>
           <p className="mt-4 text-white/65 sm:text-lg">
             Type your name, pick a style and watch the 3D model rebuild live. Send it over and
             I'll print it.
@@ -211,27 +212,19 @@ export function Designer() {
 
             <p className="mt-4 text-sm leading-relaxed text-white/65 lg:hidden">{current.body}</p>
 
-            <div className="mt-5 flex flex-col gap-3 sm:flex-row lg:mt-6 lg:flex-col xl:flex-row [&>a]:whitespace-nowrap">
-              <a href={site.designerUrl} target="_blank" rel="noopener" className="btn-primary">
+            <div className="mt-5 flex flex-col gap-4 sm:flex-row sm:items-center lg:mt-6">
+              <a href={`${site.designerUrl}/?shape=${current.key}`} target="_blank" rel="noopener" className="btn-primary whitespace-nowrap">
                 Customize yours <ArrowUpRight size={18} />
               </a>
               <a
                 href={`${site.designerUrl}/case`}
                 target="_blank"
                 rel="noopener"
-                className="btn-outline-light"
+                className="inline-flex items-center gap-2 self-center text-sm font-medium text-white/70 hover:text-white sm:self-auto"
               >
-                <Smartphone size={18} /> Custom phone case
+                <Smartphone size={16} /> Or design a phone case
               </a>
             </div>
-
-            <p className="mt-5 text-sm text-white/50">
-              Have a design ready?{" "}
-              <a href="#quote" onClick={sendDesign} className="text-flame underline-offset-4 hover:underline">
-                Send it here
-              </a>{" "}
-              and I'll quote it.
-            </p>
           </div>
         </div>
 
@@ -242,13 +235,13 @@ export function Designer() {
           <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
             <div className="max-w-xl">
               <p className="eyebrow">Send your design</p>
-              <h3 className="mt-3 text-3xl font-bold sm:text-4xl">Made something? Get it printed.</h3>
+              <h3 className="mt-3 text-2xl font-bold sm:text-3xl">Made something? Get it printed.</h3>
               <p className="mt-4 text-white/65">
                 Send the file from the designer with a quote request and you'll get a fixed price
                 within one business day.
               </p>
             </div>
-            <a href="#quote" onClick={sendDesign} className="btn-primary self-start lg:self-auto">
+            <a href="#quote" onClick={sendDesign} className="btn-outline-light self-start lg:self-auto">
               Send my design <ArrowRight size={18} />
             </a>
           </div>

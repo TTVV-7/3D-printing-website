@@ -29,12 +29,14 @@ so new requests show up in the same admin panel as before. Nothing to migrate.
 | Specs & materials (confirm before launch) | `src/components/Materials.jsx` |
 | Link-preview image (1200×630) | `public/og-image.jpg` |
 | Intro terrain (North Shore height map) | `node scripts/topo-heightmap.mjs` → `public/topo/` |
+| Google Search Console verification | `site.config.js` → `googleSiteVerification` |
 
 ## SEO / sharing
 
 - Title, description, Open Graph and Twitter card tags in `index.html`
 - `LocalBusiness` JSON-LD, generated at build time from `site.config.js`
 - `robots.txt` and `sitemap.xml` generated at build time
+- Google Search Console verification tag: `site.config.js` → `googleSiteVerification`
 - The page is prerendered at build time (`scripts/prerender.js`), so crawlers get the
   full text in the HTML instead of an empty `<div id="root">`
 

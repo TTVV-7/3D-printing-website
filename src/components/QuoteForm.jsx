@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Loader2, CheckCircle2, AlertCircle, ArrowRight, ChevronDown } from "lucide-react";
 import { clsx } from "clsx";
 import { FileDrop } from "./FileDrop.jsx";
+import { InstantEstimate, useInstantEstimate } from "./InstantEstimate.jsx";
 import { QuoteGolem } from "./QuoteGolem.jsx";
 import { track } from "@vercel/analytics";
 import { printRequests as api } from "../lib/api.js";
@@ -20,11 +21,13 @@ const QUALITIES = [
   { value: "Draft 0.28mm", label: "Draft: 0.28 mm, fastest" },
   { value: "Standard 0.20mm", label: "Standard: 0.20 mm" },
   { value: "Fine 0.12mm", label: "Fine: 0.12 mm, best finish" },
+  { value: "Extra fine 0.08mm", label: "Extra fine: 0.08 mm, smoothest, slowest" },
+  { value: "Adaptive", label: "Adaptive: fine on curves, quick on straight walls" },
 ];
 
 const EMPTY = {
   name: "", email: "", details: "", url: "",
-  material: "", quality: "", quantity: "1", deadline: "", budget: "",
+  material: "", quality: "", quantity: "1", deadline: "",
 };
 
 function Field({ label, required, hint, children }) {
@@ -98,7 +101,21 @@ export function QuoteForm({
   // Wider screens always show everything.
   const [more, setMore] = useState(false);
 
+  const estimate = useInstantEstimate(files, form);
+
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
+
+  const printOptions = (
+    <div className="grid gap-4 sm:grid-cols-3">
+      <MaterialField value={form.material} onChange={set("material")} />
+      <Field label="Quality">
+        <select className="field" value={form.quality} onChange={set("quality")}>
+          {QUALITIES.map((q) => <option key={q.label} value={q.value}>{q.label}</option>)}
+        </select>
+      </Field>
+      <QuantityField value={form.quantity} onChange={set("quantity")} />
+    </div>
+  );
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -132,6 +149,12 @@ export function QuoteForm({
 
     setProgress(null);
 
+    // The instant estimate, if any, rides along in the cost fields so it
+    // shows next to the request in the admin panel. It's never binding.
+    const est = estimate.order;
+    const firstMesh = estimate.parts[0]?.file.name ?? null;
+    const round2 = (n) => Math.round(n * 100) / 100;
+
     // Same shape the store backend has always accepted.
     const entry = {
       id,
@@ -144,16 +167,16 @@ export function QuoteForm({
       quality: form.quality || null,
       quantity: Number(form.quantity) || 1,
       deadline: form.deadline || null,
-      budget: form.budget.trim() || null,
+      budget: null,
       files: uploaded,
       title: titlePrefix + (form.details.trim().slice(0, 120) || form.url.trim()),
-      stlName: null,
+      stlName: firstMesh,
       thumbnailUrl: null,
-      weightG: null,
-      printTimeHrs: null,
-      filamentCost: null,
-      timeCost: null,
-      totalCost: null,
+      weightG: est ? Math.round(est.grams) : null,
+      printTimeHrs: est ? round2(est.hours) : null,
+      filamentCost: est ? round2(est.filamentCost) : null,
+      timeCost: est ? round2(est.timeCost) : null,
+      totalCost: est ? round2(est.total) : null,
       submittedAt: new Date().toISOString(),
     };
 
@@ -167,6 +190,7 @@ export function QuoteForm({
         quantity: entry.quantity,
         hasFiles: uploaded.length > 0,
         hasLink: Boolean(entry.url),
+        hasEstimate: Boolean(est),
       });
       setSubmitted(entry);
       setForm(EMPTY);
@@ -206,13 +230,24 @@ export function QuoteForm({
         <FileDrop files={files} onChange={setFiles} disabled={submitting} />
       </Field>
 
+      {/* With a model attached, material / quality / quantity sit inside the
+          estimate so the price visibly follows them. */}
+      <InstantEstimate
+        estimate={estimate}
+        material={form.material}
+        quality={form.quality}
+        onQuantity={(q) => setForm((f) => ({ ...f, quantity: String(q) }))}
+      >
+        {printOptions}
+      </InstantEstimate>
+
       <button
         type="button"
         onClick={() => setMore((m) => !m)}
         aria-expanded={more}
         className="flex w-full items-center justify-between gap-2 rounded-xl border border-dashed border-ink/15 px-3.5 py-2.5 text-left text-sm font-medium text-ink/70 sm:hidden"
       >
-        More details (link, material, quantity, date)
+        More details ({estimate.parts.length ? "link, date" : "link, material, quantity, date"})
         <ChevronDown size={16} className={clsx("transition-transform", more && "rotate-180")} />
       </button>
 
@@ -220,23 +255,20 @@ export function QuoteForm({
         <Field label="Reference link" hint="(MakerWorld, Printables, Thingiverse…)">
           <input className="field" type="url" value={form.url} onChange={set("url")} placeholder="https://" />
         </Field>
+        {/* Model sites don't allow fetching their files from here, so point
+            people at the upload for an instant price. */}
+        {form.url.trim() && !estimate.parts.length && (
+          <p className="-mt-2 text-xs text-ink/55">
+            Want an instant estimate? Download the STL or 3MF from that page and add it under Files.
+            Otherwise I'll price it from the link.
+          </p>
+        )}
+
+        {!estimate.parts.length && printOptions}
 
         <div className="grid gap-4 sm:grid-cols-3">
-          <MaterialField value={form.material} onChange={set("material")} />
-          <Field label="Quality">
-            <select className="field" value={form.quality} onChange={set("quality")}>
-              {QUALITIES.map((q) => <option key={q.label} value={q.value}>{q.label}</option>)}
-            </select>
-          </Field>
-          <QuantityField value={form.quantity} onChange={set("quantity")} />
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
           <Field label="Needed by" hint="(optional)">
             <input className="field" type="date" value={form.deadline} onChange={set("deadline")} />
-          </Field>
-          <Field label="Budget" hint="(optional)">
-            <input className="field" value={form.budget} onChange={set("budget")} placeholder="e.g. under $40" />
           </Field>
         </div>
       </div>
