@@ -227,7 +227,13 @@ export function InstantEstimate({ estimate, material, quality }) {
           <p className="mt-1 text-xs leading-relaxed text-ink/55">
             {materialName}, {qualityName === "adaptive" ? "adaptive layer height" : `${qualityName} quality`}, {order.quantity} {order.quantity === 1 ? "copy" : "copies"}
             {order.discount > 0 && ` (${Math.round(order.discount * 100)}% bulk discount)`}. CAD before tax and shipping.
-            {" "}A ballpark only: I'll check the model and confirm a fixed price within one business day.
+          </p>
+          <p className="mt-3 flex items-start gap-1.5 rounded-xl bg-flame-100/60 px-3 py-2 text-xs leading-relaxed text-ink/75">
+            <AlertCircle size={13} className="mt-0.5 flex-shrink-0 text-flame" />
+            <span>
+              <strong className="font-semibold">This is an estimate, not a quote.</strong> Send this request for your
+              official quote: I'll check the model and confirm a fixed price within one business day.
+            </span>
           </p>
         </div>
       )}
