@@ -8,6 +8,8 @@ import { Work } from "./components/Work.jsx";
 import { Reviews } from "./components/Reviews.jsx";
 import { Quote } from "./components/Quote.jsx";
 import { Footer } from "./components/Footer.jsx";
+import { CookieBanner } from "./components/CookieBanner.jsx";
+import { ConsentAnalytics } from "./components/ConsentAnalytics.jsx";
 
 export function App() {
   return (
@@ -24,6 +26,8 @@ export function App() {
         <Quote />
       </main>
       <Footer />
+      <CookieBanner />
+      <ConsentAnalytics />
     </>
   );
 }
