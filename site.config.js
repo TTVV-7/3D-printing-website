@@ -63,7 +63,7 @@ export const pricing = {
       title: "Custom design",
       price: "$50",
       unit: "per design",
-      body: "No model? Send photos, measurements or the broken part and I'll model it in CAD. Printing is priced separately.",
+      body: "No model? Send photos, measurements or the broken part and I'll model it in CAD. One flat price, simple or complex. Printing is priced separately.",
       includes: ["One test print and one round of fit tweaks", "You keep the file", "Extra revisions $65/hr"],
       featured: true,
     },

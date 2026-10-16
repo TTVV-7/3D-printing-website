@@ -29,11 +29,11 @@ export function Quote() {
   }, []);
 
   return (
-    <section id="quote" className="bg-paper-dark py-16 sm:py-28 layer-lines-dark">
+    <section id="quote" className="bg-paper-dark py-16 sm:py-24 layer-lines-dark">
       <div className="container-page grid gap-8 lg:grid-cols-[1fr_1.6fr] lg:gap-16">
-        <div>
+        <div className="lg:sticky lg:top-24 lg:self-start">
           <p className="eyebrow">Free quote</p>
-          <h2 className="mt-3 text-4xl font-bold sm:text-5xl">What do you need printed?</h2>
+          <h2 className="mt-3 text-3xl font-bold sm:text-4xl">What do you need printed?</h2>
           <p className="mt-4 text-ink/65 sm:text-lg">
             The more detail the better, but a rough description is enough to get started.
           </p>

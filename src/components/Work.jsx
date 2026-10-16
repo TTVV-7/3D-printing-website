@@ -23,12 +23,12 @@ function tileSpans(items) {
 export function Work() {
   const spans = tileSpans(work);
   return (
-    <section id="work" className="py-20 sm:py-28">
+    <section id="work" className="py-16 sm:py-24">
       <div className="container-page">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div className="max-w-2xl">
             <p className="eyebrow">Recent work</p>
-            <h2 className="mt-3 text-4xl font-bold sm:text-5xl">Fresh off the build plate.</h2>
+            <h2 className="mt-3 text-3xl font-bold sm:text-4xl">Fresh off the build plate.</h2>
           </div>
           <a href="#quote" className="btn-outline-dark self-start sm:self-auto">
             Start your project
