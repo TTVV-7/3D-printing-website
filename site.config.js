@@ -27,6 +27,10 @@ export const site = {
   // The live generator app (3D-print-sandbox repo). Linked from "Design your own".
   designerUrl: "https://design.printyours.ca",
 
+  // Google Search Console "HTML tag" verification: paste just the content="..."
+  // value here. Leave empty if you verified with a DNS record instead.
+  googleSiteVerification: "",
+
   // Public contact email: shown in the footer, beside the quote form and in the
   // no-JavaScript fallback. Leave empty to rely on the form.
   email: "thomas.verigin@gmail.com",
