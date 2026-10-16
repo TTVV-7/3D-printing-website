@@ -53,10 +53,10 @@ export const pricing = {
     {
       key: "print",
       title: "Print from your file",
-      price: "from $15",
+      price: "from $10",
       unit: "per order",
       body: "You have an STL, 3MF or a MakerWorld / Printables link. I check it, pick settings and print it.",
-      includes: ["Most small parts land between $15 and $40", "Priced by material and print time", "Free reprint if it's not right"],
+      includes: ["Most small parts land between $10 and $40", "Priced by material and print time", "Free reprint if it's not right"],
     },
     {
       key: "design",
@@ -109,7 +109,7 @@ export const estimate = {
   },
   machinePerHour: 3, // $ per hour of print time
   setupPerPart: 5, // $ per distinct file: checking, slicing, plate removal
-  orderMinimum: 15, // $ -- matches "from $15" in Services
+  orderMinimum: 10, // $ -- matches "from $10" in Services
   // Slicer assumptions: solid skin this thick (mm) plus this infill inside,
   // plus a bit extra for supports and purge.
   wallMm: 0.9,

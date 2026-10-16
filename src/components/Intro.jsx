@@ -88,7 +88,7 @@ export function Intro() {
       </p>
 
       <a
-        href="#design"
+        href="#quote"
         aria-label="Scroll down"
         className="absolute bottom-6 left-1/2 flex -translate-x-1/2 flex-col items-center gap-1 font-mono text-[11px] uppercase tracking-widest text-white/50 hover:text-white"
       >

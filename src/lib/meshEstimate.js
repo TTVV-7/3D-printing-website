@@ -113,26 +113,43 @@ export function estimateOrder(parts, options, cfg) {
   const quantity = Math.max(1, Number(options.quantity) || 1);
   const discount = cfg.bulk.find((b) => quantity >= b.min)?.off ?? 0;
 
-  let grams = 0, hours = 0, filamentCost = 0, timeCost = 0, setup = 0;
+  // Per-copy cost of one set of parts, plus setup once per file.
+  let gramsEach = 0, hoursEach = 0, filamentEach = 0, timeEach = 0, setup = 0;
   for (const { measure } of parts) {
     const u = partUsage(measure, options, cfg);
-    grams += u.grams * quantity;
-    hours += u.hours * quantity;
-    filamentCost += u.grams * u.perGram * quantity;
-    timeCost += u.hours * cfg.machinePerHour * quantity;
+    gramsEach += u.grams;
+    hoursEach += u.hours;
+    filamentEach += u.grams * u.perGram;
+    timeEach += u.hours * cfg.machinePerHour;
     setup += cfg.setupPerPart;
   }
+  const costFor = (q) => {
+    const off = cfg.bulk.find((b) => q >= b.min)?.off ?? 0;
+    return ((filamentEach + timeEach) * q + setup) * (1 - off);
+  };
 
-  const total = Math.max(cfg.orderMinimum, (filamentCost + timeCost + setup) * (1 - discount));
+  const raw = costFor(quantity);
+  const total = Math.max(cfg.orderMinimum, raw);
+
+  // Under the minimum the customer is paying for unused capacity: find how
+  // many copies the same price would cover (capped so it stays sensible).
+  let sameCopies = quantity;
+  while (sameCopies < 20 && costFor(sameCopies + 1) <= cfg.orderMinimum) sameCopies += 1;
+
+  const grams = gramsEach * quantity, hours = hoursEach * quantity;
+  const filamentCost = filamentEach * quantity, timeCost = timeEach * quantity;
   return {
     quantity,
     discount,
+    belowMinimum: raw < cfg.orderMinimum,
+    sameCopies,
     grams,
     hours,
     filamentCost,
     timeCost,
     total,
-    low: Math.max(cfg.orderMinimum, Math.floor(total * cfg.low)),
-    high: Math.max(cfg.orderMinimum, Math.ceil(total * cfg.high)),
+    // At the minimum the price is simply the minimum, no range.
+    low: raw < cfg.orderMinimum ? cfg.orderMinimum : Math.max(cfg.orderMinimum, Math.floor(total * cfg.low)),
+    high: raw < cfg.orderMinimum ? cfg.orderMinimum : Math.max(cfg.orderMinimum, Math.ceil(total * cfg.high)),
   };
 }

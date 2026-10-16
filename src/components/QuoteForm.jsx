@@ -27,7 +27,7 @@ const QUALITIES = [
 
 const EMPTY = {
   name: "", email: "", details: "", url: "",
-  material: "", quality: "", quantity: "1", deadline: "", budget: "",
+  material: "", quality: "", quantity: "1", deadline: "",
 };
 
 function Field({ label, required, hint, children }) {
@@ -105,6 +105,18 @@ export function QuoteForm({
 
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
 
+  const printOptions = (
+    <div className="grid gap-4 sm:grid-cols-3">
+      <MaterialField value={form.material} onChange={set("material")} />
+      <Field label="Quality">
+        <select className="field" value={form.quality} onChange={set("quality")}>
+          {QUALITIES.map((q) => <option key={q.label} value={q.value}>{q.label}</option>)}
+        </select>
+      </Field>
+      <QuantityField value={form.quantity} onChange={set("quantity")} />
+    </div>
+  );
+
   async function handleSubmit(e) {
     e.preventDefault();
     setError(null);
@@ -155,7 +167,7 @@ export function QuoteForm({
       quality: form.quality || null,
       quantity: Number(form.quantity) || 1,
       deadline: form.deadline || null,
-      budget: form.budget.trim() || null,
+      budget: null,
       files: uploaded,
       title: titlePrefix + (form.details.trim().slice(0, 120) || form.url.trim()),
       stlName: firstMesh,
@@ -218,7 +230,16 @@ export function QuoteForm({
         <FileDrop files={files} onChange={setFiles} disabled={submitting} />
       </Field>
 
-      <InstantEstimate estimate={estimate} material={form.material} quality={form.quality} />
+      {/* With a model attached, material / quality / quantity sit inside the
+          estimate so the price visibly follows them. */}
+      <InstantEstimate
+        estimate={estimate}
+        material={form.material}
+        quality={form.quality}
+        onQuantity={(q) => setForm((f) => ({ ...f, quantity: String(q) }))}
+      >
+        {printOptions}
+      </InstantEstimate>
 
       <button
         type="button"
@@ -226,7 +247,7 @@ export function QuoteForm({
         aria-expanded={more}
         className="flex w-full items-center justify-between gap-2 rounded-xl border border-dashed border-ink/15 px-3.5 py-2.5 text-left text-sm font-medium text-ink/70 sm:hidden"
       >
-        More details (link, material, quantity, date)
+        More details ({estimate.parts.length ? "link, date" : "link, material, quantity, date"})
         <ChevronDown size={16} className={clsx("transition-transform", more && "rotate-180")} />
       </button>
 
@@ -243,22 +264,11 @@ export function QuoteForm({
           </p>
         )}
 
-        <div className="grid gap-4 sm:grid-cols-3">
-          <MaterialField value={form.material} onChange={set("material")} />
-          <Field label="Quality">
-            <select className="field" value={form.quality} onChange={set("quality")}>
-              {QUALITIES.map((q) => <option key={q.label} value={q.value}>{q.label}</option>)}
-            </select>
-          </Field>
-          <QuantityField value={form.quantity} onChange={set("quantity")} />
-        </div>
+        {!estimate.parts.length && printOptions}
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid gap-4 sm:grid-cols-3">
           <Field label="Needed by" hint="(optional)">
             <input className="field" type="date" value={form.deadline} onChange={set("deadline")} />
-          </Field>
-          <Field label="Budget" hint="(optional)">
-            <input className="field" value={form.budget} onChange={set("budget")} placeholder="e.g. under $40" />
           </Field>
         </div>
       </div>

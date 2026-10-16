@@ -16,12 +16,12 @@ export function App() {
       <Header />
       <main>
         <Intro />
+        <Quote />
         <Designer />
         <Services />
         <Work />
         <Materials />
         <Reviews />
-        <Quote />
       </main>
       <Footer />
       <CookieBanner />

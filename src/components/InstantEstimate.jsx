@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Loader2, AlertCircle, Calculator } from "lucide-react";
+import { Loader2, AlertCircle, Calculator, Copy } from "lucide-react";
 import { clsx } from "clsx";
 import { estimate as cfg } from "../../site.config.js";
 
@@ -179,7 +179,9 @@ function PartRow({ part, onToggleInches, selected, onSelect }) {
 
 // Ballpark price under the file drop. Purely informational: the request still
 // goes through the normal review and the customer gets a firm quote by email.
-export function InstantEstimate({ estimate, material, quality }) {
+// `children` are the material / quality / quantity fields, shown inside the box
+// so changing them visibly moves the price. `onQuantity` sets the quantity.
+export function InstantEstimate({ estimate, material, quality, onQuantity, children }) {
   const { parts, order, toggleInches } = estimate;
   const [selectedKey, setSelectedKey] = useState(null);
   if (!parts.length) return null;
@@ -214,6 +216,8 @@ export function InstantEstimate({ estimate, material, quality }) {
         </ul>
       </div>
 
+      {children && <div className="mt-4 border-t border-ink/10 pt-4">{children}</div>}
+
       {order && (
         <div className="mt-4 border-t border-ink/10 pt-3">
           <p className="flex flex-wrap items-baseline justify-between gap-x-3">
@@ -228,6 +232,29 @@ export function InstantEstimate({ estimate, material, quality }) {
             {materialName}, {qualityName === "adaptive" ? "adaptive layer height" : `${qualityName} quality`}, {order.quantity} {order.quantity === 1 ? "copy" : "copies"}
             {order.discount > 0 && ` (${Math.round(order.discount * 100)}% bulk discount)`}. CAD before tax and shipping.
           </p>
+          {order.belowMinimum && (
+            <div className="mt-3 flex items-start gap-1.5 rounded-xl bg-white px-3 py-2 text-xs leading-relaxed text-ink/70 ring-1 ring-ink/5">
+              <Copy size={13} className="mt-0.5 flex-shrink-0 text-flame" />
+              <span>
+                Small job: every order has a {fmtMoney(cfg.orderMinimum)} minimum.{" "}
+                {order.sameCopies > order.quantity
+                  ? <>That covers up to <strong className="font-semibold">{order.sameCopies} copies</strong> at no extra cost, or add another part to this order.</>
+                  : <>A good time to add another part to this order.</>}
+                {order.sameCopies > order.quantity && onQuantity && (
+                  <>
+                    {" "}
+                    <button
+                      type="button"
+                      onClick={() => onQuantity(order.sameCopies)}
+                      className="font-semibold text-flame underline-offset-4 hover:underline"
+                    >
+                      Make it {order.sameCopies}
+                    </button>
+                  </>
+                )}
+              </span>
+            </div>
+          )}
           <p className="mt-3 flex items-start gap-1.5 rounded-xl bg-flame-100/60 px-3 py-2 text-xs leading-relaxed text-ink/75">
             <AlertCircle size={13} className="mt-0.5 flex-shrink-0 text-flame" />
             <span>
