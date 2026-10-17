@@ -40,19 +40,22 @@ export default async function handler(req, res) {
   const live = id.startsWith("cs_live_");
   const dashboard = `https://dashboard.stripe.com/${live ? "" : "test/"}payments/${pi.id}`;
 
+  // One line per design in the cart: item1, item2, ... (api/sticker-checkout.js).
+  const items = Object.keys(m)
+    .filter((k) => /^item\d+$/.test(k))
+    .sort((a, b) => a.slice(4) - b.slice(4))
+    .map((k) => m[k]);
+  const imageOf = (note) => note.match(/image: (https:\S+)/)?.[1];
+  const qtyOf = (note) => Number(note.match(/^(\d+) x/)?.[1]) || 0;
+  const count = items.reduce((n, note) => n + qtyOf(note), 0);
+
   const details = [
     `PAID STICKER ORDER${live ? "" : " (Stripe TEST mode, no real money)"}`,
     `Card held, not charged yet: capture it in Stripe once printed, or cancel the hold.`,
     `${dashboard}`,
     ``,
-    `Quantity: ${m.qty}`,
-    `Size: ${m.size}`,
-    `Background design: ${m.design || "none"}`,
-    `Edge ring: ${m.ring || "none"}`,
-    `Label: ${m.label}`,
-    `Ink: ${m.ink}`,
-    `Customer's file: ${m.file || "(sample image)"}`,
-    `Print-ready image: ${m.art || "(not uploaded -- rebuild from the settings above)"}`,
+    `${items.length} design${items.length > 1 ? "s" : ""}, ${count} stickers:`,
+    ...items.flatMap((note, i) => [``, `${i + 1}. ${note.split(" | ").join("\n   ")}`]),
     ``,
     `Delivery: ${delivery?.name || m.delivery}`,
     ...(addr
@@ -75,13 +78,15 @@ export default async function handler(req, res) {
     url: null,
     material: "Sticker",
     quality: null,
-    quantity: Number(m.qty) || 1,
+    quantity: count || 1,
     deadline: null,
     budget: `Paid ${money(session.amount_total)} (held)`,
-    files: m.art ? [{ name: "sticker.png", size: 0, url: m.art }] : [],
-    title: `Sticker order (paid): ${m.qty} × ${m.size}, ${m.label}`,
+    files: items
+      .map((note, i) => imageOf(note) && { name: `sticker-${i + 1}.png`, size: 0, url: imageOf(note) })
+      .filter(Boolean),
+    title: `Sticker order (paid): ${count} stickers, ${items.length} design${items.length > 1 ? "s" : ""}`,
     stlName: null,
-    thumbnailUrl: m.art || null,
+    thumbnailUrl: imageOf(items[0] || "") || null,
     weightG: null,
     printTimeHrs: null,
     filamentCost: null,

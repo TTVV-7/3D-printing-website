@@ -6,10 +6,10 @@ import { clsx } from "clsx";
 import { stickers } from "../../site.config.js";
 import { renderThermal, DOTS_PER_MM } from "./thermal.js";
 import { DesignControls } from "./DesignControls.jsx";
-import { loadDesignImages } from "./library.js";
+
 import { StickerEditor } from "./StickerEditor.jsx";
 import { Checkout } from "./Checkout.jsx";
-import { priceEach, sizeOf } from "./pricing.js";
+import { priceEach, sizeOf, lineTotal, itemLabel } from "./pricing.js";
 
 // Typefaces for text layers; loaded in stickers/index.html.
 const FONTS = [
@@ -21,6 +21,31 @@ const FONTS = [
   { family: "Special Elite", name: "Typewriter", weight: 400 },
 ];
 const fontOf = (family) => FONTS.find((f) => f.family === family) || FONTS[0];
+
+// The cart lives in this browser, so it survives a reload or a trip to Stripe
+// and back. Each line holds its print-ready PNG, a few kB.
+const MAX_CART = 20;
+function useCart() {
+  const [cart, setCart] = useState([]);
+  useEffect(() => {
+    try {
+      setCart(JSON.parse(localStorage.getItem("sticker-cart")) || []);
+    } catch {
+      // No storage (private window): the cart just won't outlast the page.
+    }
+  }, []);
+  const save = (next) =>
+    setCart((cur) => {
+      const value = typeof next === "function" ? next(cur) : next;
+      try {
+        localStorage.setItem("sticker-cart", JSON.stringify(value));
+      } catch {
+        // Full or blocked storage: keep it in memory.
+      }
+      return value;
+    });
+  return [cart, save];
+}
 
 let nextId = 1;
 const newId = () => `l${nextId++}`;
@@ -114,6 +139,8 @@ export function StickerStudio() {
   const [invert, setInvert] = useState(false);
   const [qty, setQty] = useState(10);
   const [checkout, setCheckout] = useState(false);
+  const [cart, setCart] = useCart();
+  const [added, setAdded] = useState(false);
 
   useEffect(() => {
     loadImage("/stickers/sample.webp")
@@ -126,8 +153,6 @@ export function StickerStudio() {
   // No cutting: the sticker is the shape of its label.
   const crop = stock.crop || "none";
 
-  // Logo designs draw from artwork: draw again once it's here.
-  useEffect(() => loadDesignImages("/stickers/designs", () => setFontsReady((n) => n + 1)), []);
 
   const art = useMemo(
     () =>
@@ -232,6 +257,7 @@ export function StickerStudio() {
     const session = new URLSearchParams(location.search).get("paid");
     if (!session) return;
     setPaid(true);
+    setCart([]); // paid for: start fresh
     // Files the order and emails it (api/sticker-confirm.js). Only once per
     // order, however often this runs.
     fetch("/api/sticker-confirm", {
@@ -245,6 +271,27 @@ export function StickerStudio() {
   const each = priceEach(size, finish, qty);
   const total = each * qty;
   const nextBreak = stickers.pricing.breaks.find((b) => qty < b.qty);
+
+  // The sticker on screen, as a cart line: its print-ready image and every
+  // setting needed to price, print and make it again.
+  const cartItem = () => ({
+    id: `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    art: art.toDataURL("image/png"),
+    sizeKey: d.sizeKey,
+    ring: d.ring,
+    finishKey: finishDef.key,
+    colourKey: colour.key,
+    qty,
+    ink: { mode, threshold, invert },
+    fileName,
+  });
+  function addToCart() {
+    setCart((c) => [...c, cartItem()].slice(-MAX_CART));
+    setAdded(true);
+  }
+  // Something changed since it went in: the button offers to add it again.
+  useEffect(() => setAdded(false), [art, qty, finishDef, colour]);
+  const cartTotal = cart.reduce((sum, it) => sum + lineTotal(it), 0);
 
   return (
     <section className="bg-paper pb-16 pt-24 sm:pb-24 sm:pt-28">
@@ -264,7 +311,7 @@ export function StickerStudio() {
           <h1 className="mt-3 text-4xl font-bold sm:text-5xl">Your image, as a sticker.</h1>
           <p className="mt-4 text-ink/65 sm:text-lg">
             Thermal printed in crisp black on die-cut labels. Drop in an image or type some text,
-            pick a label, a design and a border, and see it to scale.
+            pick a label and a border, and see it to scale.
           </p>
         </div>
 
@@ -453,19 +500,6 @@ export function StickerStudio() {
                             </button>
                           ))}
                         </div>
-                        {d.pattern !== "none" && (
-                          <div className="flex gap-2">
-                            {[
-                              ["solid", "Solid black"],
-                              ["fill", "Design fills letters"],
-                              ["cutout", "Cut out of design"],
-                            ].map(([k, name]) => (
-                              <Choice key={k} active={(sel.style || "solid") === k} onClick={() => patchSel({ style: k })} className="flex-1 text-xs">
-                                {name}
-                              </Choice>
-                            ))}
-                          </div>
-                        )}
                       </>
                     )}
                     <div className="grid gap-3 sm:grid-cols-2">
@@ -693,10 +727,61 @@ export function StickerStudio() {
                   Order {nextBreak.qty}+ for {Math.round(nextBreak.off * 100)}% off each.
                 </p>
               )}
-              <button type="button" onClick={() => setCheckout(true)} className="btn-primary mt-4 w-full">
-                <ShoppingBag size={18} /> Check out
+              <button
+                type="button"
+                onClick={addToCart}
+                disabled={added}
+                className={clsx("btn mt-4 w-full", added ? "bg-white/10 text-white/70" : "bg-white text-ink hover:bg-paper")}
+              >
+                {added ? <><Check size={18} /> In your cart. Design another?</> : <><Plus size={18} /> Add to cart</>}
               </button>
             </div>
+
+            {cart.length > 0 && (
+              <div className="rounded-2xl bg-white p-4 ring-1 ring-ink/10" id="sticker-cart">
+                <p className="flex items-baseline justify-between text-sm font-semibold">
+                  Your cart
+                  <span className="font-normal text-ink/50">
+                    {cart.length} design{cart.length > 1 ? "s" : ""} · {cart.reduce((n, it) => n + it.qty, 0)} stickers
+                  </span>
+                </p>
+                <ul className="mt-3 divide-y divide-ink/10">
+                  {cart.map((it) => (
+                    <li key={it.id} className="flex items-center gap-3 py-2">
+                      <img src={it.art} alt="" className="h-11 w-11 flex-none rounded-lg bg-paper-dark object-contain p-1 [image-rendering:pixelated]" />
+                      <span className="min-w-0 flex-1 text-sm">
+                        <span className="block truncate font-medium">{it.qty} × {sizeOf(it.sizeKey).name}</span>
+                        <span className="block truncate text-xs text-ink/55">{itemLabel(it)}</span>
+                      </span>
+                      <span className="text-sm font-semibold">${lineTotal(it).toFixed(2)}</span>
+                      <button
+                        type="button"
+                        onClick={() => setCart((c) => c.filter((x) => x.id !== it.id))}
+                        aria-label="Remove from cart"
+                        className="rounded-lg p-1.5 text-ink/50 hover:bg-flame hover:text-white"
+                      >
+                        <X size={14} />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+                <button type="button" onClick={() => setCheckout(true)} className="btn-primary mt-3 w-full">
+                  <ShoppingBag size={18} /> Check out · ${cartTotal.toFixed(2)}
+                </button>
+              </div>
+            )}
+            {!cart.length && (
+              <button
+                type="button"
+                onClick={() => {
+                  addToCart();
+                  setCheckout(true);
+                }}
+                className="btn-primary -mt-3 w-full"
+              >
+                <ShoppingBag size={18} /> Check out just this one
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -704,7 +789,8 @@ export function StickerStudio() {
       {checkout && (
         <Checkout
           onClose={() => setCheckout(false)}
-          order={{ art, size, design: d, finish: finishDef, colour, qty, each, total, ink: { mode, threshold, invert }, fileName }}
+          items={cart}
+          onRemove={(id) => setCart((c) => c.filter((x) => x.id !== id))}
         />
       )}
     </section>

@@ -15,13 +15,12 @@
 // Not reached by `npm run dev` (Vite proxies /api to the store backend);
 // use `npx vercel dev` or a preview deploy to try a real payment.
 import { priceEach, deliveryCost, finishOf, colourOf, deliveryOf, labelName, sizeOf } from "../src/stickers/pricing.js";
-import { DESIGNS, RING_GROUPS } from "../src/stickers/library.js";
+import { RING_GROUPS } from "../src/stickers/library.js";
 import { stripe, stripeKey } from "./_stripe.js";
 
-const DESIGN_NAMES = Object.fromEntries([["none", "none"], ...DESIGNS]);
 const RING_NAMES = Object.fromEntries([["none", "none"], ...RING_GROUPS.flatMap(([, r]) => r)]);
-const seedOf = (v) => Math.floor(clamp(v, 0, 1e9));
 const MAX_QTY = 1000;
+const MAX_ITEMS = 20;
 // Only images uploaded through the store backend's Blob store.
 const BLOB_URL = /^https:\/\/[a-z0-9-]+\.public\.blob\.vercel-storage\.com\/[\w\-./]+\.png$/;
 
@@ -36,14 +35,39 @@ export default async function handler(req, res) {
   if (!stripeKey()) return res.status(503).json({ error: "Payments are not set up yet" });
 
   const o = req.body || {};
-  const finish = finishOf(o.finish);
-  const colour = colourOf(finish, o.colour);
   const delivery = deliveryOf(o.delivery);
-  const stock = sizeOf(o.size);
-  if (!colour || !delivery || !stock || !DESIGN_NAMES[o.pattern] || !RING_NAMES[o.ring]) {
-    return res.status(400).json({ error: "Unknown option" });
+  const list = Array.isArray(o.items) ? o.items : [];
+  if (!delivery || !list.length || list.length > MAX_ITEMS) return res.status(400).json({ error: "Unknown option" });
+
+  // Each design in the cart, checked and priced here: never trust the page's price.
+  const items = [];
+  for (const it of list) {
+    const finish = finishOf(it?.finish);
+    const colour = colourOf(finish, it?.colour);
+    const stock = sizeOf(it?.size);
+    if (!colour || !stock || !RING_NAMES[it.ring]) return res.status(400).json({ error: "Unknown option" });
+    if (it.ring !== "none" && stock.w !== stock.h) return res.status(400).json({ error: "Rings need a round or square label" });
+    const qty = Math.round(clamp(it.qty, 1, MAX_QTY));
+    const ink = it.ink || {};
+    const label = labelName(finish, colour);
+    items.push({
+      stock,
+      qty,
+      unit: cents(priceEach(stock, finish.key, qty)),
+      art: BLOB_URL.test(it.art || "") ? it.art : "",
+      desc: `${stock.name} label, ${label.toLowerCase()}${it.ring !== "none" ? `, ${RING_NAMES[it.ring].toLowerCase()} ring` : ""}`,
+      // Everything needed to print it again, on one line (Stripe allows 500
+      // characters per metadata value).
+      note: [
+        `${qty} x ${stock.name} (${stock.w} x ${stock.h} mm, printer size ${stock.code})`,
+        label,
+        `ring: ${RING_NAMES[it.ring]}`,
+        `ink: ${ink.mode === "dither" ? "dotted" : "solid"}, darkness ${clamp(ink.threshold, 0, 255)}${ink.invert ? ", inverted" : ""}`,
+        `file: ${short(it.file, 60) || "(sample)"}`,
+        `image: ${BLOB_URL.test(it.art || "") ? it.art : "(not uploaded)"}`,
+      ].join(" | ").slice(0, 500),
+    });
   }
-  if (o.ring !== "none" && stock.w !== stock.h) return res.status(400).json({ error: "Rings need a round or square label" });
   const mailed = delivery.key !== "pickup";
 
   // Name, email and (when mailed) the address, typed on the page.
@@ -64,32 +88,17 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: "Address incomplete" });
   }
 
-  // Never trust the page's price: rebuild it from the order.
-  const { w, h } = stock;
-  const qty = Math.round(clamp(o.qty, 1, MAX_QTY));
-  const each = priceEach({ w, h }, finish.key, qty);
-  const unit = cents(each);
-  const shipping = deliveryCost(delivery, (unit * qty) / 100);
-  const art = BLOB_URL.test(o.art || "") ? o.art : "";
-  const ink = o.ink || {};
-
+  const subtotal = items.reduce((sum, it) => sum + it.unit * it.qty, 0) / 100;
+  const shipping = deliveryCost(delivery, subtotal);
+  const count = items.reduce((n, it) => n + it.qty, 0);
   const origin = `https://${req.headers["x-forwarded-host"] || req.headers.host}`;
-  const label = labelName(finish, colour);
-  const desc = `${stock.name} label, ${label.toLowerCase()}`;
 
-  // Everything needed to print it again, kept on the payment in Stripe.
   const metadata = {
     kind: "sticker",
-    size: `${stock.name} (${w} x ${h} mm, printer size ${stock.code})`,
-    design: o.pattern === "none" ? "none" : `${DESIGN_NAMES[o.pattern]} (seed ${seedOf(o.patternSeed)})`,
-    ring: RING_NAMES[o.ring],
-    label,
     name,
-    qty,
     delivery: delivery.key,
-    ink: `${ink.mode === "dither" ? "dotted" : "solid"}, darkness ${clamp(ink.threshold, 0, 255)}${ink.invert ? ", inverted" : ""}`,
-    file: short(o.file),
-    art,
+    designs: items.length,
+    ...Object.fromEntries(items.map((it, i) => [`item${i + 1}`, it.note])),
   };
 
   try {
@@ -98,20 +107,20 @@ export default async function handler(req, res) {
       customer_email: email,
       payment_intent_data: {
         capture_method: "manual",
-        description: `${qty} × sticker, ${desc}`,
+        description: `${count} stickers, ${items.length} design${items.length > 1 ? "s" : ""}`,
         metadata,
         receipt_email: email,
         ...(address && { shipping: { name, address } }),
       },
       line_items: [
-        {
-          quantity: qty,
+        ...items.map((it) => ({
+          quantity: it.qty,
           price_data: {
             currency: "cad",
-            unit_amount: unit,
-            product_data: { name: "Custom sticker", description: desc, ...(art && { images: [art] }) },
+            unit_amount: it.unit,
+            product_data: { name: "Custom sticker", description: it.desc, ...(it.art && { images: [it.art] }) },
           },
-        },
+        })),
         ...(shipping
           ? [{ quantity: 1, price_data: { currency: "cad", unit_amount: cents(shipping), product_data: { name: delivery.name } } }]
           : []),

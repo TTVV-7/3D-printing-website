@@ -2,10 +2,11 @@ import { useEffect, useRef, useState } from "react";
 import { Dices } from "lucide-react";
 import { clsx } from "clsx";
 import { stickers } from "../../site.config.js";
-import { DESIGNS, RING_GROUPS, drawDesign, drawEdgeRing, loadDesignImages } from "./library.js";
+import { RING_GROUPS, drawEdgeRing } from "./library.js";
 
-// Label size, background design and edge ring: the options from the in-shop
-// Sticker Printer app. There's no cutting, so a sticker is the shape of its
+// Label size and edge ring: options from the in-shop Sticker Printer app.
+// (Its generated background designs are in library.js too, but not offered
+// for now.) There's no cutting, so a sticker is the shape of its
 // label: round labels are round, the rest rectangles.
 
 const newSeed = () => Math.floor(Math.random() * 1e9);
@@ -81,12 +82,8 @@ function SizeTile({ s, active, onClick }) {
 
 export function DesignControls({ d, set }) {
   const size = stickers.sizes.find((s) => s.key === d.sizeKey);
-  // Repaint the logo designs once their artwork has downloaded.
-  const [art, setArt] = useState(0);
-  const [patternsOpen, setPatternsOpen] = useState(d.pattern !== "none");
   const [ringsOpen, setRingsOpen] = useState(d.ring !== "none");
   const [ringGroup, setRingGroup] = useState(ringGroupOf(d.ring) || RING_GROUPS[0][0]);
-  useEffect(() => loadDesignImages("/stickers/designs", () => setArt((n) => n + 1)), []);
 
   return (
     <>
@@ -113,55 +110,6 @@ export function DesignControls({ d, set }) {
           ))}
         </div>
       </div>
-
-      <details
-        className="rounded-2xl bg-white p-4 ring-1 ring-ink/10"
-        open={patternsOpen}
-        onToggle={(e) => setPatternsOpen(e.currentTarget.open)}
-      >
-        <summary className="flex cursor-pointer items-center justify-between text-sm font-semibold">
-          Background design
-          <span className="font-normal text-ink/50">
-            {d.pattern === "none" ? "None" : DESIGNS.find(([k]) => k === d.pattern)?.[1]}
-          </span>
-        </summary>
-        {patternsOpen && (
-        <div className="mt-4 flex items-start gap-2">
-          <div className="grid flex-1 grid-cols-5 gap-2 sm:grid-cols-6">
-            {[["none", "None"], ...DESIGNS].map(([key, name]) => (
-              <button
-                key={key}
-                type="button"
-                onClick={() => set({ pattern: key })}
-                aria-pressed={d.pattern === key}
-                title={name}
-                className={clsx(
-                  "aspect-square overflow-hidden rounded-lg ring-2 transition",
-                  d.pattern === key ? "ring-flame" : "ring-ink/10 hover:ring-ink/30",
-                )}
-              >
-                {key === "none" ? (
-                  <span className="flex h-full items-center justify-center text-[11px] text-ink/50">None</span>
-                ) : (
-                  <Thumb
-                    className="h-full w-full"
-                    deps={[key, d.patternSeed, art]}
-                    draw={(g, w, h) => drawDesign(g, w, h, key, d.patternSeed, null)}
-                  />
-                )}
-                <span className="sr-only">{name}</span>
-              </button>
-            ))}
-          </div>
-          {d.pattern !== "none" && <DiceButton label="New random design" onClick={() => set({ patternSeed: newSeed() })} />}
-        </div>
-        )}
-        {d.pattern !== "none" && (
-          <p className="mt-3 text-xs text-ink/55">
-            Text you add can be filled with the design or cut out of it: pick in the editor.
-          </p>
-        )}
-      </details>
 
       {size.w !== size.h ? (
         <p className="rounded-2xl bg-white p-4 text-sm text-ink/55 ring-1 ring-ink/10">

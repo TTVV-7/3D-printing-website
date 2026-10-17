@@ -1,18 +1,19 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { X, Lock, CreditCard, ArrowRight, Loader2 } from "lucide-react";
 import { clsx } from "clsx";
 import { stickers } from "../../site.config.js";
-import { deliveryCost, labelName, sizeOf } from "./pricing.js";
+import { deliveryCost, sizeOf, lineTotal, itemLabel } from "./pricing.js";
 
-// Uploads the print-ready image (through the store backend's /api/upload, same
-// as quote attachments), then sends the order to api/sticker-checkout.js,
+// Uploads each cart line's print-ready image (through the store backend's
+// /api/upload, same as quote attachments), then sends the cart to
+// api/sticker-checkout.js,
 // which hands back a Stripe Checkout page to go to. Until a Stripe key is set
 // there (or in `npm run dev`, where /api goes to the store backend) it can't,
 // and this says so instead.
 
-async function uploadArt(art) {
+async function uploadArt(dataUrl) {
   try {
-    const blob = await new Promise((ok) => art.toBlob(ok, "image/png"));
+    const blob = await (await fetch(dataUrl)).blob();
     const { upload } = await import("@vercel/blob/client");
     const id = `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
     const res = await upload(`requests/sticker-${id}/sticker.png`, blob, {
@@ -40,7 +41,7 @@ function Field({ label, className, ...props }) {
   );
 }
 
-export function Checkout({ order, onClose }) {
+export function Checkout({ items, onRemove, onClose }) {
   const [step, setStep] = useState("pay"); // pay -> (Stripe) | preview
   const [busy, setBusy] = useState(false);
   const [delivery, setDelivery] = useState(stickers.delivery[0]);
@@ -48,7 +49,6 @@ export function Checkout({ order, onClose }) {
   const [error, setError] = useState("");
   const set = (k) => (e) => setWho((w) => ({ ...w, [k]: e.target.value }));
   const mailed = delivery.key !== "pickup";
-  const thumb = useRef(null);
 
   useEffect(() => {
     const onKey = (e) => e.key === "Escape" && onClose();
@@ -56,15 +56,13 @@ export function Checkout({ order, onClose }) {
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  useEffect(() => {
-    const c = thumb.current;
-    if (!c || !order.art) return;
-    c.width = order.art.width;
-    c.height = order.art.height;
-    c.getContext("2d").drawImage(order.art, 0, 0);
-  }, [order.art, step]);
+  const subtotal = items.reduce((sum, it) => sum + lineTotal(it), 0);
+  const shipping = deliveryCost(delivery, subtotal);
 
-  const shipping = deliveryCost(delivery, order.total);
+  // Emptied the cart from in here: nothing left to pay for.
+  useEffect(() => {
+    if (!items.length) onClose();
+  }, [items.length, onClose]);
 
   function problem() {
     if (!who.name.trim()) return "Add your name.";
@@ -81,17 +79,21 @@ export function Checkout({ order, onClose }) {
     if (p) return;
     setBusy(true);
     try {
-      const art = order.art ? await uploadArt(order.art) : "";
+      const arts = await Promise.all(items.map((it) => uploadArt(it.art)));
       const r = await fetch("/api/sticker-checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          size: order.design.sizeKey,
-          pattern: order.design.pattern,
-          patternSeed: order.design.patternSeed,
-          ring: order.design.ring,
-          finish: order.finish.key,
-          colour: order.colour.key,
+          items: items.map((it, i) => ({
+            size: it.sizeKey,
+            ring: it.ring,
+            finish: it.finishKey,
+            colour: it.colourKey,
+            qty: it.qty,
+            ink: it.ink,
+            file: it.fileName,
+            art: arts[i],
+          })),
           customer: {
             name: who.name.trim(),
             email: who.email.trim(),
@@ -105,11 +107,7 @@ export function Checkout({ order, onClose }) {
               },
             }),
           },
-          qty: order.qty,
           delivery: delivery.key,
-          ink: order.ink,
-          file: order.fileName,
-          art,
         }),
       });
       const { url } = r.ok ? await r.json() : {};
@@ -135,27 +133,37 @@ export function Checkout({ order, onClose }) {
         </button>
         <p className="font-mono text-[10px] uppercase tracking-widest text-flame">Check out</p>
 
-        <div className="mt-4 flex items-center gap-4 rounded-2xl bg-white p-3 ring-1 ring-ink/10">
-          <div className="flex h-16 w-16 flex-none items-center justify-center rounded-xl bg-paper-dark">
-            <canvas ref={thumb} className="max-h-14 max-w-14" />
-          </div>
-          <div className="min-w-0 flex-1 text-sm">
-            <p className="font-semibold">
-              {order.qty} × sticker{order.qty > 1 ? "s" : ""}, {labelName(order.finish, order.colour).toLowerCase()}
-            </p>
-            <p className="text-ink/55">
-              {sizeOf(order.design.sizeKey).name} label
-            </p>
-          </div>
-          <p className="font-display font-semibold">${order.total.toFixed(2)}</p>
-        </div>
+        <ul className="mt-4 divide-y divide-ink/10 rounded-2xl bg-white px-3 ring-1 ring-ink/10">
+          {items.map((it) => (
+            <li key={it.id} className="flex items-center gap-3 py-2.5">
+              <img src={it.art} alt="" className="h-14 w-14 flex-none rounded-xl bg-paper-dark object-contain p-1 [image-rendering:pixelated]" />
+              <div className="min-w-0 flex-1 text-sm">
+                <p className="font-semibold">
+                  {it.qty} × {sizeOf(it.sizeKey).name} sticker{it.qty > 1 ? "s" : ""}
+                </p>
+                <p className="truncate text-ink/55">{itemLabel(it)}</p>
+              </div>
+              <p className="font-display font-semibold">${lineTotal(it).toFixed(2)}</p>
+              {step === "pay" && (
+                <button
+                  type="button"
+                  onClick={() => onRemove(it.id)}
+                  aria-label="Remove from cart"
+                  className="rounded-lg p-1.5 text-ink/50 hover:bg-flame hover:text-white"
+                >
+                  <X size={14} />
+                </button>
+              )}
+            </li>
+          ))}
+        </ul>
 
         {step === "pay" && (
           <form className="mt-6" onSubmit={pay} noValidate>
             <h2 className="text-xl font-bold">Delivery</h2>
             <div className="mt-3 space-y-2" role="radiogroup" aria-label="Delivery">
               {stickers.delivery.map((d) => {
-                const cost = deliveryCost(d, order.total);
+                const cost = deliveryCost(d, subtotal);
                 return (
                   <button
                     key={d.key}
@@ -204,8 +212,10 @@ export function Checkout({ order, onClose }) {
 
             <dl className="mt-5 space-y-2 text-sm">
               <div className="flex justify-between">
-                <dt className="text-ink/60">Stickers ({order.qty} × ${order.each.toFixed(2)})</dt>
-                <dd>${order.total.toFixed(2)}</dd>
+                <dt className="text-ink/60">
+                  Stickers ({items.reduce((n, it) => n + it.qty, 0)} across {items.length} design{items.length > 1 ? "s" : ""})
+                </dt>
+                <dd>${subtotal.toFixed(2)}</dd>
               </div>
               <div className="flex justify-between">
                 <dt className="text-ink/60">{delivery.name}</dt>
@@ -213,7 +223,7 @@ export function Checkout({ order, onClose }) {
               </div>
               <div className="flex justify-between border-t border-ink/10 pt-2 font-semibold">
                 <dt>Total before tax</dt>
-                <dd>${(order.total + shipping).toFixed(2)}</dd>
+                <dd>${(subtotal + shipping).toFixed(2)}</dd>
               </div>
             </dl>
             {error && <p className="mt-4 rounded-xl bg-flame-100 px-3 py-2 text-sm text-flame-600">{error}</p>}
