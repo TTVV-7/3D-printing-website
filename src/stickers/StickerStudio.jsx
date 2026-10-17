@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Hand, ImageUp, RotateCcw, ShoppingBag, Minus, Plus } from "lucide-react";
+import { CheckCircle2, Hand, ImageUp, RotateCcw, ShoppingBag, Minus, Plus } from "lucide-react";
 import { clsx } from "clsx";
 import { stickers } from "../../site.config.js";
 import { renderThermal, stickerSize, DOTS_PER_MM } from "./thermal.js";
 import { Checkout } from "./Checkout.jsx";
+import { priceEach } from "./pricing.js";
 
 const SHAPES = [
   { key: "rect", name: "Rectangle" },
@@ -18,14 +19,6 @@ const PRESETS = [
 ];
 
 const inches = (mm) => (mm / 25.4).toFixed(2).replace(/\.?0+$/, "");
-
-export function priceEach({ w, h }, finish, qty) {
-  const { perSqIn, minEach, glossyExtra, breaks } = stickers.pricing;
-  let each = Math.max(minEach, (w / 25.4) * (h / 25.4) * perSqIn);
-  if (finish === "glossy") each += glossyExtra;
-  const off = breaks.filter((b) => qty >= b.qty).reduce((a, b) => Math.max(a, b.off), 0);
-  return each * (1 - off);
-}
 
 function loadImage(src) {
   return new Promise((ok, fail) => {
@@ -151,6 +144,14 @@ export function StickerStudio() {
     });
   }
 
+  // Back from Stripe: /stickers/?paid=<session id>.
+  const [paid, setPaid] = useState(false);
+  useEffect(() => {
+    if (!new URLSearchParams(location.search).has("paid")) return;
+    setPaid(true);
+    history.replaceState(null, "", location.pathname);
+  }, []);
+
   const each = priceEach(size, finish, qty);
   const total = each * qty;
   const nextBreak = stickers.pricing.breaks.find((b) => qty < b.qty);
@@ -158,6 +159,16 @@ export function StickerStudio() {
   return (
     <section className="bg-paper pb-16 pt-24 sm:pb-24 sm:pt-28">
       <div className="container-page">
+        {paid && (
+          <div className="mb-8 flex items-start gap-3 rounded-2xl bg-white p-4 ring-1 ring-flame/40">
+            <CheckCircle2 size={22} className="mt-0.5 flex-none text-flame" />
+            <p className="text-sm">
+              <span className="font-semibold">Order received, thank you!</span> A receipt is on its
+              way by email. Your card is charged when the stickers are printed, usually within two
+              business days.
+            </p>
+          </div>
+        )}
         <div className="max-w-2xl">
           <p className="eyebrow">Stickers</p>
           <h1 className="mt-3 text-4xl font-bold sm:text-5xl">Your image, as a sticker.</h1>

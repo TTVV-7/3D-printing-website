@@ -121,6 +121,11 @@ export const stickers = {
     { key: "matte", name: "Matte", body: "Soft, no glare. Easy to write on." },
     { key: "glossy", name: "Glossy", body: "Laminated shine. Shrugs off scuffs and water." },
   ],
+  // Offered at checkout, in CAD.
+  shipping: [
+    { name: "Lettermail (Canada)", amount: 3.5, days: [3, 7] },
+    { name: "Local pickup in Vancouver", amount: 0, days: [1, 3] },
+  ],
   // Price per sticker = max(minEach, square inches x perSqIn), then the
   // biggest quantity break that applies.
   pricing: {

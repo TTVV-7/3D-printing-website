@@ -48,3 +48,26 @@ files/link were attached; no names or emails), visible under Analytics → Event
 
 All absolute URLs default to `https://printyours.ca`; set the `SITE_URL` env var to
 override (e.g. for a staging domain).
+
+## Sticker payments (Stripe)
+
+`/stickers` checks out through Stripe Checkout, no account needed:
+`api/sticker-checkout.js` (a Vercel function) works out the price on the server
+and sends the customer to Stripe's page. Until a key is set, the button says
+payments aren't on yet, so the page is safe to share as it is.
+
+The card is **held, not charged** (`capture_method: manual`). When an order comes
+in, Stripe dashboard → Payments → the payment → **Capture** once it's printed,
+or **Cancel** if you can't do it (no refund, no fee). Holds expire after 7 days.
+The order's size, paper, finish and print-ready image link are in the payment's
+metadata.
+
+1. Stripe dashboard → Developers → API keys. Start with the **test** secret key
+   (`sk_test_...`); pay with card `4242 4242 4242 4242`, any future date and CVC.
+2. Vercel → project → Settings → Environment Variables: `STRIPE_SECRET_KEY`.
+3. Optional: Vercel → Storage → create a Blob store and connect it to the project
+   (adds `BLOB_READ_WRITE_TOKEN`) so each order keeps the exact image to print.
+4. When ready for real money, swap in the live key (`sk_live_...`).
+
+`npm run dev` sends `/api` to the store backend, so it can't reach this function;
+use `npx vercel dev` or a preview deploy to try a payment.
