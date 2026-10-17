@@ -87,8 +87,13 @@ export function StickerStudio() {
   const [img, setImg] = useState(null);
   const [fileName, setFileName] = useState("");
   const [dragging, setDragging] = useState(false);
-  const [material, setMaterial] = useState(stickers.materials[0]);
-  const { finish, hex: paper } = material;
+  const [finishKey, setFinishKey] = useState(stickers.finishes[0].key);
+  const [colourKeys, setColourKeys] = useState({}); // last colour picked per finish
+  const finishDef = stickers.finishes.find((f) => f.key === finishKey);
+  const colour = finishDef.colours.find((c) => c.key === colourKeys[finishKey]) || finishDef.colours[0];
+  const finish = finishDef.key;
+  const paper = colour.hex;
+  const [realCard, setRealCard] = useState(false);
   const [shape, setShape] = useState("rounded");
   const [widthMm, setWidthMm] = useState(76.2);
   const [mode, setMode] = useState("solid");
@@ -123,8 +128,13 @@ export function StickerStudio() {
   useEffect(() => {
     if (!ready || !art) return;
     stage.current.update({ art, w: size.w, h: size.h, shape, finish, paper });
+    stage.current.onCardClick(() => setRealCard((r) => !r));
     stage.current.start();
   }, [ready, art, size, shape, finish, paper, stage]);
+
+  useEffect(() => {
+    if (ready) stage.current.cardLook(realCard);
+  }, [ready, realCard, stage]);
 
   // The flat, dot-for-dot print preview.
   useEffect(() => {
@@ -222,9 +232,23 @@ export function StickerStudio() {
               <span className="flex items-center gap-2">
                 <span className="h-3 w-3 rounded-sm ring-1 ring-ink/20" style={{ background: paper }} /> Your sticker
               </span>
-              <span className="flex items-center gap-2">
-                <span className="h-3 w-4 rounded-sm border border-dashed border-ink/40 bg-ink/5" /> A credit card, for scale
-              </span>
+              <button
+                type="button"
+                onClick={() => setRealCard((r) => !r)}
+                aria-pressed={realCard}
+                className="flex items-center gap-2 rounded-full py-0.5 hover:text-ink"
+              >
+                <span
+                  className={clsx(
+                    "h-3 w-4 rounded-sm",
+                    realCard ? "bg-gradient-to-br from-ink-600 to-ink" : "border border-dashed border-ink/40 bg-ink/5",
+                  )}
+                />
+                A credit card, for scale
+                <span className="text-flame underline-offset-2 hover:underline">
+                  {realCard ? "show as outline" : "show as a real card"}
+                </span>
+              </button>
             </p>
 
             <div className="flex items-center gap-4 rounded-2xl bg-white p-4 ring-1 ring-ink/10">
@@ -281,37 +305,63 @@ export function StickerStudio() {
               />
             </div>
 
-            {stickers.materials.length > 1 && (
-              <div>
-                <Label hint="ink is always black">Label</Label>
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                  {stickers.materials.map((m) => (
-                    <button
-                      key={m.key}
-                      type="button"
-                      onClick={() => setMaterial(m)}
-                      aria-pressed={material.key === m.key}
-                      title={m.body}
-                      className={clsx(
-                        "flex items-center gap-2.5 rounded-xl p-2 pr-3 text-left ring-1 transition",
-                        material.key === m.key ? "bg-white ring-2 ring-flame" : "bg-white ring-ink/15 hover:ring-ink/40",
-                      )}
-                    >
+            <div>
+              <Label hint="ink is always black">Finish</Label>
+              <div className="grid grid-cols-2 gap-2">
+                {stickers.finishes.map((f) => (
+                  <button
+                    key={f.key}
+                    type="button"
+                    onClick={() => setFinishKey(f.key)}
+                    aria-pressed={finish === f.key}
+                    className={clsx(
+                      "rounded-xl p-3 text-left ring-1 transition",
+                      finish === f.key ? "bg-ink text-white ring-ink" : "bg-white ring-ink/15 hover:ring-ink/40",
+                    )}
+                  >
+                    <span className="flex items-center gap-2 text-sm font-semibold">
                       <span
-                        className="relative h-8 w-8 flex-none overflow-hidden rounded-lg"
-                        style={{ background: m.hex, boxShadow: "inset 0 0 0 1px rgb(12 26 46 / 0.15)" }}
-                      >
-                        {m.finish === "glossy" && (
-                          <span className="absolute -left-2 top-0 h-full w-4 rotate-12 bg-white/70 blur-[2px]" />
-                        )}
-                      </span>
-                      <span className="min-w-0 text-sm font-medium leading-tight">{m.name}</span>
-                    </button>
-                  ))}
-                </div>
-                <p className="mt-1.5 text-xs text-ink/50">{material.body}</p>
+                        className="h-4 w-4 rounded-full ring-1 ring-black/10"
+                        style={{
+                          background:
+                            f.key === "chrome"
+                              ? "linear-gradient(135deg,#f4f5f7 0%,#9aa1ab 45%,#eef0f3 60%,#7d848f 100%)"
+                              : f.colours[0].hex,
+                        }}
+                      />
+                      {f.name}
+                    </span>
+                    <span className={clsx("mt-0.5 block text-xs", finish === f.key ? "text-white/60" : "text-ink/55")}>
+                      {f.body}
+                    </span>
+                  </button>
+                ))}
               </div>
-            )}
+
+              {finishDef.colours.length > 1 && (
+                <div className="mt-3">
+                  <div className="flex flex-wrap gap-2">
+                    {finishDef.colours.map((c) => (
+                      <button
+                        key={c.key}
+                        type="button"
+                        onClick={() => setColourKeys((k) => ({ ...k, [finishKey]: c.key }))}
+                        aria-pressed={colour.key === c.key}
+                        title={c.name}
+                        className={clsx(
+                          "h-9 w-9 rounded-full ring-2 ring-offset-2 ring-offset-paper transition",
+                          colour.key === c.key ? "ring-flame" : "ring-transparent hover:ring-ink/20",
+                        )}
+                        style={{ background: c.hex, boxShadow: "inset 0 0 0 1px rgb(12 26 46 / 0.15)" }}
+                      >
+                        <span className="sr-only">{c.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                  <p className="mt-1.5 text-xs text-ink/50">{colour.name}</p>
+                </div>
+              )}
+            </div>
 
             <div>
               <Label>Shape</Label>
@@ -420,7 +470,7 @@ export function StickerStudio() {
       {checkout && (
         <Checkout
           onClose={() => setCheckout(false)}
-          order={{ art, size, shape, material, qty, each, total, ink: { mode, threshold, invert }, fileName }}
+          order={{ art, size, shape, finish: finishDef, colour, qty, each, total, ink: { mode, threshold, invert }, fileName }}
         />
       )}
     </section>

@@ -2,14 +2,18 @@
 // out on the server from the same rules the page shows.
 import { stickers } from "../../site.config.js";
 
-export const materialOf = (key) => stickers.materials.find((m) => m.key === key);
+export const finishOf = (key) => stickers.finishes.find((f) => f.key === key);
+export const colourOf = (finish, key) => finish?.colours.find((c) => c.key === key);
+// "Yellow matte", or just "Chrome silver" when a finish comes in one colour.
+export const labelName = (finish, colour) =>
+  finish.colours.length > 1 ? `${colour.name} ${finish.name.toLowerCase()}` : finish.name;
 export const deliveryOf = (key) => stickers.delivery.find((d) => d.key === key);
 
 // Per sticker, in CAD, for a sticker w × h mm.
 export function priceEach({ w, h }, finish, qty) {
-  const { perSqIn, minEach, glossyExtra, breaks } = stickers.pricing;
+  const { perSqIn, minEach, chromeExtra, breaks } = stickers.pricing;
   let each = Math.max(minEach, (w / 25.4) * (h / 25.4) * perSqIn);
-  if (finish === "glossy") each += glossyExtra;
+  if (finish === "chrome") each += chromeExtra;
   const off = breaks.filter((b) => qty >= b.qty).reduce((a, b) => Math.max(a, b.off), 0);
   return each * (1 - off);
 }

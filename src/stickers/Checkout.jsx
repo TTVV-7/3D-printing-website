@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { X, Lock, CreditCard, ArrowRight, Loader2 } from "lucide-react";
 import { clsx } from "clsx";
 import { stickers } from "../../site.config.js";
-import { deliveryCost } from "./pricing.js";
+import { deliveryCost, labelName } from "./pricing.js";
 
 // Uploads the print-ready image (through the store backend's /api/upload, same
 // as quote attachments), then sends the order to api/sticker-checkout.js,
@@ -27,10 +27,27 @@ async function uploadArt(art) {
   }
 }
 
+const PROVINCES = ["AB", "BC", "MB", "NB", "NL", "NS", "NT", "NU", "ON", "PE", "QC", "SK", "YT"];
+const POSTAL = /^[A-Za-z]\d[A-Za-z] ?\d[A-Za-z]\d$/;
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function Field({ label, className, ...props }) {
+  return (
+    <label className={clsx("block text-sm", className)}>
+      <span className="mb-1 block font-medium text-ink/70">{label}</span>
+      {props.children || <input className="field" {...props} />}
+    </label>
+  );
+}
+
 export function Checkout({ order, onClose }) {
   const [step, setStep] = useState("pay"); // pay -> (Stripe) | preview
   const [busy, setBusy] = useState(false);
   const [delivery, setDelivery] = useState(stickers.delivery[0]);
+  const [who, setWho] = useState({ name: "", email: "", line1: "", line2: "", city: "", province: "BC", postal: "" });
+  const [error, setError] = useState("");
+  const set = (k) => (e) => setWho((w) => ({ ...w, [k]: e.target.value }));
+  const mailed = delivery.key !== "pickup";
   const thumb = useRef(null);
 
   useEffect(() => {
@@ -49,7 +66,19 @@ export function Checkout({ order, onClose }) {
 
   const shipping = deliveryCost(delivery, order.total);
 
-  async function pay() {
+  function problem() {
+    if (!who.name.trim()) return "Add your name.";
+    if (!EMAIL.test(who.email.trim())) return "Add an email address so you get the receipt.";
+    if (mailed && (!who.line1.trim() || !who.city.trim())) return "Add the street address and city.";
+    if (mailed && !POSTAL.test(who.postal.trim())) return "That postal code doesn't look right (e.g. V5K 0A1).";
+    return "";
+  }
+
+  async function pay(e) {
+    e.preventDefault();
+    const p = problem();
+    setError(p);
+    if (p) return;
     setBusy(true);
     try {
       const art = order.art ? await uploadArt(order.art) : "";
@@ -60,7 +89,21 @@ export function Checkout({ order, onClose }) {
           w: order.size.w,
           h: order.size.h,
           shape: order.shape,
-          material: order.material.key,
+          finish: order.finish.key,
+          colour: order.colour.key,
+          customer: {
+            name: who.name.trim(),
+            email: who.email.trim(),
+            ...(mailed && {
+              address: {
+                line1: who.line1.trim(),
+                line2: who.line2.trim(),
+                city: who.city.trim(),
+                state: who.province,
+                postal_code: who.postal.trim().toUpperCase(),
+              },
+            }),
+          },
           qty: order.qty,
           delivery: delivery.key,
           ink: order.ink,
@@ -97,7 +140,7 @@ export function Checkout({ order, onClose }) {
           </div>
           <div className="min-w-0 flex-1 text-sm">
             <p className="font-semibold">
-              {order.qty} × sticker{order.qty > 1 ? "s" : ""}, {order.material.name.toLowerCase()}
+              {order.qty} × sticker{order.qty > 1 ? "s" : ""}, {labelName(order.finish, order.colour).toLowerCase()}
             </p>
             <p className="text-ink/55">
               {order.size.w} × {order.size.h} mm · {order.shape === "rect" ? "rectangle" : order.shape}
@@ -107,7 +150,7 @@ export function Checkout({ order, onClose }) {
         </div>
 
         {step === "pay" && (
-          <div className="mt-6">
+          <form className="mt-6" onSubmit={pay} noValidate>
             <h2 className="text-xl font-bold">Delivery</h2>
             <div className="mt-3 space-y-2" role="radiogroup" aria-label="Delivery">
               {stickers.delivery.map((d) => {
@@ -136,6 +179,28 @@ export function Checkout({ order, onClose }) {
               })}
             </div>
 
+            <h2 className="mt-6 text-xl font-bold">{mailed ? "Your details and address" : "Your details"}</h2>
+            <div className="mt-3 grid grid-cols-2 gap-3">
+              <Field label="Name" className="col-span-2" value={who.name} onChange={set("name")} autoComplete="name" />
+              <Field label="Email" className="col-span-2" type="email" value={who.email} onChange={set("email")} autoComplete="email" />
+              {mailed && (
+                <>
+                  <Field label="Street address" className="col-span-2" value={who.line1} onChange={set("line1")} autoComplete="address-line1" />
+                  <Field label="Apartment, unit (optional)" className="col-span-2" value={who.line2} onChange={set("line2")} autoComplete="address-line2" />
+                  <Field label="City" className="col-span-2 sm:col-span-1" value={who.city} onChange={set("city")} autoComplete="address-level2" />
+                  <Field label="Province" className="col-span-1">
+                    <select className="field" value={who.province} onChange={set("province")} autoComplete="address-level1">
+                      {PROVINCES.map((p) => (
+                        <option key={p}>{p}</option>
+                      ))}
+                    </select>
+                  </Field>
+                  <Field label="Postal code" className="col-span-1" value={who.postal} onChange={set("postal")} autoComplete="postal-code" placeholder="V5K 0A1" />
+                </>
+              )}
+            </div>
+            {!mailed && <p className="mt-2 text-xs text-ink/50">I'll email you the pickup spot when it's ready.</p>}
+
             <dl className="mt-5 space-y-2 text-sm">
               <div className="flex justify-between">
                 <dt className="text-ink/60">Stickers ({order.qty} × ${order.each.toFixed(2)})</dt>
@@ -150,7 +215,8 @@ export function Checkout({ order, onClose }) {
                 <dd>${(order.total + shipping).toFixed(2)}</dd>
               </div>
             </dl>
-            <button type="button" onClick={pay} disabled={busy} className="btn mt-6 w-full bg-[#635bff] text-white hover:bg-[#5249e0] disabled:opacity-70">
+            {error && <p className="mt-4 rounded-xl bg-flame-100 px-3 py-2 text-sm text-flame-600">{error}</p>}
+            <button type="submit" disabled={busy} className="btn mt-6 w-full bg-[#635bff] text-white hover:bg-[#5249e0] disabled:opacity-70">
               {busy ? <Loader2 size={16} className="animate-spin" /> : <Lock size={16} />} Pay with Stripe <ArrowRight size={16} />
             </button>
             <p className="mt-3 flex items-center justify-center gap-1.5 text-xs text-ink/50">
@@ -159,7 +225,7 @@ export function Checkout({ order, onClose }) {
             <p className="mt-1 text-center text-xs text-ink/50">
               Your card is held, and only charged once your stickers are printed.
             </p>
-          </div>
+          </form>
         )}
 
         {step === "preview" && (

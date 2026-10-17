@@ -8,7 +8,7 @@
 // reload doesn't send a second email. If the customer closes the tab before
 // landing back, the order is still in Stripe (and Stripe's own payment
 // email, if that's switched on in its settings), just not emailed from here.
-import { materialOf, deliveryOf } from "../src/stickers/pricing.js";
+import { deliveryOf } from "../src/stickers/pricing.js";
 import { stripe, stripeKey, STORE_API } from "./_stripe.js";
 
 const money = (cents) => `$${(cents / 100).toFixed(2)}`;
@@ -34,9 +34,8 @@ export default async function handler(req, res) {
   if (pi.metadata?.notified) return res.status(200).json({ ok: true });
 
   const c = session.customer_details || {};
-  const ship = session.collected_information?.shipping_details || session.shipping_details;
+  const ship = pi.shipping;
   const addr = ship?.address;
-  const material = materialOf(m.material);
   const delivery = deliveryOf(m.delivery);
   const live = id.startsWith("cs_live_");
   const dashboard = `https://dashboard.stripe.com/${live ? "" : "test/"}payments/${pi.id}`;
@@ -49,7 +48,7 @@ export default async function handler(req, res) {
     `Quantity: ${m.qty}`,
     `Size: ${m.size}`,
     `Shape: ${m.shape}`,
-    `Label: ${material?.name || m.material}`,
+    `Label: ${m.label}`,
     `Ink: ${m.ink}`,
     `Customer's file: ${m.file || "(sample image)"}`,
     `Print-ready image: ${m.art || "(not uploaded -- rebuild from the settings above)"}`,
@@ -60,15 +59,17 @@ export default async function handler(req, res) {
       : []),
     `Phone: ${c.phone || "-"}`,
     ``,
-    `Total held: ${money(session.amount_total)} CAD (shipping ${money(session.total_details?.amount_shipping || 0)})`,
+    `Customer: ${m.name} <${c.email || session.customer_email}>`,
+    ``,
+    `Total held: ${money(session.amount_total)} CAD`,
   ].join("\n");
 
   // Same shape the quote form sends (src/components/QuoteForm.jsx).
   const entry = {
     id: `sticker-${pi.id}`,
     mode: "description",
-    name: c.name || ship?.name || "Sticker customer",
-    email: c.email || "",
+    name: m.name || c.name || "Sticker customer",
+    email: session.customer_email || c.email || "",
     details,
     url: null,
     material: "Sticker",
@@ -77,7 +78,7 @@ export default async function handler(req, res) {
     deadline: null,
     budget: `Paid ${money(session.amount_total)} (held)`,
     files: m.art ? [{ name: "sticker.png", size: 0, url: m.art }] : [],
-    title: `Sticker order (paid): ${m.qty} × ${m.size}, ${material?.name || m.material}`,
+    title: `Sticker order (paid): ${m.qty} × ${m.size}, ${m.label}`,
     stlName: null,
     thumbnailUrl: m.art || null,
     weightG: null,

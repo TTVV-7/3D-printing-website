@@ -107,20 +107,33 @@ export const stickers = {
   // The PL70E-BT takes labels 40-104 mm wide; the narrow side has to fit.
   maxWidthMm: 104,
   minWidthMm: 20,
-  // Label stock on hand: the colour, and the finish it comes in. `hex` is how
-  // it looks on screen. With only one, the page doesn't offer a choice.
-  materials: [
-    { key: "white-matte", name: "White, matte", hex: "#f7f6f2", finish: "matte", body: "Plain paper. No glare, easy to write on." },
-    { key: "white-glossy", name: "White, glossy", hex: "#fbfbf9", finish: "glossy", body: "Shiny coated label. Wipes clean." },
-    { key: "yellow-glossy", name: "Yellow, glossy", hex: "#f7d84a", finish: "glossy", body: "Bright and shiny." },
-    { key: "pink-glossy", name: "Pink, glossy", hex: "#f4a7c0", finish: "glossy", body: "Bright and shiny." },
-    { key: "blue-glossy", name: "Blue, glossy", hex: "#8fc3ea", finish: "glossy", body: "Bright and shiny." },
-    { key: "green-matte", name: "Green, matte", hex: "#9ed49a", finish: "matte", body: "Soft colour, no glare." },
+  // Label stock on hand, by finish. Each finish has its colours; `hex` is how
+  // it looks on screen. A finish with one colour shows no colour choice.
+  finishes: [
+    {
+      key: "matte",
+      name: "Matte",
+      body: "Plain paper label. No glare, easy to write on.",
+      colours: [
+        { key: "white", name: "White", hex: "#f7f6f2" },
+        { key: "yellow", name: "Yellow", hex: "#f7d84a" },
+        { key: "orange", name: "Orange", hex: "#f59a4a" },
+        { key: "pink", name: "Pink", hex: "#f4a7c0" },
+        { key: "blue", name: "Blue", hex: "#8fc3ea" },
+        { key: "green", name: "Green", hex: "#9ed49a" },
+      ],
+    },
+    {
+      key: "chrome",
+      name: "Chrome silver",
+      body: "Mirror-shiny metallic label.",
+      colours: [{ key: "silver", name: "Silver", hex: "#e6e9ed" }],
+    },
   ],
   // Offered at checkout, in CAD. `freeOver` waives it on bigger orders.
   delivery: [
     { key: "pickup", name: "Pickup in Vancouver", amount: 0, days: [1, 3], body: "Free. You'll get an email when it's ready." },
-    { key: "lettermail", name: "Lettermail, untracked", amount: 2.5, freeOver: 50, days: [3, 8], body: "Flat in an envelope. Free on orders over $50." },
+    { key: "lettermail", name: "Lettermail, untracked", amount: 2.5, freeOver: 25, days: [3, 8], body: "Flat in an envelope. Free on orders over $25." },
     { key: "tracked", name: "Tracked mail", amount: 12, days: [2, 5], body: "Canada Post with a tracking number." },
   ],
   // Price per sticker = max(minEach, square inches x perSqIn), then the
@@ -128,7 +141,7 @@ export const stickers = {
   pricing: {
     perSqIn: 0.15,
     minEach: 0.5,
-    glossyExtra: 0.1, // per sticker
+    chromeExtra: 0.1, // per sticker
     breaks: [
       { qty: 25, off: 0.15 },
       { qty: 100, off: 0.3 },

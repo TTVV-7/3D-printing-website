@@ -4,7 +4,7 @@
 import {
   WebGLRenderer, Scene, PerspectiveCamera, PMREMGenerator, NeutralToneMapping, SRGBColorSpace,
   DirectionalLight, Shape, ExtrudeGeometry, Mesh, MeshPhysicalMaterial, MeshStandardMaterial,
-  PlaneGeometry, CanvasTexture, NearestFilter, Group,
+  PlaneGeometry, CanvasTexture, NearestFilter, Group, Raycaster, Vector2,
 } from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
@@ -14,9 +14,26 @@ const STICKER_T = 0.35; // a label and its backing, a touch thick so the edge sh
 const GAP = 14;
 
 const FINISH = {
-  matte: { roughness: 0.9, clearcoat: 0, clearcoatRoughness: 1 },
-  glossy: { roughness: 0.35, clearcoat: 1, clearcoatRoughness: 0.04 },
+  matte: { roughness: 0.9, metalness: 0, clearcoat: 0 },
+  chrome: { roughness: 0.12, metalness: 1, clearcoat: 0.6, clearcoatRoughness: 0.05, envMapIntensity: 1.6 },
 };
+
+// For chrome: the label is metal, the ink isn't. White where it shines.
+function metalMap(art) {
+  const c = document.createElement("canvas");
+  c.width = art.width;
+  c.height = art.height;
+  const g = c.getContext("2d");
+  g.drawImage(art, 0, 0);
+  const d = g.getImageData(0, 0, c.width, c.height);
+  for (let i = 0; i < d.data.length; i += 4) {
+    const v = d.data[i] + d.data[i + 1] + d.data[i + 2] < 200 ? 0 : 255;
+    d.data[i] = d.data[i + 1] = d.data[i + 2] = v;
+    d.data[i + 3] = 255;
+  }
+  g.putImageData(d, 0, 0);
+  return c;
+}
 
 function outline(w, h, shape) {
   const s = new Shape();
@@ -97,6 +114,32 @@ function cardTexture() {
   return c;
 }
 
+// The same card as a real one, for anyone who wants to picture it in hand.
+function realCardTexture() {
+  const px = 8;
+  const c = document.createElement("canvas");
+  c.width = Math.round(CARD.w * px);
+  c.height = Math.round(CARD.h * px);
+  const g = c.getContext("2d");
+  const grad = g.createLinearGradient(0, 0, c.width, c.height);
+  grad.addColorStop(0, "#2c5282");
+  grad.addColorStop(1, "#0c1a2e");
+  g.fillStyle = grad;
+  g.fillRect(0, 0, c.width, c.height);
+  g.fillStyle = "#d9b45a";
+  g.beginPath();
+  g.roundRect(9 * px, 16 * px, 11 * px, 8.5 * px, 1.4 * px);
+  g.fill();
+  g.fillStyle = "rgba(255,255,255,0.85)";
+  g.font = `600 ${4.6 * px}px ui-monospace, monospace`;
+  g.fillText("4242  4242  4242  4242", 9 * px, 36 * px);
+  g.font = `500 ${3.2 * px}px ui-sans-serif, system-ui, sans-serif`;
+  g.fillStyle = "rgba(255,255,255,0.6)";
+  g.fillText("YOUR NAME", 9 * px, 46 * px);
+  g.fillText("12/30", 60 * px, 46 * px);
+  return c;
+}
+
 // The extruded caps carry UVs in millimetres around the centre; map the
 // sticker's canvas onto [-w/2, w/2] × [-h/2, h/2].
 function fitTexture(tex, w, h) {
@@ -139,19 +182,53 @@ export async function mountStickers(canvas, { reducedMotion }) {
   mat.rotation.x = -Math.PI / 2;
   scene.add(mat);
 
-  const cardTex = new CanvasTexture(cardTexture());
-  cardTex.colorSpace = SRGBColorSpace;
-  fitTexture(cardTex, CARD.w, CARD.h);
-  const card = slab(
-    CARD.w, CARD.h, CARD.t, "card",
-    new MeshStandardMaterial({ map: cardTex, roughness: 0.7, transparent: true, opacity: 0.8 }),
-    new MeshStandardMaterial({ color: 0xaab4c2, roughness: 0.7, transparent: true, opacity: 0.8 }),
-  );
+  const cardTextures = [cardTexture(), realCardTexture()].map((c) => {
+    const t = new CanvasTexture(c);
+    t.colorSpace = SRGBColorSpace;
+    fitTexture(t, CARD.w, CARD.h);
+    return t;
+  });
+  const cardFace = new MeshPhysicalMaterial({ map: cardTextures[0] });
+  const cardEdge = new MeshStandardMaterial({ roughness: 0.7 });
+  const card = slab(CARD.w, CARD.h, CARD.t, "card", cardFace, cardEdge);
   scene.add(card);
+
+  // Pale and see-through "for scale", or a real-looking card.
+  function cardLook(real) {
+    cardFace.map = cardTextures[real ? 1 : 0];
+    Object.assign(cardFace, real
+      ? { roughness: 0.35, clearcoat: 0.8, transparent: false, opacity: 1 }
+      : { roughness: 0.7, clearcoat: 0, transparent: true, opacity: 0.8 });
+    cardEdge.color.set(real ? 0x0c1a2e : 0xaab4c2);
+    Object.assign(cardEdge, { transparent: !real, opacity: real ? 1 : 0.8 });
+    cardFace.needsUpdate = cardEdge.needsUpdate = true;
+  }
+  cardLook(false);
+
+  // A click (not a drag) on the card, for the page to act on.
+  let onCardClick = () => {};
+  const ray = new Raycaster();
+  let down = null;
+  const onDown = (e) => (down = { x: e.clientX, y: e.clientY });
+  const onUp = (e) => {
+    if (!down || Math.hypot(e.clientX - down.x, e.clientY - down.y) > 5) return;
+    const r = canvas.getBoundingClientRect();
+    ray.setFromCamera(new Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1), camera);
+    if (ray.intersectObject(card).length) onCardClick();
+  };
+  const onMove = (e) => {
+    if (e.buttons) return;
+    const r = canvas.getBoundingClientRect();
+    ray.setFromCamera(new Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1), camera);
+    canvas.style.cursor = ray.intersectObject(card).length ? "pointer" : "";
+  };
+  canvas.addEventListener("pointerdown", onDown);
+  canvas.addEventListener("pointerup", onUp);
+  canvas.addEventListener("pointermove", onMove);
 
   const group = new Group();
   scene.add(group);
-  let sticker = null, stickerTex = null;
+  let sticker = null, stickerTex = null, metalTex = null;
   const topMat = new MeshPhysicalMaterial({ roughness: 0.9 });
   const edgeMat = new MeshStandardMaterial({ color: 0xf2f0ea, roughness: 0.8 });
 
@@ -216,6 +293,10 @@ export async function mountStickers(canvas, { reducedMotion }) {
       stickerTex.anisotropy = renderer.capabilities.getMaxAnisotropy();
       fitTexture(stickerTex, w, h);
       topMat.map = stickerTex;
+      metalTex?.dispose();
+      metalTex = finish === "chrome" ? new CanvasTexture(metalMap(art)) : null;
+      if (metalTex) fitTexture(metalTex, w, h);
+      topMat.metalnessMap = metalTex;
       Object.assign(topMat, FINISH[finish]);
       topMat.needsUpdate = true;
       edgeMat.color.set(paper);
@@ -223,6 +304,10 @@ export async function mountStickers(canvas, { reducedMotion }) {
       group.add(sticker);
       layout();
       if (resized) frame();
+    },
+    cardLook,
+    onCardClick(fn) {
+      onCardClick = fn;
     },
     start() {
       if (!raf) tick();
@@ -237,8 +322,12 @@ export async function mountStickers(canvas, { reducedMotion }) {
       ro.disconnect();
       controls.dispose();
       stickerTex?.dispose();
+      metalTex?.dispose();
       matTex.dispose();
-      cardTex.dispose();
+      cardTextures.forEach((t) => t.dispose());
+      canvas.removeEventListener("pointerdown", onDown);
+      canvas.removeEventListener("pointerup", onUp);
+      canvas.removeEventListener("pointermove", onMove);
       renderer.dispose();
     },
   };
