@@ -1,9 +1,18 @@
-// Turns any image into what the thermal printer will actually put down: one
-// ink (black) on the label's own colour, at the print head's resolution.
+// Turns a sticker design into what the thermal printer will actually put
+// down: one ink (black) on the label's own colour, at the print head's
+// resolution.
+//
+// A design is a list of layers, drawn in order. Positions and sizes are
+// fractions of the sticker's width, so a design keeps its look when the
+// sticker is resized:
+//   { kind: "image", img, x, y, scale, rot }   scale 1 = fits inside the margin
+//   { kind: "text", text, font, size, x, y, scale, rot }   size = cap height
+// x, y are from the centre (y down); rot is in radians.
 
 // 203 dpi, the usual thermal head: 8 dots per millimetre.
 export const DOTS_PER_MM = 8;
 const INK = [22, 22, 24];
+export const MARGIN_MM = 2;
 
 function hexToRgb(hex) {
   const n = parseInt(hex.slice(1), 16);
@@ -11,10 +20,12 @@ function hexToRgb(hex) {
 }
 
 // Width and height in mm for a sticker of `widthMm` across. Circles are as
-// tall as they are wide; the others follow the image.
-export function stickerSize(img, widthMm, shape) {
+// tall as they are wide; the others follow the first image, or are 2:1 for
+// text alone.
+export function stickerSize(layers, widthMm, shape) {
   if (shape === "circle") return { w: widthMm, h: widthMm };
-  const aspect = img ? img.naturalWidth / img.naturalHeight : 1;
+  const img = layers.find((l) => l.kind === "image")?.img;
+  const aspect = img ? img.naturalWidth / img.naturalHeight : 2;
   return { w: widthMm, h: Math.round((widthMm / aspect) * 10) / 10 };
 }
 
@@ -25,9 +36,41 @@ export function shapePath(ctx, w, h, shape) {
   else ctx.rect(0, 0, w, h);
 }
 
+const fontOf = (layer, px) => `${layer.weight || 700} ${px}px "${layer.font}"`;
+let measurer = null;
+
+// A layer's unscaled, unrotated size in mm on a sticker { w, h, shape }.
+export function layerBase(layer, { w, h, shape }) {
+  if (layer.kind === "image") {
+    const aspect = layer.img.naturalWidth / layer.img.naturalHeight;
+    if (shape === "circle") {
+      // Fit by the diagonal, so the corners stay inside the circle.
+      const bh = (w - 2 * MARGIN_MM) / Math.sqrt(aspect * aspect + 1);
+      return { bw: bh * aspect, bh };
+    }
+    let bw = w - 2 * MARGIN_MM, bh = h - 2 * MARGIN_MM;
+    if (bw / bh > aspect) bw = bh * aspect;
+    else bh = bw / aspect;
+    return { bw, bh };
+  }
+  measurer ||= document.createElement("canvas").getContext("2d");
+  const px = 100;
+  measurer.font = fontOf(layer, px);
+  const lines = layer.text.split("\n");
+  const widest = Math.max(1, ...lines.map((t) => measurer.measureText(t).width));
+  const size = layer.size * w; // mm
+  return { bw: (widest / px) * size, bh: lines.length * size * 1.15 };
+}
+
+// Size on the sticker, in mm, after the layer's own scale.
+export function layerSize(layer, sticker) {
+  const { bw, bh } = layerBase(layer, sticker);
+  return { lw: bw * layer.scale, lh: bh * layer.scale };
+}
+
 // Returns a canvas the size of the sticker in print dots. Inside the shape is
 // paper and ink; outside it is transparent.
-export function renderThermal(img, { w, h, shape, marginMm, mode, threshold, invert, paper }) {
+export function renderThermal(layers, { w, h, shape, mode, threshold, invert, paper }) {
   const W = Math.max(1, Math.round(w * DOTS_PER_MM));
   const H = Math.max(1, Math.round(h * DOTS_PER_MM));
   const canvas = document.createElement("canvas");
@@ -37,22 +80,24 @@ export function renderThermal(img, { w, h, shape, marginMm, mode, threshold, inv
 
   ctx.fillStyle = "#fff";
   ctx.fillRect(0, 0, W, H);
-  if (img) {
-    // Fit the image inside the margin; a circle fits it by its diagonal.
-    const m = marginMm * DOTS_PER_MM;
-    const aspect = img.naturalWidth / img.naturalHeight;
-    let bw, bh;
-    if (shape === "circle") {
-      const d = W - 2 * m;
-      bh = d / Math.sqrt(aspect * aspect + 1);
-      bw = bh * aspect;
+  const D = DOTS_PER_MM;
+  for (const layer of layers) {
+    const { lw, lh } = layerSize(layer, { w, h, shape });
+    ctx.save();
+    ctx.translate((w / 2 + layer.x * w) * D, (h / 2 + layer.y * w) * D);
+    ctx.rotate(layer.rot);
+    if (layer.kind === "image") {
+      ctx.drawImage(layer.img, (-lw / 2) * D, (-lh / 2) * D, lw * D, lh * D);
     } else {
-      bw = W - 2 * m;
-      bh = H - 2 * m;
-      if (bw / bh > aspect) bw = bh * aspect;
-      else bh = bw / aspect;
+      const lines = layer.text.split("\n");
+      const size = layer.size * w * layer.scale * D;
+      ctx.font = fontOf(layer, size);
+      ctx.fillStyle = "#000";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      lines.forEach((t, i) => ctx.fillText(t, 0, (i - (lines.length - 1) / 2) * size * 1.15));
     }
-    ctx.drawImage(img, (W - bw) / 2, (H - bh) / 2, bw, bh);
+    ctx.restore();
   }
 
   const data = ctx.getImageData(0, 0, W, H);

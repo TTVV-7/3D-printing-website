@@ -1,8 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { CheckCircle2, Hand, ImageUp, RotateCcw, ShoppingBag, Minus, Plus } from "lucide-react";
+import {
+  Check, CheckCircle2, Crosshair, Hand, ImageUp, ImagePlus, Pencil, RotateCcw, ShoppingBag, Minus, Plus, Trash2, Type,
+} from "lucide-react";
 import { clsx } from "clsx";
 import { stickers } from "../../site.config.js";
 import { renderThermal, stickerSize, DOTS_PER_MM } from "./thermal.js";
+import { StickerEditor } from "./StickerEditor.jsx";
 import { Checkout } from "./Checkout.jsx";
 import { priceEach } from "./pricing.js";
 
@@ -17,6 +20,21 @@ const PRESETS = [
   { mm: 76.2, label: '3"' },
   { mm: 101.6, label: '4"' },
 ];
+
+// Typefaces for text layers; loaded in stickers/index.html.
+const FONTS = [
+  { family: "Bungee", name: "Bungee", weight: 400 },
+  { family: "Space Grotesk", name: "Grotesk", weight: 700 },
+  { family: "Bebas Neue", name: "Bebas", weight: 400 },
+  { family: "Permanent Marker", name: "Marker", weight: 400 },
+  { family: "Pacifico", name: "Script", weight: 400 },
+  { family: "Special Elite", name: "Typewriter", weight: 400 },
+];
+const fontOf = (family) => FONTS.find((f) => f.family === family) || FONTS[0];
+
+let nextId = 1;
+const newId = () => `l${nextId++}`;
+const imageLayer = (img) => ({ id: newId(), kind: "image", img, x: 0, y: 0, scale: 1, rot: 0 });
 
 const inches = (mm) => (mm / 25.4).toFixed(2).replace(/\.?0+$/, "");
 
@@ -82,9 +100,13 @@ export function StickerStudio() {
   const canvasRef = useRef(null);
   const flatRef = useRef(null);
   const fileRef = useRef(null);
+  const editFileRef = useRef(null);
   const { stage, ready } = useStage(canvasRef);
 
-  const [img, setImg] = useState(null);
+  const [layers, setLayers] = useState([]);
+  const [selected, setSelected] = useState(null);
+  const [editing, setEditing] = useState(false);
+  const [fontsReady, setFontsReady] = useState(0); // bumps when a typeface arrives
   const [fileName, setFileName] = useState("");
   const [dragging, setDragging] = useState(false);
   const [finishKey, setFinishKey] = useState(stickers.finishes[0].key);
@@ -95,42 +117,49 @@ export function StickerStudio() {
   const paper = colour.hex;
   const [realCard, setRealCard] = useState(false);
   const [shape, setShape] = useState("rounded");
-  const [widthMm, setWidthMm] = useState(76.2);
-  const [mode, setMode] = useState("solid");
+  const [widthMm, setWidthMm] = useState(50.8);
+  const [mode, setMode] = useState("dither");
   const [threshold, setThreshold] = useState(140);
   const [invert, setInvert] = useState(false);
   const [qty, setQty] = useState(10);
   const [checkout, setCheckout] = useState(false);
 
   useEffect(() => {
-    loadImage("/stickers/sample.svg").then(setImg).catch(() => {});
+    loadImage("/stickers/sample.webp")
+      .then((img) => setLayers((ls) => (ls.length ? ls : [imageLayer(img)])))
+      .catch(() => {});
   }, []);
 
   // The narrow side is what the print head limits.
   const size = useMemo(() => {
-    const s = stickerSize(img, widthMm, shape);
+    const s = stickerSize(layers, widthMm, shape);
     const narrow = Math.min(s.w, s.h);
     if (narrow > stickers.maxWidthMm) {
       const k = stickers.maxWidthMm / narrow;
       return { w: +(s.w * k).toFixed(1), h: +(s.h * k).toFixed(1), capped: true };
     }
     return s;
-  }, [img, widthMm, shape]);
+    // Only the first image's shape matters, not where it's been dragged.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [layers.find((l) => l.kind === "image")?.img, layers.length, widthMm, shape]);
 
   const art = useMemo(
     () =>
       typeof document === "undefined"
         ? null
-        : renderThermal(img, { w: size.w, h: size.h, shape, marginMm: 2, mode, threshold, invert, paper }),
-    [img, size, shape, mode, threshold, invert, paper],
+        : renderThermal(layers, { w: size.w, h: size.h, shape, mode, threshold, invert, paper }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [layers, size, shape, mode, threshold, invert, paper, fontsReady],
   );
 
   useEffect(() => {
-    if (!ready || !art) return;
+    // While editing, the 3D view is hidden: catch it up when editing ends.
+    if (!ready || !art || editing) return;
     stage.current.update({ art, w: size.w, h: size.h, shape, finish, paper });
     stage.current.onCardClick(() => setRealCard((r) => !r));
+    stage.current.onStickerClick(() => setEditing(true));
     stage.current.start();
-  }, [ready, art, size, shape, finish, paper, stage]);
+  }, [ready, art, size, shape, finish, paper, stage, editing]);
 
   useEffect(() => {
     if (ready) stage.current.cardLook(realCard);
@@ -145,14 +174,42 @@ export function StickerStudio() {
     c.getContext("2d").drawImage(art, 0, 0);
   }, [art]);
 
-  function pick(file) {
+  // A new image replaces the current one (keeping any text), or is added
+  // as a second image while editing.
+  function pick(file, add = false) {
     if (!file || !file.type.startsWith("image/")) return;
     const url = URL.createObjectURL(file);
-    loadImage(url).then((i) => {
-      setImg(i);
+    loadImage(url).then((img) => {
+      const layer = imageLayer(img);
+      setLayers((ls) => {
+        const i = ls.findIndex((l) => l.kind === "image");
+        if (add || i === -1) return [...ls, layer];
+        return ls.map((l, j) => (j === i ? layer : l));
+      });
+      setSelected(layer.id);
       setFileName(file.name);
     });
   }
+
+  function addText() {
+    const font = FONTS[0];
+    const layer = { id: newId(), kind: "text", text: "Your text", font: font.family, weight: font.weight, size: 0.14, x: 0, y: 0, scale: 1, rot: 0 };
+    setLayers((ls) => [...ls, layer]);
+    setSelected(layer.id);
+    setEditing(true);
+  }
+
+  const sel = layers.find((l) => l.id === selected);
+  const patchSel = (patch) => setLayers((ls) => ls.map((l) => (l.id === selected ? { ...l, ...patch } : l)));
+
+  // Draw again once a typeface has downloaded.
+  useEffect(() => {
+    const fams = [...new Set(layers.filter((l) => l.kind === "text").map((l) => l.font))];
+    if (!fams.length || !document.fonts) return;
+    Promise.all(fams.map((f) => document.fonts.load(`${fontOf(f).weight} 40px "${f}"`)))
+      .then(() => setFontsReady((n) => n + 1))
+      .catch(() => {});
+  }, [layers.map((l) => l.font).join()]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Back from Stripe: /stickers/?paid=<session id>.
   const [paid, setPaid] = useState(false);
@@ -206,26 +263,65 @@ export function StickerStudio() {
                 aria-label="3D preview of the sticker beside a credit card for scale. Drag to turn it."
                 className="absolute inset-0 h-full w-full cursor-grab touch-pan-y active:cursor-grabbing"
               />
-              {!ready && (
+              {!ready && !editing && (
                 <p className="absolute inset-0 flex items-center justify-center font-mono text-xs uppercase tracking-widest text-white/40">
                   Loading 3D preview…
                 </p>
               )}
-              <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between p-4 text-white">
+              {editing && (
+                <StickerEditor
+                  art={art}
+                  sticker={{ w: size.w, h: size.h, shape }}
+                  layers={layers}
+                  selected={selected}
+                  onSelect={setSelected}
+                  onChange={setLayers}
+                />
+              )}
+              <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between gap-2 p-4 text-white">
                 <p className="rounded-full bg-ink/70 px-3 py-1 font-mono text-xs backdrop-blur">
                   {size.w} × {size.h} mm · {inches(size.w)} × {inches(size.h)} in
                 </p>
-                <button
-                  type="button"
-                  onClick={() => stage.current?.resetView()}
-                  className="pointer-events-auto rounded-full bg-ink/70 p-2 backdrop-blur hover:bg-ink"
-                  aria-label="Reset view"
-                >
-                  <RotateCcw size={15} />
-                </button>
+                {editing ? (
+                  <button
+                    type="button"
+                    onClick={() => setEditing(false)}
+                    className="pointer-events-auto flex items-center gap-1.5 rounded-full bg-flame px-4 py-1.5 text-sm font-semibold hover:bg-flame-600"
+                  >
+                    <Check size={15} /> Done, show in 3D
+                  </button>
+                ) : (
+                  <span className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setEditing(true)}
+                      className="pointer-events-auto flex items-center gap-1.5 rounded-full bg-white px-4 py-1.5 text-sm font-semibold text-ink hover:bg-paper"
+                    >
+                      <Pencil size={14} /> Edit design
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => stage.current?.resetView()}
+                      className="pointer-events-auto rounded-full bg-ink/70 p-2 backdrop-blur hover:bg-ink"
+                      aria-label="Reset view"
+                    >
+                      <RotateCcw size={15} />
+                    </button>
+                  </span>
+                )}
               </div>
-              <p className="pointer-events-none absolute bottom-4 left-4 flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-widest text-white/55">
-                <Hand size={14} /> Drag to turn<span className="hidden sm:inline"> · scroll to zoom</span> · grid is 1 cm
+              <p className="pointer-events-none absolute bottom-4 left-4 right-4 flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-widest text-white/55">
+                {editing ? (
+                  <>
+                    <Hand size={14} /> Drag to move · corner to scale and turn
+                    <span className="hidden sm:inline"> · scroll to resize</span>
+                  </>
+                ) : (
+                  <>
+                    <Hand size={14} /> Click the sticker to edit · drag to turn
+                    <span className="hidden sm:inline"> · grid is 1 cm</span>
+                  </>
+                )}
               </p>
             </div>
             <p className="-mt-1 flex flex-wrap items-center gap-x-5 gap-y-1 px-1 text-sm text-ink/60">
@@ -250,6 +346,116 @@ export function StickerStudio() {
                 </span>
               </button>
             </p>
+
+            {editing && (
+              <div className="rounded-2xl bg-white p-4 ring-1 ring-ink/10">
+                <div className="flex flex-wrap items-center gap-2">
+                  {layers.map((l) => (
+                    <Choice key={l.id} active={l.id === selected} onClick={() => setSelected(l.id)} className="max-w-[10rem] truncate">
+                      {l.kind === "image" ? "Image" : `“${l.text.split("\n")[0] || "Text"}”`}
+                    </Choice>
+                  ))}
+                  <button type="button" onClick={addText} className="btn-outline-dark h-9 px-3 text-sm">
+                    <Type size={15} /> Add text
+                  </button>
+                  <button type="button" onClick={() => editFileRef.current?.click()} className="btn-outline-dark h-9 px-3 text-sm">
+                    <ImagePlus size={15} /> Add image
+                  </button>
+                  <input
+                    ref={editFileRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      pick(e.target.files[0], true);
+                      e.target.value = "";
+                    }}
+                  />
+                </div>
+
+                {sel ? (
+                  <div className="mt-4 space-y-3">
+                    {sel.kind === "text" && (
+                      <>
+                        <textarea
+                          value={sel.text}
+                          onChange={(e) => patchSel({ text: e.target.value })}
+                          rows={sel.text.includes("\n") ? 2 : 1}
+                          className="field resize-none text-base"
+                          aria-label="Text"
+                        />
+                        <div className="flex flex-wrap gap-2">
+                          {FONTS.map((f) => (
+                            <button
+                              key={f.family}
+                              type="button"
+                              onClick={() => patchSel({ font: f.family, weight: f.weight })}
+                              aria-pressed={sel.font === f.family}
+                              className={clsx(
+                                "rounded-lg px-3 py-1.5 text-base ring-1 transition",
+                                sel.font === f.family ? "bg-ink text-white ring-ink" : "bg-white ring-ink/15 hover:ring-ink/40",
+                              )}
+                              style={{ fontFamily: `"${f.family}"`, fontWeight: f.weight }}
+                            >
+                              {f.name}
+                            </button>
+                          ))}
+                        </div>
+                      </>
+                    )}
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <label className="block text-sm">
+                        <span className="flex justify-between">
+                          Size <span className="text-ink/50">{Math.round(sel.scale * 100)}%</span>
+                        </span>
+                        <input
+                          type="range"
+                          min={0.1}
+                          max={3}
+                          step={0.01}
+                          value={sel.scale}
+                          onChange={(e) => patchSel({ scale: +e.target.value })}
+                          className="mt-1 w-full accent-flame"
+                        />
+                      </label>
+                      <label className="block text-sm">
+                        <span className="flex justify-between">
+                          Turn <span className="text-ink/50">{Math.round((sel.rot * 180) / Math.PI)}°</span>
+                        </span>
+                        <input
+                          type="range"
+                          min={-180}
+                          max={180}
+                          value={Math.round((sel.rot * 180) / Math.PI)}
+                          onChange={(e) => patchSel({ rot: (+e.target.value * Math.PI) / 180 })}
+                          className="mt-1 w-full accent-flame"
+                        />
+                      </label>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <button type="button" onClick={() => patchSel({ x: 0, y: 0 })} className="btn-outline-dark h-9 px-3 text-sm">
+                        <Crosshair size={15} /> Centre
+                      </button>
+                      <button type="button" onClick={() => patchSel({ scale: 1, rot: 0, x: 0, y: 0 })} className="btn-outline-dark h-9 px-3 text-sm">
+                        <RotateCcw size={15} /> Reset
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setLayers((ls) => ls.filter((l) => l.id !== selected));
+                          setSelected(null);
+                        }}
+                        className="btn-outline-dark h-9 px-3 text-sm text-flame-600"
+                      >
+                        <Trash2 size={15} /> Remove
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="mt-3 text-sm text-ink/55">Click something on the sticker to move, size or turn it.</p>
+                )}
+              </div>
+            )}
 
             <div className="flex items-center gap-4 rounded-2xl bg-white p-4 ring-1 ring-ink/10">
               <div
@@ -293,7 +499,7 @@ export function StickerStudio() {
               <span className="min-w-0 text-sm">
                 <span className="block font-semibold">{fileName ? "Change image" : "Upload your image"}</span>
                 <span className="block truncate text-ink/55">
-                  {fileName || "PNG, JPG or SVG. Drop it here or click. Logos and line art print best."}
+                  {fileName || "PNG, JPG or SVG. Drop it here or click. Line art prints best."}
                 </span>
               </span>
               <input
@@ -304,6 +510,10 @@ export function StickerStudio() {
                 onChange={(e) => pick(e.target.files[0])}
               />
             </div>
+
+            <button type="button" onClick={addText} className="btn-outline-dark -mt-3 h-11 w-full text-sm">
+              <Type size={16} /> Add text to your sticker
+            </button>
 
             <div>
               <Label hint="ink is always black">Finish</Label>

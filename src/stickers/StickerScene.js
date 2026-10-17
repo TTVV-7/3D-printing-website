@@ -205,8 +205,9 @@ export async function mountStickers(canvas, { reducedMotion }) {
   }
   cardLook(false);
 
-  // A click (not a drag) on the card, for the page to act on.
+  // A click (not a drag) on the card or the sticker, for the page to act on.
   let onCardClick = () => {};
+  let onStickerClick = () => {};
   const ray = new Raycaster();
   let down = null;
   const onDown = (e) => (down = { x: e.clientX, y: e.clientY });
@@ -215,12 +216,13 @@ export async function mountStickers(canvas, { reducedMotion }) {
     const r = canvas.getBoundingClientRect();
     ray.setFromCamera(new Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1), camera);
     if (ray.intersectObject(card).length) onCardClick();
+    else if (ray.intersectObject(group).length) onStickerClick();
   };
   const onMove = (e) => {
     if (e.buttons) return;
     const r = canvas.getBoundingClientRect();
     ray.setFromCamera(new Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1), camera);
-    canvas.style.cursor = ray.intersectObject(card).length ? "pointer" : "";
+    canvas.style.cursor = ray.intersectObjects([card, group]).length ? "pointer" : "";
   };
   canvas.addEventListener("pointerdown", onDown);
   canvas.addEventListener("pointerup", onUp);
@@ -308,6 +310,9 @@ export async function mountStickers(canvas, { reducedMotion }) {
     cardLook,
     onCardClick(fn) {
       onCardClick = fn;
+    },
+    onStickerClick(fn) {
+      onStickerClick = fn;
     },
     start() {
       if (!raf) tick();
