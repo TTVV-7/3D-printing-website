@@ -67,27 +67,33 @@ function matTexture() {
   return c;
 }
 
+// The card is a pale, see-through stand-in with "for scale" written on it,
+// so nobody mistakes it for the thing they're buying.
 function cardTexture() {
   const px = 8;
   const c = document.createElement("canvas");
   c.width = Math.round(CARD.w * px);
   c.height = Math.round(CARD.h * px);
   const g = c.getContext("2d");
-  const grad = g.createLinearGradient(0, 0, c.width, c.height);
-  grad.addColorStop(0, "#1d3a5c");
-  grad.addColorStop(1, "#0c1a2e");
-  g.fillStyle = grad;
+  g.fillStyle = "#dfe6ee";
   g.fillRect(0, 0, c.width, c.height);
-  g.fillStyle = "#d9b45a";
+  g.strokeStyle = "#5b6b80";
+  g.lineWidth = 0.8 * px;
+  g.setLineDash([3 * px, 2 * px]);
   g.beginPath();
-  g.roundRect(9 * px, 18 * px, 11 * px, 8.5 * px, 1.4 * px);
+  g.roundRect(2.5 * px, 2.5 * px, c.width - 5 * px, c.height - 5 * px, 2 * px);
+  g.stroke();
+  g.setLineDash([]);
+  g.fillStyle = "#c9ccd2";
+  g.beginPath();
+  g.roundRect(9 * px, 9 * px, 11 * px, 8.5 * px, 1.4 * px);
   g.fill();
-  g.fillStyle = "rgba(255,255,255,0.75)";
-  g.font = `600 ${4.2 * px}px ui-monospace, monospace`;
-  g.fillText("•••• •••• •••• 4242", 9 * px, 38 * px);
-  g.font = `${3 * px}px ui-sans-serif, system-ui`;
-  g.fillStyle = "rgba(255,255,255,0.5)";
-  g.fillText("Credit card for scale · 85.6 × 54 mm", 9 * px, 47 * px);
+  g.fillStyle = "#3d4b5e";
+  g.textAlign = "center";
+  g.font = `700 ${8.5 * px}px ui-sans-serif, system-ui, sans-serif`;
+  g.fillText("FOR SCALE", c.width / 2, 33 * px);
+  g.font = `500 ${4 * px}px ui-sans-serif, system-ui, sans-serif`;
+  g.fillText("Credit card · 85.6 × 54 mm", c.width / 2, 42 * px);
   return c;
 }
 
@@ -138,8 +144,8 @@ export async function mountStickers(canvas, { reducedMotion }) {
   fitTexture(cardTex, CARD.w, CARD.h);
   const card = slab(
     CARD.w, CARD.h, CARD.t, "card",
-    new MeshPhysicalMaterial({ map: cardTex, roughness: 0.4, clearcoat: 0.6 }),
-    new MeshStandardMaterial({ color: 0x132842, roughness: 0.6 }),
+    new MeshStandardMaterial({ map: cardTex, roughness: 0.7, transparent: true, opacity: 0.8 }),
+    new MeshStandardMaterial({ color: 0xaab4c2, roughness: 0.7, transparent: true, opacity: 0.8 }),
   );
   scene.add(card);
 

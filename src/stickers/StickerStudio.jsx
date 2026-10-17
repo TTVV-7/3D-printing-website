@@ -15,7 +15,7 @@ const PRESETS = [
   { mm: 25.4, label: '1"' },
   { mm: 50.8, label: '2"' },
   { mm: 76.2, label: '3"' },
-  { mm: 100, label: '4"' },
+  { mm: 101.6, label: '4"' },
 ];
 
 const inches = (mm) => (mm / 25.4).toFixed(2).replace(/\.?0+$/, "");
@@ -87,8 +87,8 @@ export function StickerStudio() {
   const [img, setImg] = useState(null);
   const [fileName, setFileName] = useState("");
   const [dragging, setDragging] = useState(false);
-  const [paper, setPaper] = useState(stickers.papers[0]);
-  const [finish, setFinish] = useState("matte");
+  const [material, setMaterial] = useState(stickers.materials[0]);
+  const { finish, hex: paper } = material;
   const [shape, setShape] = useState("rounded");
   const [widthMm, setWidthMm] = useState(76.2);
   const [mode, setMode] = useState("solid");
@@ -116,13 +116,13 @@ export function StickerStudio() {
     () =>
       typeof document === "undefined"
         ? null
-        : renderThermal(img, { w: size.w, h: size.h, shape, marginMm: 2, mode, threshold, invert, paper: paper.hex }),
+        : renderThermal(img, { w: size.w, h: size.h, shape, marginMm: 2, mode, threshold, invert, paper }),
     [img, size, shape, mode, threshold, invert, paper],
   );
 
   useEffect(() => {
     if (!ready || !art) return;
-    stage.current.update({ art, w: size.w, h: size.h, shape, finish, paper: paper.hex });
+    stage.current.update({ art, w: size.w, h: size.h, shape, finish, paper });
     stage.current.start();
   }, [ready, art, size, shape, finish, paper, stage]);
 
@@ -147,8 +147,16 @@ export function StickerStudio() {
   // Back from Stripe: /stickers/?paid=<session id>.
   const [paid, setPaid] = useState(false);
   useEffect(() => {
-    if (!new URLSearchParams(location.search).has("paid")) return;
+    const session = new URLSearchParams(location.search).get("paid");
+    if (!session) return;
     setPaid(true);
+    // Files the order and emails it (api/sticker-confirm.js). Only once per
+    // order, however often this runs.
+    fetch("/api/sticker-confirm", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ session }),
+    }).catch(() => {});
     history.replaceState(null, "", location.pathname);
   }, []);
 
@@ -173,7 +181,7 @@ export function StickerStudio() {
           <p className="eyebrow">Stickers</p>
           <h1 className="mt-3 text-4xl font-bold sm:text-5xl">Your image, as a sticker.</h1>
           <p className="mt-4 text-ink/65 sm:text-lg">
-            Thermal printed: crisp black on white, up to {stickers.maxWidthMm / 10} cm across.
+            Thermal printed: crisp black on the label you pick, up to {stickers.maxWidthMm / 10} cm across.
             Drop in an image and see it to scale.
           </p>
         </div>
@@ -210,6 +218,14 @@ export function StickerStudio() {
                 <Hand size={14} /> Drag to turn<span className="hidden sm:inline"> · scroll to zoom</span> · grid is 1 cm
               </p>
             </div>
+            <p className="-mt-1 flex flex-wrap items-center gap-x-5 gap-y-1 px-1 text-sm text-ink/60">
+              <span className="flex items-center gap-2">
+                <span className="h-3 w-3 rounded-sm ring-1 ring-ink/20" style={{ background: paper }} /> Your sticker
+              </span>
+              <span className="flex items-center gap-2">
+                <span className="h-3 w-4 rounded-sm border border-dashed border-ink/40 bg-ink/5" /> A credit card, for scale
+              </span>
+            </p>
 
             <div className="flex items-center gap-4 rounded-2xl bg-white p-4 ring-1 ring-ink/10">
               <div
@@ -265,53 +281,37 @@ export function StickerStudio() {
               />
             </div>
 
-            {stickers.papers.length > 1 && (
+            {stickers.materials.length > 1 && (
               <div>
-                <Label hint="ink is always black">Paper colour</Label>
-                <div className="flex flex-wrap gap-2">
-                  {stickers.papers.map((p) => (
+                <Label hint="ink is always black">Label</Label>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                  {stickers.materials.map((m) => (
                     <button
-                      key={p.key}
+                      key={m.key}
                       type="button"
-                      onClick={() => setPaper(p)}
-                      aria-pressed={paper.key === p.key}
-                      title={p.name}
+                      onClick={() => setMaterial(m)}
+                      aria-pressed={material.key === m.key}
+                      title={m.body}
                       className={clsx(
-                        "h-10 w-10 rounded-full ring-2 ring-offset-2 ring-offset-paper transition",
-                        paper.key === p.key ? "ring-flame" : "ring-transparent hover:ring-ink/20",
+                        "flex items-center gap-2.5 rounded-xl p-2 pr-3 text-left ring-1 transition",
+                        material.key === m.key ? "bg-white ring-2 ring-flame" : "bg-white ring-ink/15 hover:ring-ink/40",
                       )}
-                      style={{ background: p.hex, boxShadow: "inset 0 0 0 1px rgb(12 26 46 / 0.15)" }}
                     >
-                      <span className="sr-only">{p.name}</span>
+                      <span
+                        className="relative h-8 w-8 flex-none overflow-hidden rounded-lg"
+                        style={{ background: m.hex, boxShadow: "inset 0 0 0 1px rgb(12 26 46 / 0.15)" }}
+                      >
+                        {m.finish === "glossy" && (
+                          <span className="absolute -left-2 top-0 h-full w-4 rotate-12 bg-white/70 blur-[2px]" />
+                        )}
+                      </span>
+                      <span className="min-w-0 text-sm font-medium leading-tight">{m.name}</span>
                     </button>
                   ))}
                 </div>
-                <p className="mt-1.5 text-xs text-ink/50">{paper.name}</p>
+                <p className="mt-1.5 text-xs text-ink/50">{material.body}</p>
               </div>
             )}
-
-            <div>
-              <Label>Finish</Label>
-              <div className="grid grid-cols-2 gap-2">
-                {stickers.finishes.map((f) => (
-                  <button
-                    key={f.key}
-                    type="button"
-                    onClick={() => setFinish(f.key)}
-                    aria-pressed={finish === f.key}
-                    className={clsx(
-                      "rounded-xl p-3 text-left ring-1 transition",
-                      finish === f.key ? "bg-ink text-white ring-ink" : "bg-white ring-ink/15 hover:ring-ink/40",
-                    )}
-                  >
-                    <span className="block text-sm font-semibold">{f.name}</span>
-                    <span className={clsx("block text-xs", finish === f.key ? "text-white/60" : "text-ink/55")}>
-                      {f.body}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </div>
 
             <div>
               <Label>Shape</Label>
@@ -420,7 +420,7 @@ export function StickerStudio() {
       {checkout && (
         <Checkout
           onClose={() => setCheckout(false)}
-          order={{ art, size, shape, finish, paper, qty, each, total }}
+          order={{ art, size, shape, material, qty, each, total, ink: { mode, threshold, invert }, fileName }}
         />
       )}
     </section>

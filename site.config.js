@@ -101,37 +101,34 @@ export const reviews = {
   ],
 };
 
-// The sticker shop (/stickers). Thermal printing: one ink, black, on whatever
-// colour of label stock is loaded. DRAFT numbers -- adjust to taste.
+// The sticker shop (/stickers). Thermal printing on a Nelko PL70E-BT: one
+// ink, black, on whatever label stock is loaded. DRAFT numbers -- adjust to taste.
 export const stickers = {
-  // The print head's width caps the sticker's narrow side.
-  maxWidthMm: 100,
+  // The PL70E-BT takes labels 40-104 mm wide; the narrow side has to fit.
+  maxWidthMm: 104,
   minWidthMm: 20,
-  // Label stock on hand. `hex` is how it looks on screen.
-  // Label stock on hand. `hex` is how it looks on screen. With only one,
-  // the page doesn't offer a choice.
-  papers: [
-    { key: "white", name: "White", hex: "#f7f6f2" },
-    // Coloured label rolls, once they're in stock:
-    // { key: "yellow", name: "Yellow", hex: "#f7d84a" },
-    // { key: "pink", name: "Pink", hex: "#f4a7c0" },
-    // { key: "blue", name: "Blue", hex: "#8fc3ea" },
+  // Label stock on hand: the colour, and the finish it comes in. `hex` is how
+  // it looks on screen. With only one, the page doesn't offer a choice.
+  materials: [
+    { key: "white-matte", name: "White, matte", hex: "#f7f6f2", finish: "matte", body: "Plain paper. No glare, easy to write on." },
+    { key: "white-glossy", name: "White, glossy", hex: "#fbfbf9", finish: "glossy", body: "Shiny coated label. Wipes clean." },
+    { key: "yellow-glossy", name: "Yellow, glossy", hex: "#f7d84a", finish: "glossy", body: "Bright and shiny." },
+    { key: "pink-glossy", name: "Pink, glossy", hex: "#f4a7c0", finish: "glossy", body: "Bright and shiny." },
+    { key: "blue-glossy", name: "Blue, glossy", hex: "#8fc3ea", finish: "glossy", body: "Bright and shiny." },
+    { key: "green-matte", name: "Green, matte", hex: "#9ed49a", finish: "matte", body: "Soft colour, no glare." },
   ],
-  finishes: [
-    { key: "matte", name: "Matte", body: "Soft, no glare. Easy to write on." },
-    { key: "glossy", name: "Glossy", body: "Laminated shine. Shrugs off scuffs and water." },
-  ],
-  // Offered at checkout, in CAD.
-  shipping: [
-    { name: "Lettermail (Canada)", amount: 3.5, days: [3, 7] },
-    { name: "Local pickup in Vancouver", amount: 0, days: [1, 3] },
+  // Offered at checkout, in CAD. `freeOver` waives it on bigger orders.
+  delivery: [
+    { key: "pickup", name: "Pickup in Vancouver", amount: 0, days: [1, 3], body: "Free. You'll get an email when it's ready." },
+    { key: "lettermail", name: "Lettermail, untracked", amount: 2.5, freeOver: 50, days: [3, 8], body: "Flat in an envelope. Free on orders over $50." },
+    { key: "tracked", name: "Tracked mail", amount: 12, days: [2, 5], body: "Canada Post with a tracking number." },
   ],
   // Price per sticker = max(minEach, square inches x perSqIn), then the
   // biggest quantity break that applies.
   pricing: {
-    perSqIn: 0.3,
-    minEach: 1.0,
-    glossyExtra: 0.15, // per sticker
+    perSqIn: 0.15,
+    minEach: 0.5,
+    glossyExtra: 0.1, // per sticker
     breaks: [
       { qty: 25, off: 0.15 },
       { qty: 100, off: 0.3 },

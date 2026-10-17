@@ -51,23 +51,32 @@ override (e.g. for a staging domain).
 
 ## Sticker payments (Stripe)
 
-`/stickers` checks out through Stripe Checkout, no account needed:
-`api/sticker-checkout.js` (a Vercel function) works out the price on the server
-and sends the customer to Stripe's page. Until a key is set, the button says
+`/stickers` checks out through Stripe Checkout, no account needed.
+`api/sticker-checkout.js` works out the price and delivery on the server and
+sends the customer to Stripe's page. Until a key is set, the button says
 payments aren't on yet, so the page is safe to share as it is.
 
 The card is **held, not charged** (`capture_method: manual`). When an order comes
 in, Stripe dashboard → Payments → the payment → **Capture** once it's printed,
 or **Cancel** if you can't do it (no refund, no fee). Holds expire after 7 days.
-The order's size, paper, finish and print-ready image link are in the payment's
-metadata.
+
+**Order emails:** when the customer lands back on the page,
+`api/sticker-confirm.js` checks the payment with Stripe and files the order with
+the store backend, so it shows up in the admin panel and sends the usual
+notification email: size, shape, label, ink settings, delivery and address,
+phone, total, a link to the payment in Stripe and the print-ready PNG (uploaded
+through the backend's `/api/upload`, like quote attachments). It sends once per
+order. If someone closes the tab before landing back, the order is still in
+Stripe; switch on Stripe → Settings → Notifications → successful payments as a
+backstop.
 
 1. Stripe dashboard → Developers → API keys. Start with the **test** secret key
    (`sk_test_...`); pay with card `4242 4242 4242 4242`, any future date and CVC.
-2. Vercel → project → Settings → Environment Variables: `STRIPE_SECRET_KEY`.
-3. Optional: Vercel → Storage → create a Blob store and connect it to the project
-   (adds `BLOB_READ_WRITE_TOKEN`) so each order keeps the exact image to print.
-4. When ready for real money, swap in the live key (`sk_live_...`).
+2. Vercel → project → Settings → Environment Variables: `STRIPE_SECRET_KEY`
+   (or `STRIPE`). Redeploy after adding it.
+3. When ready for real money, swap in the live key (`sk_live_...`).
 
-`npm run dev` sends `/api` to the store backend, so it can't reach this function;
-use `npx vercel dev` or a preview deploy to try a payment.
+Label stock, delivery options and prices are all in `site.config.js` → `stickers`.
+
+`npm run dev` sends `/api` to the store backend, so it can't reach these
+functions; use `npx vercel dev` or a preview deploy to try a payment.

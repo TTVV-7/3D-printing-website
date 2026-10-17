@@ -1,15 +1,36 @@
 import { useEffect, useRef, useState } from "react";
 import { X, Lock, CreditCard, ArrowRight, Loader2 } from "lucide-react";
+import { clsx } from "clsx";
 import { stickers } from "../../site.config.js";
+import { deliveryCost } from "./pricing.js";
 
-// Sends the order to api/sticker-checkout.js, which hands back a Stripe
-// Checkout page to go to. Until STRIPE_SECRET_KEY is set there (or in
-// `npm run dev`, where /api goes to the store backend) it can't, and this
-// says so instead.
+// Uploads the print-ready image (through the store backend's /api/upload, same
+// as quote attachments), then sends the order to api/sticker-checkout.js,
+// which hands back a Stripe Checkout page to go to. Until a Stripe key is set
+// there (or in `npm run dev`, where /api goes to the store backend) it can't,
+// and this says so instead.
+
+async function uploadArt(art) {
+  try {
+    const blob = await new Promise((ok) => art.toBlob(ok, "image/png"));
+    const { upload } = await import("@vercel/blob/client");
+    const id = `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    const res = await upload(`requests/sticker-${id}/sticker.png`, blob, {
+      access: "public",
+      handleUploadUrl: "/api/upload",
+    });
+    return res.url;
+  } catch (err) {
+    // The order still has every setting; the image can be rebuilt from them.
+    console.warn("sticker image not uploaded:", err);
+    return "";
+  }
+}
 
 export function Checkout({ order, onClose }) {
   const [step, setStep] = useState("pay"); // pay -> (Stripe) | preview
   const [busy, setBusy] = useState(false);
+  const [delivery, setDelivery] = useState(stickers.delivery[0]);
   const thumb = useRef(null);
 
   useEffect(() => {
@@ -26,11 +47,12 @@ export function Checkout({ order, onClose }) {
     c.getContext("2d").drawImage(order.art, 0, 0);
   }, [order.art, step]);
 
-  const shipping = stickers.shipping[0].amount;
+  const shipping = deliveryCost(delivery, order.total);
 
   async function pay() {
     setBusy(true);
     try {
+      const art = order.art ? await uploadArt(order.art) : "";
       const r = await fetch("/api/sticker-checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -38,10 +60,12 @@ export function Checkout({ order, onClose }) {
           w: order.size.w,
           h: order.size.h,
           shape: order.shape,
-          paper: order.paper.key,
-          finish: order.finish,
+          material: order.material.key,
           qty: order.qty,
-          art: order.art?.toDataURL("image/png"),
+          delivery: delivery.key,
+          ink: order.ink,
+          file: order.fileName,
+          art,
         }),
       });
       const { url } = r.ok ? await r.json() : {};
@@ -73,7 +97,7 @@ export function Checkout({ order, onClose }) {
           </div>
           <div className="min-w-0 flex-1 text-sm">
             <p className="font-semibold">
-              {order.qty} × {order.paper.name.toLowerCase()} {order.finish} sticker{order.qty > 1 ? "s" : ""}
+              {order.qty} × sticker{order.qty > 1 ? "s" : ""}, {order.material.name.toLowerCase()}
             </p>
             <p className="text-ink/55">
               {order.size.w} × {order.size.h} mm · {order.shape === "rect" ? "rectangle" : order.shape}
@@ -84,15 +108,42 @@ export function Checkout({ order, onClose }) {
 
         {step === "pay" && (
           <div className="mt-6">
-            <h2 className="text-2xl font-bold">Order summary</h2>
-            <dl className="mt-4 space-y-2 text-sm">
+            <h2 className="text-xl font-bold">Delivery</h2>
+            <div className="mt-3 space-y-2" role="radiogroup" aria-label="Delivery">
+              {stickers.delivery.map((d) => {
+                const cost = deliveryCost(d, order.total);
+                return (
+                  <button
+                    key={d.key}
+                    type="button"
+                    role="radio"
+                    aria-checked={delivery.key === d.key}
+                    onClick={() => setDelivery(d)}
+                    className={clsx(
+                      "flex w-full items-start justify-between gap-3 rounded-xl bg-white p-3 text-left ring-1 transition",
+                      delivery.key === d.key ? "ring-2 ring-flame" : "ring-ink/15 hover:ring-ink/40",
+                    )}
+                  >
+                    <span className="text-sm">
+                      <span className="block font-semibold">{d.name}</span>
+                      <span className="block text-ink/55">{d.body}</span>
+                    </span>
+                    <span className="flex-none text-sm font-semibold">
+                      {cost ? `$${cost.toFixed(2)}` : "Free"}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            <dl className="mt-5 space-y-2 text-sm">
               <div className="flex justify-between">
                 <dt className="text-ink/60">Stickers ({order.qty} × ${order.each.toFixed(2)})</dt>
                 <dd>${order.total.toFixed(2)}</dd>
               </div>
               <div className="flex justify-between">
-                <dt className="text-ink/60">Shipping (or free Vancouver pickup)</dt>
-                <dd>${shipping.toFixed(2)}</dd>
+                <dt className="text-ink/60">{delivery.name}</dt>
+                <dd>{shipping ? `$${shipping.toFixed(2)}` : "Free"}</dd>
               </div>
               <div className="flex justify-between border-t border-ink/10 pt-2 font-semibold">
                 <dt>Total before tax</dt>

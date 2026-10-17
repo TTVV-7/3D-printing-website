@@ -1,6 +1,9 @@
-// Shared by the page and api/sticker-checkout.js, so the price Stripe charges
-// is worked out on the server from the same rules the page shows.
+// Shared by the page and the api/ functions, so what Stripe charges is worked
+// out on the server from the same rules the page shows.
 import { stickers } from "../../site.config.js";
+
+export const materialOf = (key) => stickers.materials.find((m) => m.key === key);
+export const deliveryOf = (key) => stickers.delivery.find((d) => d.key === key);
 
 // Per sticker, in CAD, for a sticker w × h mm.
 export function priceEach({ w, h }, finish, qty) {
@@ -9,4 +12,9 @@ export function priceEach({ w, h }, finish, qty) {
   if (finish === "glossy") each += glossyExtra;
   const off = breaks.filter((b) => qty >= b.qty).reduce((a, b) => Math.max(a, b.off), 0);
   return each * (1 - off);
+}
+
+// The delivery charge for an order whose stickers come to `subtotal`.
+export function deliveryCost(d, subtotal) {
+  return d.freeOver && subtotal >= d.freeOver ? 0 : d.amount;
 }

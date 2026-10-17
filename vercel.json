@@ -5,6 +5,7 @@
   "outputDirectory": "dist",
   "rewrites": [
     { "source": "/api/sticker-checkout", "destination": "/api/sticker-checkout" },
+    { "source": "/api/sticker-confirm", "destination": "/api/sticker-confirm" },
     { "source": "/api/:path*", "destination": "https://thomasverigin.ca/3Dprintingstore/api/:path*" }
   ],
   "headers": [
