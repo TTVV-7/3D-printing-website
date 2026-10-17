@@ -14,11 +14,14 @@
 //
 // Not reached by `npm run dev` (Vite proxies /api to the store backend);
 // use `npx vercel dev` or a preview deploy to try a real payment.
-import { stickers } from "../site.config.js";
-import { priceEach, deliveryCost, finishOf, colourOf, deliveryOf, labelName } from "../src/stickers/pricing.js";
+import { priceEach, deliveryCost, finishOf, colourOf, deliveryOf, labelName, sizeOf } from "../src/stickers/pricing.js";
+import { CROPS, DESIGNS, RING_GROUPS } from "../src/stickers/library.js";
 import { stripe, stripeKey } from "./_stripe.js";
 
-const SHAPES = { rect: "rectangle", rounded: "rounded", circle: "circle" };
+const CROP_NAMES = Object.fromEntries([["none", "label shape"], ...CROPS]);
+const DESIGN_NAMES = Object.fromEntries([["none", "none"], ...DESIGNS]);
+const RING_NAMES = Object.fromEntries([["none", "none"], ...RING_GROUPS.flatMap(([, r]) => r)]);
+const seedOf = (v) => Math.floor(clamp(v, 0, 1e9));
 const MAX_QTY = 1000;
 // Only images uploaded through the store backend's Blob store.
 const BLOB_URL = /^https:\/\/[a-z0-9-]+\.public\.blob\.vercel-storage\.com\/[\w\-./]+\.png$/;
@@ -37,7 +40,10 @@ export default async function handler(req, res) {
   const finish = finishOf(o.finish);
   const colour = colourOf(finish, o.colour);
   const delivery = deliveryOf(o.delivery);
-  if (!colour || !delivery || !SHAPES[o.shape]) return res.status(400).json({ error: "Unknown option" });
+  const stock = sizeOf(o.size);
+  if (!colour || !delivery || !stock || !CROP_NAMES[o.crop] || !DESIGN_NAMES[o.pattern] || !RING_NAMES[o.ring]) {
+    return res.status(400).json({ error: "Unknown option" });
+  }
   const mailed = delivery.key !== "pickup";
 
   // Name, email and (when mailed) the address, typed on the page.
@@ -59,9 +65,7 @@ export default async function handler(req, res) {
   }
 
   // Never trust the page's price: rebuild it from the order.
-  const w = clamp(o.w, stickers.minWidthMm, 400);
-  const h = clamp(o.h, 5, 400);
-  if (Math.min(w, h) > stickers.maxWidthMm) return res.status(400).json({ error: "Too wide for the printer" });
+  const { w, h } = stock;
   const qty = Math.round(clamp(o.qty, 1, MAX_QTY));
   const each = priceEach({ w, h }, finish.key, qty);
   const unit = cents(each);
@@ -71,13 +75,15 @@ export default async function handler(req, res) {
 
   const origin = `https://${req.headers["x-forwarded-host"] || req.headers.host}`;
   const label = labelName(finish, colour);
-  const desc = `${w} × ${h} mm ${SHAPES[o.shape]}, ${label.toLowerCase()}`;
+  const desc = `${stock.name}, ${CROP_NAMES[o.crop].toLowerCase()}, ${label.toLowerCase()}`;
 
   // Everything needed to print it again, kept on the payment in Stripe.
   const metadata = {
     kind: "sticker",
-    size: `${w} x ${h} mm`,
-    shape: o.shape,
+    size: `${stock.name} (${w} x ${h} mm, printer size ${stock.code})`,
+    shape: o.crop === "none" ? "label shape" : `${CROP_NAMES[o.crop]} (seed ${seedOf(o.cropSeed)})`,
+    design: o.pattern === "none" ? "none" : `${DESIGN_NAMES[o.pattern]} (seed ${seedOf(o.patternSeed)})`,
+    ring: RING_NAMES[o.ring],
     label,
     name,
     qty,

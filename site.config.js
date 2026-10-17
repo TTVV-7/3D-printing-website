@@ -104,9 +104,26 @@ export const reviews = {
 // The sticker shop (/stickers). Thermal printing on a Nelko PL70E-BT: one
 // ink, black, on whatever label stock is loaded. DRAFT numbers -- adjust to taste.
 export const stickers = {
-  // The PL70E-BT takes labels 40-104 mm wide; the narrow side has to fit.
-  maxWidthMm: 104,
-  minWidthMm: 20,
+  // Die-cut label stock for the Nelko PL70E-BT, from the in-shop Sticker
+  // Printer app's size list (TTVV-7/Stickers). `code` is the printer's
+  // PageSize; `crop` is the shape a round label starts with.
+  sizes: [
+    { key: "round-2in", group: "Round", name: '2" round', w: 50.8, h: 50.8, code: "w144h144", crop: "circle" },
+    { key: "sq-50", group: "Square", name: "50 × 50 mm", w: 50, h: 50, code: "w141h141" },
+    { key: "sq-2in", group: "Square", name: '2" square', w: 50.8, h: 50.8, code: "w144h144" },
+    { key: "sq-53", group: "Square", name: "53 × 53 mm", w: 53, h: 53, code: "w150h150" },
+    { key: "sq-3in", group: "Square", name: '3" square', w: 76.2, h: 76.2, code: "w216h216" },
+    { key: "sq-4in", group: "Square", name: '4" square', w: 101.6, h: 101.6, code: "w288h288" },
+    { key: "40x30", group: "Small", name: "40 × 30 mm", w: 40, h: 30, code: "w113h85" },
+    { key: "50x30", group: "Small", name: "50 × 30 mm", w: 50, h: 30, code: "w141h85" },
+    { key: "50x40", group: "Small", name: "50 × 40 mm", w: 50, h: 40, code: "w141h113" },
+    { key: "60x40", group: "Small", name: "60 × 40 mm", w: 60, h: 40, code: "w170h113" },
+    { key: "70x50", group: "Small", name: "70 × 50 mm", w: 70, h: 50, code: "w198h141" },
+    { key: "2x4in", group: "Large", name: '2" × 4"', w: 50.8, h: 101.6, code: "w144h288" },
+    { key: "4x2in", group: "Large", name: '4" × 2"', w: 101.6, h: 50.8, code: "w288h144" },
+    { key: "4x3in", group: "Large", name: '4" × 3"', w: 101.6, h: 76.2, code: "w288h216" },
+    { key: "3x4in", group: "Large", name: '3" × 4.4"', w: 75, h: 112, code: "w212h317" },
+  ],
   // Label stock on hand, by finish. Each finish has its colours; `hex` is how
   // it looks on screen. A finish with one colour shows no colour choice.
   finishes: [

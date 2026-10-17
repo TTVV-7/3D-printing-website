@@ -7,6 +7,7 @@ export const colourOf = (finish, key) => finish?.colours.find((c) => c.key === k
 // "Yellow matte", or just "Chrome silver" when a finish comes in one colour.
 export const labelName = (finish, colour) =>
   finish.colours.length > 1 ? `${colour.name} ${finish.name.toLowerCase()}` : finish.name;
+export const sizeOf = (key) => stickers.sizes.find((s) => s.key === key);
 export const deliveryOf = (key) => stickers.delivery.find((d) => d.key === key);
 
 // Per sticker, in CAD, for a sticker w × h mm.

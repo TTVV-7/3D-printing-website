@@ -4,22 +4,12 @@ import {
 } from "lucide-react";
 import { clsx } from "clsx";
 import { stickers } from "../../site.config.js";
-import { renderThermal, stickerSize, DOTS_PER_MM } from "./thermal.js";
+import { renderThermal, DOTS_PER_MM } from "./thermal.js";
+import { DesignControls } from "./DesignControls.jsx";
+import { loadDesignImages } from "./library.js";
 import { StickerEditor } from "./StickerEditor.jsx";
 import { Checkout } from "./Checkout.jsx";
-import { priceEach } from "./pricing.js";
-
-const SHAPES = [
-  { key: "rect", name: "Rectangle" },
-  { key: "rounded", name: "Rounded" },
-  { key: "circle", name: "Circle" },
-];
-const PRESETS = [
-  { mm: 25.4, label: '1"' },
-  { mm: 50.8, label: '2"' },
-  { mm: 76.2, label: '3"' },
-  { mm: 101.6, label: '4"' },
-];
+import { priceEach, sizeOf } from "./pricing.js";
 
 // Typefaces for text layers; loaded in stickers/index.html.
 const FONTS = [
@@ -116,8 +106,12 @@ export function StickerStudio() {
   const finish = finishDef.key;
   const paper = colour.hex;
   const [realCard, setRealCard] = useState(false);
-  const [shape, setShape] = useState("rounded");
-  const [widthMm, setWidthMm] = useState(50.8);
+  // Label size, cut shape, background design and edge ring (DesignControls).
+  const [d, setD] = useState(() => {
+    const first = stickers.sizes[0];
+    return { sizeKey: first.key, crop: first.crop || "none", cropSeed: 7, pattern: "none", patternSeed: 7, ring: "none" };
+  });
+  const setDesign = (patch) => setD((cur) => ({ ...cur, ...patch }));
   const [mode, setMode] = useState("dither");
   const [threshold, setThreshold] = useState(140);
   const [invert, setInvert] = useState(false);
@@ -126,40 +120,34 @@ export function StickerStudio() {
 
   useEffect(() => {
     loadImage("/stickers/sample.webp")
-      .then((img) => setLayers((ls) => (ls.length ? ls : [imageLayer(img)])))
+      // A little past the safe circle: the art's own corners are blank.
+      .then((img) => setLayers((ls) => (ls.length ? ls : [{ ...imageLayer(img), scale: 1.35 }])))
       .catch(() => {});
   }, []);
 
-  // The narrow side is what the print head limits.
-  const size = useMemo(() => {
-    const s = stickerSize(layers, widthMm, shape);
-    const narrow = Math.min(s.w, s.h);
-    if (narrow > stickers.maxWidthMm) {
-      const k = stickers.maxWidthMm / narrow;
-      return { w: +(s.w * k).toFixed(1), h: +(s.h * k).toFixed(1), capped: true };
-    }
-    return s;
-    // Only the first image's shape matters, not where it's been dragged.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [layers.find((l) => l.kind === "image")?.img, layers.length, widthMm, shape]);
+  const stock = sizeOf(d.sizeKey);
+  const size = useMemo(() => ({ w: stock.w, h: stock.h }), [stock]);
+
+  // Logo designs draw from artwork: draw again once it's here.
+  useEffect(() => loadDesignImages("/stickers/designs", () => setFontsReady((n) => n + 1)), []);
 
   const art = useMemo(
     () =>
       typeof document === "undefined"
         ? null
-        : renderThermal(layers, { w: size.w, h: size.h, shape, mode, threshold, invert, paper }),
+        : renderThermal({ ...d, layers }, { w: size.w, h: size.h, mode, threshold, invert, paper }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [layers, size, shape, mode, threshold, invert, paper, fontsReady],
+    [layers, size, d, mode, threshold, invert, paper, fontsReady],
   );
 
   useEffect(() => {
     // While editing, the 3D view is hidden: catch it up when editing ends.
     if (!ready || !art || editing) return;
-    stage.current.update({ art, w: size.w, h: size.h, shape, finish, paper });
+    stage.current.update({ art, w: size.w, h: size.h, crop: d.crop, cropSeed: d.cropSeed, finish, paper });
     stage.current.onCardClick(() => setRealCard((r) => !r));
     stage.current.onStickerClick(() => setEditing(true));
     stage.current.start();
-  }, [ready, art, size, shape, finish, paper, stage, editing]);
+  }, [ready, art, size, d.crop, d.cropSeed, finish, paper, stage, editing]);
 
   useEffect(() => {
     if (ready) stage.current.cardLook(realCard);
@@ -248,8 +236,8 @@ export function StickerStudio() {
           <p className="eyebrow">Stickers</p>
           <h1 className="mt-3 text-4xl font-bold sm:text-5xl">Your image, as a sticker.</h1>
           <p className="mt-4 text-ink/65 sm:text-lg">
-            Thermal printed: crisp black on the label you pick, up to {stickers.maxWidthMm / 10} cm across.
-            Drop in an image and see it to scale.
+            Thermal printed in crisp black on die-cut labels. Drop in an image or type some text,
+            pick a shape, a design and a border, and see it to scale.
           </p>
         </div>
 
@@ -271,7 +259,7 @@ export function StickerStudio() {
               {editing && (
                 <StickerEditor
                   art={art}
-                  sticker={{ w: size.w, h: size.h, shape }}
+                  sticker={{ w: size.w, h: size.h, crop: d.crop, ring: d.ring }}
                   layers={layers}
                   selected={selected}
                   onSelect={setSelected}
@@ -401,6 +389,19 @@ export function StickerStudio() {
                             </button>
                           ))}
                         </div>
+                        {d.pattern !== "none" && (
+                          <div className="flex gap-2">
+                            {[
+                              ["solid", "Solid black"],
+                              ["fill", "Design fills letters"],
+                              ["cutout", "Cut out of design"],
+                            ].map(([k, name]) => (
+                              <Choice key={k} active={(sel.style || "solid") === k} onClick={() => patchSel({ style: k })} className="flex-1 text-xs">
+                                {name}
+                              </Choice>
+                            ))}
+                          </div>
+                        )}
                       </>
                     )}
                     <div className="grid gap-3 sm:grid-cols-2">
@@ -573,42 +574,7 @@ export function StickerStudio() {
               )}
             </div>
 
-            <div>
-              <Label>Shape</Label>
-              <div className="flex gap-2">
-                {SHAPES.map((s) => (
-                  <Choice key={s.key} active={shape === s.key} onClick={() => setShape(s.key)} className="flex-1">
-                    {s.name}
-                  </Choice>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <Label hint={`${size.w} × ${size.h} mm`}>Size</Label>
-              <input
-                type="range"
-                min={stickers.minWidthMm}
-                max={stickers.maxWidthMm}
-                step={0.5}
-                value={Math.min(widthMm, stickers.maxWidthMm)}
-                onChange={(e) => setWidthMm(+e.target.value)}
-                className="w-full accent-flame"
-                aria-label="Width in millimetres"
-              />
-              <div className="mt-2 flex gap-2">
-                {PRESETS.map((p) => (
-                  <Choice key={p.label} active={Math.abs(widthMm - p.mm) < 0.3} onClick={() => setWidthMm(p.mm)} className="flex-1">
-                    {p.label}
-                  </Choice>
-                ))}
-              </div>
-              {size.capped && (
-                <p className="mt-2 text-xs text-flame-600">
-                  Capped so the narrow side fits the {stickers.maxWidthMm} mm print head.
-                </p>
-              )}
-            </div>
+            <DesignControls d={d} set={setDesign} />
 
             <details className="rounded-2xl bg-white p-4 ring-1 ring-ink/10">
               <summary className="cursor-pointer text-sm font-semibold">Ink settings</summary>
@@ -680,7 +646,7 @@ export function StickerStudio() {
       {checkout && (
         <Checkout
           onClose={() => setCheckout(false)}
-          order={{ art, size, shape, finish: finishDef, colour, qty, each, total, ink: { mode, threshold, invert }, fileName }}
+          order={{ art, size, design: d, finish: finishDef, colour, qty, each, total, ink: { mode, threshold, invert }, fileName }}
         />
       )}
     </section>

@@ -8,6 +8,7 @@ import {
 } from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
+import { outline as cutOutline } from "./thermal.js";
 
 const CARD = { w: 85.6, h: 53.98, t: 0.76 };
 const STICKER_T = 0.35; // a label and its backing, a touch thick so the edge shows
@@ -55,9 +56,25 @@ function outline(w, h, shape) {
   return s;
 }
 
-// A flat slab of the outline, lying on the table, its top at `t`.
+// The sticker's cut outline as a three.js Shape, centred, y up. The 2D
+// outline draws y down from the top-left corner, so this flips it.
+function stickerShape(w, h, crop, cropSeed) {
+  const s = new Shape();
+  const X = (x) => x - w / 2, Y = (y) => h / 2 - y;
+  cutOutline({
+    moveTo: (x, y) => s.moveTo(X(x), Y(y)),
+    lineTo: (x, y) => s.lineTo(X(x), Y(y)),
+    arc: (x, y, r, a0, a1) => s.absarc(X(x), Y(y), r, -a0, -a1, true),
+    closePath: () => s.closePath(),
+  }, { w, h, crop, cropSeed }, 1);
+  return s;
+}
+
+// A flat slab of `shape` (a Shape, or a key for outline()), lying on the
+// table, its top at `t`.
 function slab(w, h, t, shape, topMaterial, edgeMaterial) {
-  const geo = new ExtrudeGeometry(outline(w, h, shape), { depth: t, bevelEnabled: false, curveSegments: 48 });
+  const s = typeof shape === "string" ? outline(w, h, shape) : shape;
+  const geo = new ExtrudeGeometry(s, { depth: t, bevelEnabled: false, curveSegments: 48 });
   geo.rotateX(-Math.PI / 2);
   return new Mesh(geo, [topMaterial, edgeMaterial]);
 }
@@ -290,7 +307,7 @@ export async function mountStickers(canvas, { reducedMotion }) {
 
   return {
     // `art` is the canvas from renderThermal().
-    update({ art, w, h, shape, finish, paper }) {
+    update({ art, w, h, crop, cropSeed, finish, paper }) {
       const resized = w !== size.w || h !== size.h;
       size = { w, h };
       if (sticker) {
@@ -311,7 +328,7 @@ export async function mountStickers(canvas, { reducedMotion }) {
       Object.assign(topMat, FINISH[finish]);
       topMat.needsUpdate = true;
       edgeMat.color.set(paper);
-      sticker = slab(w, h, STICKER_T, shape, topMat, edgeMat);
+      sticker = slab(w, h, STICKER_T, stickerShape(w, h, crop, cropSeed), topMat, edgeMat);
       group.add(sticker);
       layout();
       if (resized) frame();
