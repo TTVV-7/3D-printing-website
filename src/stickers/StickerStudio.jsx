@@ -173,7 +173,7 @@ export function StickerStudio() {
           <p className="eyebrow">Stickers</p>
           <h1 className="mt-3 text-4xl font-bold sm:text-5xl">Your image, as a sticker.</h1>
           <p className="mt-4 text-ink/65 sm:text-lg">
-            Thermal printed: crisp black on the paper colour you pick, up to {stickers.maxWidthMm / 10} cm across.
+            Thermal printed: crisp black on white, up to {stickers.maxWidthMm / 10} cm across.
             Drop in an image and see it to scale.
           </p>
         </div>
@@ -265,28 +265,30 @@ export function StickerStudio() {
               />
             </div>
 
-            <div>
-              <Label hint="ink is always black">Paper colour</Label>
-              <div className="flex flex-wrap gap-2">
-                {stickers.papers.map((p) => (
-                  <button
-                    key={p.key}
-                    type="button"
-                    onClick={() => setPaper(p)}
-                    aria-pressed={paper.key === p.key}
-                    title={p.name}
-                    className={clsx(
-                      "h-10 w-10 rounded-full ring-2 ring-offset-2 ring-offset-paper transition",
-                      paper.key === p.key ? "ring-flame" : "ring-transparent hover:ring-ink/20",
-                    )}
-                    style={{ background: p.hex, boxShadow: "inset 0 0 0 1px rgb(12 26 46 / 0.15)" }}
-                  >
-                    <span className="sr-only">{p.name}</span>
-                  </button>
-                ))}
+            {stickers.papers.length > 1 && (
+              <div>
+                <Label hint="ink is always black">Paper colour</Label>
+                <div className="flex flex-wrap gap-2">
+                  {stickers.papers.map((p) => (
+                    <button
+                      key={p.key}
+                      type="button"
+                      onClick={() => setPaper(p)}
+                      aria-pressed={paper.key === p.key}
+                      title={p.name}
+                      className={clsx(
+                        "h-10 w-10 rounded-full ring-2 ring-offset-2 ring-offset-paper transition",
+                        paper.key === p.key ? "ring-flame" : "ring-transparent hover:ring-ink/20",
+                      )}
+                      style={{ background: p.hex, boxShadow: "inset 0 0 0 1px rgb(12 26 46 / 0.15)" }}
+                    >
+                      <span className="sr-only">{p.name}</span>
+                    </button>
+                  ))}
+                </div>
+                <p className="mt-1.5 text-xs text-ink/50">{paper.name}</p>
               </div>
-              <p className="mt-1.5 text-xs text-ink/50">{paper.name}</p>
-            </div>
+            )}
 
             <div>
               <Label>Finish</Label>

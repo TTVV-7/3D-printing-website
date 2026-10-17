@@ -108,14 +108,14 @@ export const stickers = {
   maxWidthMm: 100,
   minWidthMm: 20,
   // Label stock on hand. `hex` is how it looks on screen.
+  // Label stock on hand. `hex` is how it looks on screen. With only one,
+  // the page doesn't offer a choice.
   papers: [
     { key: "white", name: "White", hex: "#f7f6f2" },
-    { key: "cream", name: "Cream", hex: "#f1e6c8" },
-    { key: "yellow", name: "Yellow", hex: "#f7d84a" },
-    { key: "orange", name: "Orange", hex: "#f59a4a" },
-    { key: "pink", name: "Pink", hex: "#f4a7c0" },
-    { key: "blue", name: "Blue", hex: "#8fc3ea" },
-    { key: "green", name: "Green", hex: "#9ed49a" },
+    // Coloured label rolls, once they're in stock:
+    // { key: "yellow", name: "Yellow", hex: "#f7d84a" },
+    // { key: "pink", name: "Pink", hex: "#f4a7c0" },
+    // { key: "blue", name: "Blue", hex: "#8fc3ea" },
   ],
   finishes: [
     { key: "matte", name: "Matte", body: "Soft, no glare. Easy to write on." },
