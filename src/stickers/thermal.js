@@ -65,9 +65,10 @@ export function layerBase(layer, sticker) {
     const aspect = layer.img.naturalWidth / layer.img.naturalHeight;
     const d = innerCircle(sticker);
     if (d) {
-      // Fit by the diagonal, so the corners stay inside the circle.
-      const bh = d / Math.sqrt(aspect * aspect + 1);
-      return { bw: bh * aspect, bh };
+      // The longer side spans the circle: artwork's corners are usually
+      // blank, and fitting by the diagonal left it looking lost.
+      const side = d * 0.95;
+      return aspect >= 1 ? { bw: side, bh: side / aspect } : { bw: side * aspect, bh: side };
     }
     let bw = w - 2 * MARGIN_MM, bh = h - 2 * MARGIN_MM;
     if (bw / bh > aspect) bw = bh * aspect;

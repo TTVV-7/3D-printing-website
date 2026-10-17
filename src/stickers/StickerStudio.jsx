@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  Check, CheckCircle2, Crosshair, Hand, ImageUp, ImagePlus, Pencil, RotateCcw, ShoppingBag, Minus, Plus, Trash2, Type,
+  Check, CheckCircle2, X, Crosshair, Hand, ImageUp, ImagePlus, Pencil, RotateCcw, ShoppingBag, Minus, Plus, Trash2, Type,
 } from "lucide-react";
 import { clsx } from "clsx";
 import { stickers } from "../../site.config.js";
@@ -107,7 +107,7 @@ export function StickerStudio() {
   const paper = colour.hex;
   const [realCard, setRealCard] = useState(false);
   // Label size, background design and edge ring (DesignControls).
-  const [d, setD] = useState({ sizeKey: stickers.sizes[0].key, pattern: "none", patternSeed: 7, ring: "none" });
+  const [d, setD] = useState({ sizeKey: "round-2in", pattern: "none", patternSeed: 7, ring: "none" });
   const setDesign = (patch) => setD((cur) => ({ ...cur, ...patch }));
   const [mode, setMode] = useState("dither");
   const [threshold, setThreshold] = useState(140);
@@ -117,8 +117,7 @@ export function StickerStudio() {
 
   useEffect(() => {
     loadImage("/stickers/sample.webp")
-      // A little past the safe circle: the art's own corners are blank.
-      .then((img) => setLayers((ls) => (ls.length ? ls : [{ ...imageLayer(img), scale: 1.35 }])))
+      .then((img) => setLayers((ls) => (ls.length ? ls : [imageLayer(img)])))
       .catch(() => {});
   }, []);
 
@@ -178,13 +177,42 @@ export function StickerStudio() {
     });
   }
 
+  // Each new text lands somewhere new, so they don't stack up unseen.
+  const TEXT_SPOTS = [0.3, -0.3, 0, 0.15, -0.15];
   function addText() {
     const font = FONTS[0];
-    const layer = { id: newId(), kind: "text", text: "Your text", font: font.family, weight: font.weight, size: 0.14, x: 0, y: 0, scale: 1, rot: 0 };
+    const n = layers.filter((l) => l.kind === "text").length;
+    const layer = { id: newId(), kind: "text", text: "Your text", font: font.family, weight: font.weight, size: 0.14, x: 0, y: TEXT_SPOTS[n % TEXT_SPOTS.length] * (size.h / size.w), scale: 1, rot: 0 };
     setLayers((ls) => [...ls, layer]);
     setSelected(layer.id);
     setEditing(true);
   }
+
+  // Removes a layer and selects the one next to it, so the next Remove works.
+  function removeLayer(id) {
+    const i = layers.findIndex((l) => l.id === id);
+    const rest = layers.filter((l) => l.id !== id);
+    setLayers(rest);
+    setSelected(rest[Math.min(i, rest.length - 1)]?.id ?? null);
+  }
+
+  // Delete / Backspace removes the selected layer while editing (not while typing).
+  useEffect(() => {
+    if (!editing) return;
+    const onKey = (e) => {
+      if (!["Delete", "Backspace"].includes(e.key) || !selected) return;
+      if (e.target.closest("input, textarea, select, [contenteditable]")) return;
+      e.preventDefault();
+      removeLayer(selected);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
+
+  // Images re-fit whenever the label or ring changes, so they always fill it.
+  useEffect(() => {
+    setLayers((ls) => ls.map((l) => (l.kind === "image" ? { ...l, scale: 1, x: 0, y: 0 } : l)));
+  }, [d.sizeKey, d.ring]);
 
   const sel = layers.find((l) => l.id === selected);
   const patchSel = (patch) => setLayers((ls) => ls.map((l) => (l.id === selected ? { ...l, ...patch } : l)));
@@ -241,8 +269,8 @@ export function StickerStudio() {
         </div>
 
         <div className="mt-10 grid gap-6 lg:grid-cols-[1.4fr_1fr] lg:gap-10">
-          {/* Stage */}
-          <div className="flex min-w-0 flex-col gap-4">
+          {/* Stage: stays in view while the options scroll past */}
+          <div className="flex min-w-0 flex-col gap-4 lg:sticky lg:top-20 lg:self-start">
             <div className="relative aspect-square overflow-hidden rounded-3xl bg-ink ring-1 ring-ink/10 sm:aspect-[4/3]">
               <canvas
                 ref={canvasRef}
@@ -334,13 +362,50 @@ export function StickerStudio() {
               </button>
             </p>
 
+            <div className="flex items-center gap-4 rounded-2xl bg-white p-4 ring-1 ring-ink/10">
+              <div
+                className="flex h-24 w-24 flex-none items-center justify-center rounded-xl bg-[repeating-conic-gradient(#ebe6dc_0_25%,#fff_0_50%)] bg-[length:12px_12px]"
+              >
+                <canvas ref={flatRef} className="max-h-20 max-w-20 [image-rendering:pixelated]" />
+              </div>
+              <div className="text-sm">
+                <p className="font-semibold">Print preview, dot for dot</p>
+                <p className="mt-1 text-ink/60">
+                  What the printer puts down at {Math.round(DOTS_PER_MM * 25.4)} dpi:{" "}
+                  {art?.width} × {art?.height} dots. Thermal is one ink, so greys become solid
+                  black or a dot pattern.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Controls */}
+          <div className="flex min-w-0 flex-col gap-6">
             {editing && (
-              <div className="rounded-2xl bg-white p-4 ring-1 ring-ink/10">
+              <div className="rounded-2xl bg-white p-4 ring-2 ring-flame/60">
+                <p className="mb-3 text-sm font-semibold">Editing your design</p>
                 <div className="flex flex-wrap items-center gap-2">
                   {layers.map((l) => (
-                    <Choice key={l.id} active={l.id === selected} onClick={() => setSelected(l.id)} className="max-w-[10rem] truncate">
-                      {l.kind === "image" ? "Image" : `“${l.text.split("\n")[0] || "Text"}”`}
-                    </Choice>
+                    <span
+                      key={l.id}
+                      data-layer-chip
+                      className={clsx(
+                        "inline-flex max-w-[12rem] items-center rounded-xl text-sm font-medium ring-1 transition",
+                        l.id === selected ? "bg-ink text-white ring-ink" : "bg-white text-ink ring-ink/15 hover:ring-ink/40",
+                      )}
+                    >
+                      <button type="button" onClick={() => setSelected(l.id)} className="truncate py-2 pl-3 pr-1.5">
+                        {l.kind === "image" ? "Image" : `“${l.text.split("\n")[0] || "Text"}”`}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => removeLayer(l.id)}
+                        aria-label="Remove"
+                        className="mr-1 rounded-lg p-1 opacity-70 hover:bg-flame hover:text-white hover:opacity-100"
+                      >
+                        <X size={14} />
+                      </button>
+                    </span>
                   ))}
                   <button type="button" onClick={addText} className="btn-outline-dark h-9 px-3 text-sm">
                     <Type size={15} /> Add text
@@ -441,10 +506,7 @@ export function StickerStudio() {
                       </button>
                       <button
                         type="button"
-                        onClick={() => {
-                          setLayers((ls) => ls.filter((l) => l.id !== selected));
-                          setSelected(null);
-                        }}
+                        onClick={() => removeLayer(selected)}
                         className="btn-outline-dark h-9 px-3 text-sm text-flame-600"
                       >
                         <Trash2 size={15} /> Remove
@@ -457,25 +519,6 @@ export function StickerStudio() {
               </div>
             )}
 
-            <div className="flex items-center gap-4 rounded-2xl bg-white p-4 ring-1 ring-ink/10">
-              <div
-                className="flex h-24 w-24 flex-none items-center justify-center rounded-xl bg-[repeating-conic-gradient(#ebe6dc_0_25%,#fff_0_50%)] bg-[length:12px_12px]"
-              >
-                <canvas ref={flatRef} className="max-h-20 max-w-20 [image-rendering:pixelated]" />
-              </div>
-              <div className="text-sm">
-                <p className="font-semibold">Print preview, dot for dot</p>
-                <p className="mt-1 text-ink/60">
-                  What the printer puts down at {Math.round(DOTS_PER_MM * 25.4)} dpi:{" "}
-                  {art?.width} × {art?.height} dots. Thermal is one ink, so greys become solid
-                  black or a dot pattern.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Controls */}
-          <div className="flex min-w-0 flex-col gap-6">
             <div
               onDragOver={(e) => {
                 e.preventDefault();
