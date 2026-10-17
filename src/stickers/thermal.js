@@ -80,8 +80,30 @@ export function layerBase(layer, sticker) {
   measurer.font = fontOf(layer, px);
   const lines = layer.text.split("\n");
   const widest = Math.max(1, ...lines.map((t) => measurer.measureText(t).width));
-  const size = layer.size * w; // mm
+  const size = textSizeMm(layer, sticker);
   return { bw: (widest / px) * size, bh: lines.length * size * 1.15 };
+}
+
+// A text layer's letter size in mm before its own scale: what was asked
+// for, shrunk so the longest line fits across the sticker (inside the circle
+// on round labels and rings).
+function textSizeMm(layer, sticker) {
+  const { w } = sticker;
+  measurer ||= document.createElement("canvas").getContext("2d");
+  measurer.font = fontOf(layer, 100);
+  const widest = Math.max(1, ...layer.text.split("\n").map((t) => measurer.measureText(t).width)) / 100;
+  const d = innerCircle(sticker);
+  let size = Math.min(layer.size * w, ((d || w - 2 * MARGIN_MM) * 0.9) / widest);
+  if (d) {
+    // In a circle, fit the width of the circle where the text sits: the
+    // chord through its farthest edge from the centre.
+    const r = d / 2, y = Math.abs(layer.y * w), lines = layer.text.split("\n").length;
+    for (let i = 0; i < 6; i++) {
+      const edge = Math.min(r, y + (size * 1.15 * lines) / 2);
+      size = Math.min(size, (2 * Math.sqrt(r * r - edge * edge) * 0.92) / widest);
+    }
+  }
+  return Math.max(size, 0.5);
 }
 
 // Size on the sticker, in mm, after the layer's own scale.
@@ -117,6 +139,14 @@ export function renderThermal(design, { w, h, mode, threshold, invert, paper }) 
   ctx.fillRect(0, 0, W, H);
   if (hasPattern) drawDesign(ctx, W, H, pattern, patternSeed, ringKey);
 
+  // Where photos show in the finished sticker. Only they get the photo
+  // treatment (dots, the darkness slider); designs, rings and text are
+  // already black and white and are cut clean, as the in-shop app prints them.
+  const photo = document.createElement("canvas");
+  photo.width = W;
+  photo.height = H;
+  const pg = photo.getContext("2d", { willReadFrequently: true });
+
   const D = DOTS_PER_MM;
   let patternMask = null;
   for (const layer of layers) {
@@ -126,11 +156,24 @@ export function renderThermal(design, { w, h, mode, threshold, invert, paper }) 
       g.rotate(layer.rot);
     };
     ctx.save();
+    pg.save();
     if (layer.kind === "image") {
       place(ctx);
+      // Multiply: an image's white shows the design under it, like paper.
+      ctx.globalCompositeOperation = "multiply";
       ctx.drawImage(layer.img, (-lw / 2) * D, (-lh / 2) * D, lw * D, lh * D);
+      place(pg);
+      pg.drawImage(layer.img, (-lw / 2) * D, (-lh / 2) * D, lw * D, lh * D);
     } else {
-      const size = layer.size * w * layer.scale * D;
+      // Text over a photo is crisp, not dotted.
+      place(pg);
+      pg.globalCompositeOperation = "destination-out";
+      pg.lineWidth = Math.max(2, Math.min(W, H) * 0.01);
+      textLines(pg, layer, textSizeMm(layer, sticker) * layer.scale * D, (line, y) => {
+        pg.fillText(line, 0, y);
+        pg.strokeText(line, 0, y);
+      });
+      const size = textSizeMm(layer, sticker) * layer.scale * D;
       const style = hasPattern ? layer.style || "solid" : "solid";
       if (style === "fill") {
         // Solid letters with the pattern carved out of them.
@@ -170,9 +213,26 @@ export function renderThermal(design, { w, h, mode, threshold, invert, paper }) 
       }
     }
     ctx.restore();
+    pg.restore();
   }
 
-  if (ringKey) drawEdgeRing(ctx, W, H, ringKey, null);
+  if (ringKey) {
+    drawEdgeRing(ctx, W, H, ringKey, null);
+    // The ring and its white frame cover whatever photo was under them.
+    const R = (Math.min(W, H) / 2) * 0.96 * 1.03;
+    pg.globalCompositeOperation = "destination-out";
+    pg.beginPath();
+    pg.rect(0, 0, W, H);
+    pg.arc(W / 2, H / 2, ringInner(ringKey) * R, 0, Math.PI * 2);
+    pg.fill("evenodd");
+  }
+  // A photo pixel is one with some of the image's own ink in it; its plain
+  // white stays out, so the design showing through it stays crisp.
+  const isPhoto = pg.getImageData(0, 0, W, H).data;
+  for (let i = 0; i < W * H; i++) {
+    const j = i * 4;
+    if (isPhoto[j] + isPhoto[j + 1] + isPhoto[j + 2] > 735) isPhoto[j + 3] = 0;
+  }
 
   const data = ctx.getImageData(0, 0, W, H);
   const px = data.data;
@@ -183,13 +243,17 @@ export function renderThermal(design, { w, h, mode, threshold, invert, paper }) 
   }
 
   const inked = new Uint8Array(W * H);
+  const photoAt = (i) => isPhoto[i * 4 + 3] > 0;
+  // Everything but photos: a clean cut at mid-grey.
+  for (let i = 0; i < W * H; i++) if (!photoAt(i)) inked[i] = grey[i] < 128 ? 1 : 0;
   if (mode === "dither") {
-    // Floyd-Steinberg, nudged by the threshold slider so it still means
-    // "darker / lighter".
+    // Floyd-Steinberg over the photos only, nudged by the darkness slider so
+    // it still means "darker / lighter".
     const bias = threshold - 128;
     for (let y = 0; y < H; y++) {
       for (let x = 0; x < W; x++) {
         const i = y * W + x;
+        if (!photoAt(i)) continue;
         const old = grey[i];
         const on = old < 128 + bias;
         inked[i] = on ? 1 : 0;
@@ -203,7 +267,7 @@ export function renderThermal(design, { w, h, mode, threshold, invert, paper }) 
       }
     }
   } else {
-    for (let i = 0; i < W * H; i++) inked[i] = grey[i] < threshold ? 1 : 0;
+    for (let i = 0; i < W * H; i++) if (photoAt(i)) inked[i] = grey[i] < threshold ? 1 : 0;
   }
 
   const p = hexToRgb(paper);

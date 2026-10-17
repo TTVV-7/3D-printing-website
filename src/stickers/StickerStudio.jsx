@@ -109,7 +109,7 @@ export function StickerStudio() {
   // Label size, background design and edge ring (DesignControls).
   const [d, setD] = useState({ sizeKey: "round-2in", pattern: "none", patternSeed: 7, ring: "none" });
   const setDesign = (patch) => setD((cur) => ({ ...cur, ...patch }));
-  const [mode, setMode] = useState("dither");
+  const [mode, setMode] = useState("solid");
   const [threshold, setThreshold] = useState(140);
   const [invert, setInvert] = useState(false);
   const [qty, setQty] = useState(10);
@@ -559,6 +559,30 @@ export function StickerStudio() {
             </button>
 
             <div>
+              <Label hint="for your image; designs and text stay crisp">Image ink</Label>
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  ["solid", "Solid black", "Bold and clean. Best for logos and drawings."],
+                  ["dither", "Dotted", "Shades as dot patterns. Best for photos."],
+                ].map(([k, name, body]) => (
+                  <button
+                    key={k}
+                    type="button"
+                    onClick={() => setMode(k)}
+                    aria-pressed={mode === k}
+                    className={clsx(
+                      "rounded-xl p-3 text-left ring-1 transition",
+                      mode === k ? "bg-ink text-white ring-ink" : "bg-white ring-ink/15 hover:ring-ink/40",
+                    )}
+                  >
+                    <span className="block text-sm font-semibold">{name}</span>
+                    <span className={clsx("mt-0.5 block text-xs", mode === k ? "text-white/60" : "text-ink/55")}>{body}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
               <Label hint="ink is always black">Finish</Label>
               <div className="grid grid-cols-2 gap-2">
                 {stickers.finishes.map((f) => (
@@ -619,16 +643,8 @@ export function StickerStudio() {
             <DesignControls d={d} set={setDesign} />
 
             <details className="rounded-2xl bg-white p-4 ring-1 ring-ink/10">
-              <summary className="cursor-pointer text-sm font-semibold">Ink settings</summary>
+              <summary className="cursor-pointer text-sm font-semibold">Darkness and invert</summary>
               <div className="mt-4 space-y-4">
-                <div className="flex gap-2">
-                  <Choice active={mode === "solid"} onClick={() => setMode("solid")} className="flex-1">
-                    Solid
-                  </Choice>
-                  <Choice active={mode === "dither"} onClick={() => setMode("dither")} className="flex-1">
-                    Dotted (for photos)
-                  </Choice>
-                </div>
                 <label className="block text-sm">
                   <span className="flex justify-between">
                     Darkness <span className="text-ink/50">{threshold}</span>
