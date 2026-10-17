@@ -15,10 +15,9 @@
 // Not reached by `npm run dev` (Vite proxies /api to the store backend);
 // use `npx vercel dev` or a preview deploy to try a real payment.
 import { priceEach, deliveryCost, finishOf, colourOf, deliveryOf, labelName, sizeOf } from "../src/stickers/pricing.js";
-import { CROPS, DESIGNS, RING_GROUPS } from "../src/stickers/library.js";
+import { DESIGNS, RING_GROUPS } from "../src/stickers/library.js";
 import { stripe, stripeKey } from "./_stripe.js";
 
-const CROP_NAMES = Object.fromEntries([["none", "label shape"], ...CROPS]);
 const DESIGN_NAMES = Object.fromEntries([["none", "none"], ...DESIGNS]);
 const RING_NAMES = Object.fromEntries([["none", "none"], ...RING_GROUPS.flatMap(([, r]) => r)]);
 const seedOf = (v) => Math.floor(clamp(v, 0, 1e9));
@@ -41,9 +40,10 @@ export default async function handler(req, res) {
   const colour = colourOf(finish, o.colour);
   const delivery = deliveryOf(o.delivery);
   const stock = sizeOf(o.size);
-  if (!colour || !delivery || !stock || !CROP_NAMES[o.crop] || !DESIGN_NAMES[o.pattern] || !RING_NAMES[o.ring]) {
+  if (!colour || !delivery || !stock || !DESIGN_NAMES[o.pattern] || !RING_NAMES[o.ring]) {
     return res.status(400).json({ error: "Unknown option" });
   }
+  if (o.ring !== "none" && stock.w !== stock.h) return res.status(400).json({ error: "Rings need a round or square label" });
   const mailed = delivery.key !== "pickup";
 
   // Name, email and (when mailed) the address, typed on the page.
@@ -75,13 +75,12 @@ export default async function handler(req, res) {
 
   const origin = `https://${req.headers["x-forwarded-host"] || req.headers.host}`;
   const label = labelName(finish, colour);
-  const desc = `${stock.name}, ${CROP_NAMES[o.crop].toLowerCase()}, ${label.toLowerCase()}`;
+  const desc = `${stock.name} label, ${label.toLowerCase()}`;
 
   // Everything needed to print it again, kept on the payment in Stripe.
   const metadata = {
     kind: "sticker",
     size: `${stock.name} (${w} x ${h} mm, printer size ${stock.code})`,
-    shape: o.crop === "none" ? "label shape" : `${CROP_NAMES[o.crop]} (seed ${seedOf(o.cropSeed)})`,
     design: o.pattern === "none" ? "none" : `${DESIGN_NAMES[o.pattern]} (seed ${seedOf(o.patternSeed)})`,
     ring: RING_NAMES[o.ring],
     label,

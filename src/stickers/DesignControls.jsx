@@ -2,16 +2,18 @@ import { useEffect, useRef, useState } from "react";
 import { Dices } from "lucide-react";
 import { clsx } from "clsx";
 import { stickers } from "../../site.config.js";
-import { CROPS, DESIGNS, RING_GROUPS, drawDesign, drawEdgeRing, maskPath, loadDesignImages } from "./library.js";
+import { DESIGNS, RING_GROUPS, drawDesign, drawEdgeRing, loadDesignImages } from "./library.js";
 
-// Size, cut shape, background design and edge ring: the options from the
-// in-shop Sticker Printer app.
+// Label size, background design and edge ring: the options from the in-shop
+// Sticker Printer app. There's no cutting, so a sticker is the shape of its
+// label: round labels are round, the rest rectangles.
 
 const newSeed = () => Math.floor(Math.random() * 1e9);
-// Shapes that come out different every time: these get a 🎲.
-const SEEDED = new Set(["star", "pebble", "scallop", "burst"]);
 const SIZE_GROUPS = [...new Set(stickers.sizes.map((s) => s.group))];
 const ALL_RINGS = RING_GROUPS.flatMap(([, rings]) => rings.map(([k]) => k));
+const ringGroupOf = (key) => RING_GROUPS.find(([, rings]) => rings.some(([k]) => k === key))?.[0];
+// Size tiles are drawn to one scale, so they read as relative sizes.
+const BIGGEST = Math.max(...stickers.sizes.flatMap((s) => [s.w, s.h]));
 
 function Label({ children, hint }) {
   return (
@@ -50,21 +52,31 @@ function Thumb({ draw, deps, className }) {
   return <canvas ref={ref} width={320} height={320} className={className} />;
 }
 
-function ShapeIcon({ crop, seed }) {
-  const ref = useRef(null);
-  useEffect(() => {
-    const c = ref.current;
-    const g = c.getContext("2d");
-    g.clearRect(0, 0, 40, 40);
-    g.fillStyle = "currentColor";
-    g.fillStyle = getComputedStyle(c).color;
-    if (crop === "none") {
-      g.beginPath();
-      g.roundRect(5, 9, 30, 22, 3);
-      g.fill();
-    } else g.fill(maskPath(crop, 40, 40, seed));
-  }, [crop, seed]);
-  return <canvas ref={ref} width={40} height={40} className="h-6 w-6" />;
+// A label drawn to scale, with its name under it.
+function SizeTile({ s, active, onClick }) {
+  const k = 44 / BIGGEST; // px per mm
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={clsx(
+        "flex flex-col items-center justify-end gap-1.5 rounded-xl px-1 pb-2 pt-3 ring-1 transition",
+        active ? "bg-ink text-white ring-ink" : "bg-white text-ink ring-ink/15 hover:ring-ink/40",
+      )}
+    >
+      <span
+        className={clsx("border-2", s.crop === "circle" ? "rounded-full" : "rounded-[3px]", active ? "border-flame bg-white/10" : "border-ink/60 bg-paper")}
+        style={{ width: s.w * k, height: s.h * k }}
+      />
+      <span className="text-[11px] font-semibold leading-tight">{s.name}</span>
+      {!s.name.endsWith("mm") && (
+        <span className={clsx("text-[10px] leading-tight", active ? "text-white/60" : "text-ink/45")}>
+          {s.w} × {s.h} mm
+        </span>
+      )}
+    </button>
+  );
 }
 
 export function DesignControls({ d, set }) {
@@ -72,56 +84,33 @@ export function DesignControls({ d, set }) {
   // Repaint the logo designs once their artwork has downloaded.
   const [art, setArt] = useState(0);
   const [patternsOpen, setPatternsOpen] = useState(d.pattern !== "none");
+  const [ringsOpen, setRingsOpen] = useState(d.ring !== "none");
+  const [ringGroup, setRingGroup] = useState(ringGroupOf(d.ring) || RING_GROUPS[0][0]);
   useEffect(() => loadDesignImages("/stickers/designs", () => setArt((n) => n + 1)), []);
 
   return (
     <>
       <div>
-        <Label hint={`${size.w} × ${size.h} mm`}>Label size</Label>
-        <select
-          className="field"
-          value={d.sizeKey}
-          onChange={(e) => {
-            const next = stickers.sizes.find((s) => s.key === e.target.value);
-            set({ sizeKey: next.key, ...(next.crop ? { crop: next.crop } : size.crop ? { crop: "none" } : {}) });
-          }}
-        >
+        <Label hint={size.crop === "circle" ? "round label" : "die-cut label"}>Label size</Label>
+        <div className="space-y-3">
           {SIZE_GROUPS.map((g) => (
-            <optgroup key={g} label={g}>
-              {stickers.sizes
-                .filter((s) => s.group === g)
-                .map((s) => (
-                  <option key={s.key} value={s.key}>
-                    {s.name}
-                  </option>
-                ))}
-            </optgroup>
+            <div key={g}>
+              <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-ink/45">{g}</p>
+              <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
+                {stickers.sizes
+                  .filter((s) => s.group === g)
+                  .map((s) => (
+                    <SizeTile
+                      key={s.key}
+                      s={s}
+                      active={d.sizeKey === s.key}
+                      // Rings are circles: they only suit round and square labels.
+                      onClick={() => set({ sizeKey: s.key, ...(s.w !== s.h && { ring: "none" }) })}
+                    />
+                  ))}
+              </div>
+            </div>
           ))}
-        </select>
-      </div>
-
-      <div>
-        <Label>Shape</Label>
-        <div className="flex gap-2">
-          <div className="grid flex-1 grid-cols-4 gap-2 sm:grid-cols-8">
-            {[["none", "Label"], ...CROPS].map(([key, name]) => (
-              <button
-                key={key}
-                type="button"
-                onClick={() => set({ crop: key })}
-                aria-pressed={d.crop === key}
-                title={name}
-                className={clsx(
-                  "flex flex-col items-center gap-1 rounded-xl px-1 py-2 text-[11px] font-medium ring-1 transition",
-                  d.crop === key ? "bg-ink text-white ring-ink" : "bg-white text-ink ring-ink/15 hover:ring-ink/40",
-                )}
-              >
-                <ShapeIcon crop={key} seed={d.cropSeed} />
-                <span className="truncate">{name.split(" /")[0].replace(" badge", "")}</span>
-              </button>
-            ))}
-          </div>
-          {SEEDED.has(d.crop) && <DiceButton label="New variation of this shape" onClick={() => set({ cropSeed: newSeed() })} />}
         </div>
       </div>
 
@@ -174,34 +163,77 @@ export function DesignControls({ d, set }) {
         )}
       </details>
 
-      <div>
-        <Label>Edge ring</Label>
-        <div className="flex gap-2">
-          <select className="field" value={d.ring} onChange={(e) => set({ ring: e.target.value })}>
-            <option value="none">None</option>
-            {RING_GROUPS.map(([group, rings]) => (
-              <optgroup key={group} label={group}>
-                {rings.map(([k, name]) => (
-                  <option key={k} value={k}>
-                    {name}
-                  </option>
+      {size.w !== size.h ? (
+        <p className="rounded-2xl bg-white p-4 text-sm text-ink/55 ring-1 ring-ink/10">
+          <span className="font-semibold text-ink">Edge ring</span> · rings fit round and square labels.
+        </p>
+      ) : (
+      <details
+        className="rounded-2xl bg-white p-4 ring-1 ring-ink/10"
+        open={ringsOpen}
+        onToggle={(e) => setRingsOpen(e.currentTarget.open)}
+      >
+        <summary className="flex cursor-pointer items-center justify-between text-sm font-semibold">
+          Edge ring
+          <span className="font-normal text-ink/50">
+            {d.ring === "none" ? "None" : RING_GROUPS.flatMap(([, r]) => r).find(([k]) => k === d.ring)?.[1]}
+          </span>
+        </summary>
+        {ringsOpen && (
+          <div className="mt-4">
+            <div className="flex gap-2">
+              <div className="-mx-1 flex flex-1 gap-1.5 overflow-x-auto px-1 pb-1 [scrollbar-width:thin]">
+                {RING_GROUPS.map(([g]) => (
+                  <button
+                    key={g}
+                    type="button"
+                    onClick={() => setRingGroup(g)}
+                    aria-pressed={ringGroup === g}
+                    className={clsx(
+                      "flex-none whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium ring-1 transition",
+                      ringGroup === g ? "bg-ink text-white ring-ink" : "bg-white ring-ink/15 hover:ring-ink/40",
+                    )}
+                  >
+                    {g}
+                  </button>
                 ))}
-              </optgroup>
-            ))}
-          </select>
-          {d.ring !== "none" && (
-            <Thumb
-              className="h-10 w-10 flex-none rounded-xl ring-1 ring-ink/15"
-              deps={[d.ring]}
-              draw={(g, w, h) => drawEdgeRing(g, w, h, d.ring, null)}
-            />
-          )}
-          <DiceButton
-            label="Random edge ring"
-            onClick={() => set({ ring: ALL_RINGS[Math.floor(Math.random() * ALL_RINGS.length)] })}
-          />
-        </div>
-      </div>
+              </div>
+              <DiceButton
+                label="Random edge ring"
+                onClick={() => {
+                  const key = ALL_RINGS[Math.floor(Math.random() * ALL_RINGS.length)];
+                  set({ ring: key });
+                  setRingGroup(ringGroupOf(key));
+                }}
+              />
+            </div>
+            <div className="mt-3 grid grid-cols-4 gap-2 sm:grid-cols-5">
+              {[["none", "None"], ...RING_GROUPS.find(([g]) => g === ringGroup)[1]].map(([key, name]) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => set({ ring: key })}
+                  aria-pressed={d.ring === key}
+                  className={clsx(
+                    "flex flex-col items-center gap-1 rounded-xl p-1.5 ring-1 transition",
+                    d.ring === key ? "bg-flame-100 ring-2 ring-flame" : "bg-white ring-ink/10 hover:ring-ink/30",
+                  )}
+                >
+                  {key === "none" ? (
+                    <span className="flex aspect-square w-full items-center justify-center rounded-full border-2 border-dashed border-ink/15 text-[11px] text-ink/40">
+                      None
+                    </span>
+                  ) : (
+                    <Thumb className="aspect-square w-full" deps={[key]} draw={(g, w, h) => drawEdgeRing(g, w, h, key, null)} />
+                  )}
+                  <span className="w-full truncate text-center text-[10px] leading-tight">{name}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </details>
+      )}
     </>
   );
 }

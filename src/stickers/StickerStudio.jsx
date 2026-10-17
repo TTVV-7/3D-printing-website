@@ -106,11 +106,8 @@ export function StickerStudio() {
   const finish = finishDef.key;
   const paper = colour.hex;
   const [realCard, setRealCard] = useState(false);
-  // Label size, cut shape, background design and edge ring (DesignControls).
-  const [d, setD] = useState(() => {
-    const first = stickers.sizes[0];
-    return { sizeKey: first.key, crop: first.crop || "none", cropSeed: 7, pattern: "none", patternSeed: 7, ring: "none" };
-  });
+  // Label size, background design and edge ring (DesignControls).
+  const [d, setD] = useState({ sizeKey: stickers.sizes[0].key, pattern: "none", patternSeed: 7, ring: "none" });
   const setDesign = (patch) => setD((cur) => ({ ...cur, ...patch }));
   const [mode, setMode] = useState("dither");
   const [threshold, setThreshold] = useState(140);
@@ -127,6 +124,8 @@ export function StickerStudio() {
 
   const stock = sizeOf(d.sizeKey);
   const size = useMemo(() => ({ w: stock.w, h: stock.h }), [stock]);
+  // No cutting: the sticker is the shape of its label.
+  const crop = stock.crop || "none";
 
   // Logo designs draw from artwork: draw again once it's here.
   useEffect(() => loadDesignImages("/stickers/designs", () => setFontsReady((n) => n + 1)), []);
@@ -135,7 +134,7 @@ export function StickerStudio() {
     () =>
       typeof document === "undefined"
         ? null
-        : renderThermal({ ...d, layers }, { w: size.w, h: size.h, mode, threshold, invert, paper }),
+        : renderThermal({ ...d, crop, layers }, { w: size.w, h: size.h, mode, threshold, invert, paper }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [layers, size, d, mode, threshold, invert, paper, fontsReady],
   );
@@ -143,11 +142,11 @@ export function StickerStudio() {
   useEffect(() => {
     // While editing, the 3D view is hidden: catch it up when editing ends.
     if (!ready || !art || editing) return;
-    stage.current.update({ art, w: size.w, h: size.h, crop: d.crop, cropSeed: d.cropSeed, finish, paper });
+    stage.current.update({ art, w: size.w, h: size.h, crop, finish, paper });
     stage.current.onCardClick(() => setRealCard((r) => !r));
     stage.current.onStickerClick(() => setEditing(true));
     stage.current.start();
-  }, [ready, art, size, d.crop, d.cropSeed, finish, paper, stage, editing]);
+  }, [ready, art, size, crop, finish, paper, stage, editing]);
 
   useEffect(() => {
     if (ready) stage.current.cardLook(realCard);
@@ -237,7 +236,7 @@ export function StickerStudio() {
           <h1 className="mt-3 text-4xl font-bold sm:text-5xl">Your image, as a sticker.</h1>
           <p className="mt-4 text-ink/65 sm:text-lg">
             Thermal printed in crisp black on die-cut labels. Drop in an image or type some text,
-            pick a shape, a design and a border, and see it to scale.
+            pick a label, a design and a border, and see it to scale.
           </p>
         </div>
 
@@ -259,7 +258,7 @@ export function StickerStudio() {
               {editing && (
                 <StickerEditor
                   art={art}
-                  sticker={{ w: size.w, h: size.h, crop: d.crop, ring: d.ring }}
+                  sticker={{ w: size.w, h: size.h, crop, ring: d.ring }}
                   layers={layers}
                   selected={selected}
                   onSelect={setSelected}

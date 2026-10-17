@@ -47,7 +47,6 @@ export default async function handler(req, res) {
     ``,
     `Quantity: ${m.qty}`,
     `Size: ${m.size}`,
-    `Shape: ${m.shape}`,
     `Background design: ${m.design || "none"}`,
     `Edge ring: ${m.ring || "none"}`,
     `Label: ${m.label}`,

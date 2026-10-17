@@ -3,9 +3,6 @@ import { X, Lock, CreditCard, ArrowRight, Loader2 } from "lucide-react";
 import { clsx } from "clsx";
 import { stickers } from "../../site.config.js";
 import { deliveryCost, labelName, sizeOf } from "./pricing.js";
-import { CROPS } from "./library.js";
-
-const cropName = (k) => (k === "none" ? "label shape" : CROPS.find(([c]) => c === k)?.[1].toLowerCase());
 
 // Uploads the print-ready image (through the store backend's /api/upload, same
 // as quote attachments), then sends the order to api/sticker-checkout.js,
@@ -90,8 +87,6 @@ export function Checkout({ order, onClose }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           size: order.design.sizeKey,
-          crop: order.design.crop,
-          cropSeed: order.design.cropSeed,
           pattern: order.design.pattern,
           patternSeed: order.design.patternSeed,
           ring: order.design.ring,
@@ -149,7 +144,7 @@ export function Checkout({ order, onClose }) {
               {order.qty} × sticker{order.qty > 1 ? "s" : ""}, {labelName(order.finish, order.colour).toLowerCase()}
             </p>
             <p className="text-ink/55">
-              {sizeOf(order.design.sizeKey).name} · {cropName(order.design.crop)}
+              {sizeOf(order.design.sizeKey).name} label
             </p>
           </div>
           <p className="font-display font-semibold">${order.total.toFixed(2)}</p>
