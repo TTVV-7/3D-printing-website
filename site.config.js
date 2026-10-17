@@ -100,3 +100,36 @@ export const reviews = {
     // { name: "Sarah K.", rating: 5, text: "Printed a replacement dishwasher clip in two days. Fits perfectly.", source: "Facebook Marketplace" },
   ],
 };
+
+// The sticker shop (/stickers). Thermal printing: one ink, black, on whatever
+// colour of label stock is loaded. DRAFT numbers -- adjust to taste.
+export const stickers = {
+  // The print head's width caps the sticker's narrow side.
+  maxWidthMm: 100,
+  minWidthMm: 20,
+  // Label stock on hand. `hex` is how it looks on screen.
+  papers: [
+    { key: "white", name: "White", hex: "#f7f6f2" },
+    { key: "cream", name: "Cream", hex: "#f1e6c8" },
+    { key: "yellow", name: "Yellow", hex: "#f7d84a" },
+    { key: "orange", name: "Orange", hex: "#f59a4a" },
+    { key: "pink", name: "Pink", hex: "#f4a7c0" },
+    { key: "blue", name: "Blue", hex: "#8fc3ea" },
+    { key: "green", name: "Green", hex: "#9ed49a" },
+  ],
+  finishes: [
+    { key: "matte", name: "Matte", body: "Soft, no glare. Easy to write on." },
+    { key: "glossy", name: "Glossy", body: "Laminated shine. Shrugs off scuffs and water." },
+  ],
+  // Price per sticker = max(minEach, square inches x perSqIn), then the
+  // biggest quantity break that applies.
+  pricing: {
+    perSqIn: 0.3,
+    minEach: 1.0,
+    glossyExtra: 0.15, // per sticker
+    breaks: [
+      { qty: 25, off: 0.15 },
+      { qty: 100, off: 0.3 },
+    ],
+  },
+};

@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 200" width="600" height="400">
+  <rect width="300" height="200" fill="#fff"/>
+  <g fill="none" stroke="#000" stroke-width="7" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M40 150 L95 70 L125 112 L160 55 L230 150 Z"/>
+    <path d="M140 85 L160 55 L180 85 L170 80 L160 90 L150 80 Z" fill="#000"/>
+    <circle cx="230" cy="52" r="18"/>
+  </g>
+  <text x="150" y="185" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-weight="900" font-size="26" letter-spacing="3">NORTH SHORE</text>
+</svg>

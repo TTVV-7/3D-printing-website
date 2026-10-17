@@ -1,3 +1,4 @@
+import { fileURLToPath } from "node:url";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { site } from "./site.config.js";
@@ -69,6 +70,7 @@ function seo() {
           `<?xml version="1.0" encoding="UTF-8"?>\n` +
           `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n` +
           `  <url><loc>${url}/</loc><changefreq>weekly</changefreq><priority>1.0</priority></url>\n` +
+          `  <url><loc>${url}/stickers/</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>\n` +
           `</urlset>\n`,
       });
     },
@@ -77,6 +79,14 @@ function seo() {
 
 export default defineConfig({
   plugins: [react(), seo()],
+  build: {
+    rollupOptions: {
+      input: {
+        main: fileURLToPath(new URL("./index.html", import.meta.url)),
+        stickers: fileURLToPath(new URL("./stickers/index.html", import.meta.url)),
+      },
+    },
+  },
   server: {
     proxy: {
       "/api": {

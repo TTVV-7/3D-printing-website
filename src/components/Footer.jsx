@@ -9,7 +9,7 @@ const LABELS = {
   makerworld: "MakerWorld",
 };
 
-export function Footer() {
+export function Footer({ home = "" }) {
   const socials = Object.entries(site.social).filter(([, href]) => href);
 
   return (
@@ -33,7 +33,7 @@ export function Footer() {
               {LABELS[key] || key}
             </a>
           ))}
-          <a href="#quote" className="text-flame hover:text-white">
+          <a href={`${home}#quote`} className="text-flame hover:text-white">
             Get a quote
           </a>
         </nav>
