@@ -130,13 +130,22 @@ function realCardTexture() {
   g.beginPath();
   g.roundRect(9 * px, 16 * px, 11 * px, 8.5 * px, 1.4 * px);
   g.fill();
+  // Print Yours' card: pi for a number, expiring on Pi Day.
+  g.fillStyle = "rgba(255,255,255,0.92)";
+  g.font = `700 ${4.4 * px}px "Space Grotesk", ui-sans-serif, system-ui, sans-serif`;
+  g.textAlign = "right";
+  g.fillText("printyours", c.width - 7 * px, 11 * px);
+  g.fillStyle = "#ff5b1f";
+  g.font = `700 ${6 * px}px ui-serif, Georgia, serif`;
+  g.fillText("π", c.width - 7 * px, 48 * px);
+  g.textAlign = "left";
   g.fillStyle = "rgba(255,255,255,0.85)";
   g.font = `600 ${4.6 * px}px ui-monospace, monospace`;
-  g.fillText("4242  4242  4242  4242", 9 * px, 36 * px);
-  g.font = `500 ${3.2 * px}px ui-sans-serif, system-ui, sans-serif`;
-  g.fillStyle = "rgba(255,255,255,0.6)";
-  g.fillText("YOUR NAME", 9 * px, 46 * px);
-  g.fillText("12/30", 60 * px, 46 * px);
+  g.fillText("3141  5926  5358  9793", 9 * px, 36 * px);
+  g.font = `600 ${3.2 * px}px ui-sans-serif, system-ui, sans-serif`;
+  g.fillStyle = "rgba(255,255,255,0.7)";
+  g.fillText("PRINT YOURS", 9 * px, 46 * px);
+  g.fillText("03/14", 52 * px, 46 * px);
   return c;
 }
 
