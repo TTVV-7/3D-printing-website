@@ -8,6 +8,7 @@
 //
 // Env (Vercel > Settings > Environment Variables):
 //   STRIPE_SECRET_KEY      sk_test_... while trying it out, sk_live_... to go live
+//                          (a variable called just STRIPE works too)
 //   BLOB_READ_WRITE_TOKEN  optional; set by connecting a Vercel Blob store.
 //                          Without it the order still goes through, minus the
 //                          print-ready image link.
@@ -26,9 +27,11 @@ const MAX_QTY = 1000;
 const cents = (cad) => Math.round(cad * 100);
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, Number(v) || 0));
 
+const stripeKey = () => process.env.STRIPE_SECRET_KEY || process.env.STRIPE;
+
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "POST only" });
-  if (!process.env.STRIPE_SECRET_KEY) return res.status(503).json({ error: "Payments are not set up yet" });
+  if (!stripeKey()) return res.status(503).json({ error: "Payments are not set up yet" });
 
   const o = req.body || {};
   const paper = stickers.papers.find((p) => p.key === o.paper);
@@ -54,7 +57,7 @@ export default async function handler(req, res) {
 
   const origin = `https://${req.headers["x-forwarded-host"] || req.headers.host}`;
   const desc = `${w} × ${h} mm ${o.shape === "rect" ? "rectangle" : o.shape}, ${paper.name.toLowerCase()} paper, ${finish.name.toLowerCase()}`;
-  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+  const stripe = new Stripe(stripeKey());
 
   try {
     const session = await stripe.checkout.sessions.create({
