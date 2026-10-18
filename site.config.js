@@ -146,10 +146,9 @@ export const stickers = {
         { key: "white", name: "White", hex: "#f7f6f2" },
         { key: "yellow", name: "Yellow", hex: "#f7d84a", sizes: ["Round", "Small"] },
         { key: "pink", name: "Pink", hex: "#f4a7c0", sizes: ["Round", "Small"] },
-        // Easy to find in 4" x 3" and 4" x 4", harder in rounds:
-        // { key: "orange", name: "Orange", hex: "#f59a4a", sizes: ["4x3in"] },
-        // { key: "green", name: "Green", hex: "#9ed49a", sizes: ["4x3in"] },
-        // { key: "blue", name: "Blue", hex: "#8fc3ea", sizes: ["Round"] },
+        { key: "orange", name: "Orange", hex: "#f59a4a", sizes: ["Round", "Small"] },
+        { key: "green", name: "Green", hex: "#9ed49a", sizes: ["Round", "Small"] },
+        { key: "blue", name: "Blue", hex: "#8fc3ea", sizes: ["Round", "Small"] },
       ],
     },
     {
