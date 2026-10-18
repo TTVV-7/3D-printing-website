@@ -1,6 +1,7 @@
 // POST /api/sticker-upload { name, data }: stores one design's print file
-// (a PNG data URL, a few kB) in this project's Vercel Blob store and returns
-// its public URL for the order email.
+// (a PNG data URL, a few kB) privately in this project's Vercel Blob store and
+// returns a link to it through api/sticker-file.js, for the order email. The
+// link carries the file's random suffix, so it can't be guessed.
 //
 // The upload happens here on the server, so it works with however the Blob
 // store is connected: the newer connection (BLOB_STORE_ID, signed in through
@@ -25,11 +26,12 @@ export default async function handler(req, res) {
   const id = `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
   try {
     const blob = await put(`stickers/${id}/${name}.png`, png, {
-      access: "public",
+      access: "private",
       contentType: "image/png",
       addRandomSuffix: true,
     });
-    res.status(200).json({ url: blob.url });
+    const origin = `https://${req.headers["x-forwarded-host"] || req.headers.host}`;
+    res.status(200).json({ url: `${origin}/api/sticker-file?p=${encodeURIComponent(blob.pathname)}` });
   } catch (err) {
     console.error("sticker upload:", err.message);
     res.status(502).json({ error: err.message });
