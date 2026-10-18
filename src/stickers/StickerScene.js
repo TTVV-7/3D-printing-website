@@ -4,7 +4,7 @@
 import {
   WebGLRenderer, Scene, PerspectiveCamera, PMREMGenerator, NeutralToneMapping, SRGBColorSpace,
   DirectionalLight, Shape, ExtrudeGeometry, Mesh, MeshPhysicalMaterial, MeshStandardMaterial,
-  PlaneGeometry, CanvasTexture, NearestFilter, Group, Raycaster, Vector2,
+  PlaneGeometry, CanvasTexture, Group, Raycaster, Vector2,
 } from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
@@ -306,7 +306,7 @@ export async function mountStickers(canvas, { reducedMotion }) {
   };
 
   return {
-    // `art` is the canvas from renderThermal().
+    // `art` is the canvas from previewArt() (thermal.js).
     update({ art, w, h, crop, cropSeed, finish, paper }) {
       const resized = w !== size.w || h !== size.h;
       size = { w, h };
@@ -317,7 +317,6 @@ export async function mountStickers(canvas, { reducedMotion }) {
       stickerTex?.dispose();
       stickerTex = new CanvasTexture(art);
       stickerTex.colorSpace = SRGBColorSpace;
-      stickerTex.magFilter = NearestFilter;
       stickerTex.anisotropy = renderer.capabilities.getMaxAnisotropy();
       fitTexture(stickerTex, w, h);
       topMat.map = stickerTex;

@@ -125,7 +125,7 @@ export function StickerEditor({ art, sticker, layers, selected, onSelect, onChan
       <div className="relative" style={box}>
         <canvas
           ref={artRef}
-          className="absolute inset-0 h-full w-full drop-shadow-[0_10px_25px_rgba(0,0,0,0.45)] [image-rendering:pixelated]"
+          className="absolute inset-0 h-full w-full drop-shadow-[0_10px_25px_rgba(0,0,0,0.45)]"
         />
         <svg
           ref={svgRef}

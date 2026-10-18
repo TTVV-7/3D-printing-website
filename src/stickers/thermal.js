@@ -287,6 +287,35 @@ export function renderThermal(design, { w, h, mode, threshold, invert, paper }) 
   return canvas;
 }
 
+// The same sticker for the screen. On paper the dots blend into smooth edges,
+// but shown big a 203 dpi bitmap looks jagged or soft. This enlarges it
+// smoothly and cuts it back to ink and paper, so edges stay sharp at any zoom
+// while every dot pattern (and the print file) stays exactly as printed.
+export function previewArt(art, paper) {
+  const k = Math.max(1, Math.min(4, Math.floor(2048 / Math.max(art.width, art.height))));
+  const c = document.createElement("canvas");
+  c.width = art.width * k;
+  c.height = art.height * k;
+  const g = c.getContext("2d", { willReadFrequently: true });
+  g.imageSmoothingQuality = "high";
+  g.drawImage(art, 0, 0, c.width, c.height);
+  if (k === 1) return c;
+  const im = g.getImageData(0, 0, c.width, c.height);
+  const px = im.data;
+  const p = hexToRgb(paper);
+  const lum = (r, gr, b) => 0.299 * r + 0.587 * gr + 0.114 * b;
+  const mid = (lum(...INK) + lum(...p)) / 2;
+  for (let i = 0; i < px.length; i += 4) {
+    if (!px[i + 3]) continue;
+    const c2 = lum(px[i], px[i + 1], px[i + 2]) < mid ? INK : p;
+    px[i] = c2[0];
+    px[i + 1] = c2[1];
+    px[i + 2] = c2[2];
+  }
+  g.putImageData(im, 0, 0);
+  return c;
+}
+
 // The file to print: the sticker as pure black dots on white, label-sized at
 // 203 dpi (1 pixel = 1 print dot), with no label colour and nothing
 // see-through, ready for the in-shop app's "Fit" and "Print".
