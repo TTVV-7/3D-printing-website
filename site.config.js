@@ -147,13 +147,10 @@ export const stickers = {
   // Printer app's size list (TTVV-7/Stickers). `code` is the printer's
   // PageSize; `crop` is the shape a round label starts with.
   sizes: [
-    // Rounds: the usual direct-thermal sizes sold for 4" label printers. Only
-    // 2" is in the app's size list yet; the others print on custom page
-    // sizes (points = inches x 72).
-    { key: "round-1in", group: "Round", name: '1" round', w: 25.4, h: 25.4, code: "w72h72", crop: "circle" },
-    { key: "round-1.5in", group: "Round", name: '1.5" round', w: 38.1, h: 38.1, code: "w108h108", crop: "circle" },
+    // Every `code` must be a page size the printer offers (the Sticker Printer
+    // app's SIZES list, from the PL70e's PPD), or it can't be printed. The 3"
+    // round shares w216h216 with the 3" square.
     { key: "round-2in", group: "Round", name: '2" round', w: 50.8, h: 50.8, code: "w144h144", crop: "circle" },
-    { key: "round-2.5in", group: "Round", name: '2.5" round', w: 63.5, h: 63.5, code: "w180h180", crop: "circle" },
     { key: "round-3in", group: "Round", name: '3" round', w: 76.2, h: 76.2, code: "w216h216", crop: "circle" },
     { key: "sq-50", group: "Square", name: "50 × 50 mm", w: 50, h: 50, code: "w141h141" },
     { key: "sq-2in", group: "Square", name: '2" square', w: 50.8, h: 50.8, code: "w144h144" },

@@ -47,6 +47,14 @@ export default async function handler(req, res) {
     .map((k) => m[k]);
   const imageOf = (note) => note.match(/print file: (https:\S+)/)?.[1];
   const qtyOf = (note) => Number(note.match(/^(\d+) x/)?.[1]) || 0;
+  // Opens the design in the in-shop Sticker Printer app (TTVV-7/Stickers,
+  // running on this computer at port 8420) on the right label and copies.
+  const appLink = (note) => {
+    const file = imageOf(note);
+    const code = note.match(/printer size (w\d+h\d+)/)?.[1];
+    if (!file || !code) return null;
+    return `http://127.0.0.1:8420/?import=${encodeURIComponent(file)}&size=${code}&copies=${Math.min(50, qtyOf(note))}`;
+  };
   const count = items.reduce((n, note) => n + qtyOf(note), 0);
 
   const details = [
@@ -54,11 +62,15 @@ export default async function handler(req, res) {
     `Card held, not charged yet: capture it in Stripe once printed, or cancel the hold.`,
     `${dashboard}`,
     ``,
-    `To print: open each print file in the Sticker Printer app, pick its printer size, Fit, then Print.`,
-    `Each file is black on white, 1 pixel per print dot (203 dpi), the exact label size.`,
+    `To print: with the Sticker Printer app running, click "open in Sticker Printer" under each design.`,
+    `It opens on the right label size and copies; check it, then Print. (The app prints up to 50 copies at a time.)`,
     ``,
     `${items.length} design${items.length > 1 ? "s" : ""}, ${count} stickers:`,
-    ...items.flatMap((note, i) => [``, `${i + 1}. ${note.split(" | ").join("\n   ")}`]),
+    ...items.flatMap((note, i) => [
+      ``,
+      `${i + 1}. ${note.split(" | ").join("\n   ")}`,
+      ...(appLink(note) ? [`   open in Sticker Printer: ${appLink(note)}`] : []),
+    ]),
     ``,
     `Delivery: ${delivery?.name || m.delivery}`,
     ...(addr
