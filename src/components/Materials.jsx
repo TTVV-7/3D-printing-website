@@ -1,4 +1,4 @@
-import { Layers, Ruler, Clock, MapPin } from "lucide-react";
+import { Layers, Ruler, Clock, MapPin, ChevronDown } from "lucide-react";
 
 // ---------------------------------------------------------------------------
 // CONFIRM BEFORE LAUNCH: these are customer-facing claims. Build volume
@@ -6,7 +6,7 @@ import { Layers, Ruler, Clock, MapPin } from "lucide-react";
 // ---------------------------------------------------------------------------
 const SPECS = [
   { icon: Ruler, label: "Max part size", value: "256 × 256 × 256 mm" },
-  { icon: Layers, label: "Layer height", value: "0.12 – 0.28 mm" },
+  { icon: Layers, label: "Layer height", value: "0.08 – 0.28 mm or adaptive" },
   { icon: Clock, label: "Turnaround", value: "Most jobs 3–5 days" },
   { icon: MapPin, label: "Delivery", value: "Vancouver pickup or shipped" },
 ];
@@ -37,12 +37,12 @@ const METERS = [
 
 export function Materials() {
   return (
-    <section id="materials" className="bg-paper-dark py-16 sm:py-28 layer-lines-dark">
+    <section id="materials" className="bg-paper-dark py-16 sm:py-24 layer-lines-dark">
       <div className="container-page">
         <div className="grid gap-8 lg:grid-cols-[1fr_2fr] lg:gap-16">
           <div>
             <p className="eyebrow">Materials & specs</p>
-            <h2 className="mt-3 text-4xl font-bold sm:text-5xl">The right plastic for the job.</h2>
+            <h2 className="mt-3 text-3xl font-bold sm:text-4xl">The right plastic for the job.</h2>
             <p className="mt-4 text-ink/65">
               Not sure what you need? Tell me what the part has to do and I'll recommend one
               in your quote.
@@ -64,10 +64,19 @@ export function Materials() {
             </dl>
           </div>
 
+          <details className="group self-start rounded-3xl bg-white ring-1 ring-ink/5">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-6 py-5 [&::-webkit-details-marker]:hidden">
+              <span>
+                <span className="block font-display text-lg font-semibold">Compare materials</span>
+                <span className="block text-sm text-ink/55">Strength, heat, flex and finish for each filament</span>
+              </span>
+              <ChevronDown size={20} className="shrink-0 text-ink/50 transition group-open:rotate-180" />
+            </summary>
+            <div className="border-t border-ink/10">
           {/* Phones: one card per material, all four meters visible. */}
-          <ul className="grid gap-3 sm:grid-cols-2 md:hidden">
+          <ul className="grid gap-3 p-4 sm:grid-cols-2 md:hidden">
             {MATERIALS.map((m) => (
-              <li key={m.name} className="rounded-2xl bg-white p-4 ring-1 ring-ink/5">
+              <li key={m.name} className="rounded-2xl bg-paper p-4 ring-1 ring-ink/5">
                 <p className="font-display text-lg font-semibold">{m.name}</p>
                 <p className="mt-0.5 text-sm text-ink/55">{m.best}</p>
                 <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2">
@@ -82,7 +91,7 @@ export function Materials() {
             ))}
           </ul>
 
-          <div className="hidden overflow-hidden rounded-3xl bg-white ring-1 ring-ink/5 md:block">
+          <div className="hidden md:block">
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-ink/10 font-mono text-[11px] uppercase tracking-widest text-ink/45">
@@ -107,6 +116,8 @@ export function Materials() {
               </tbody>
             </table>
           </div>
+            </div>
+          </details>
         </div>
       </div>
     </section>

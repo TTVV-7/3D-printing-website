@@ -1,6 +1,5 @@
 import { Header } from "./components/Header.jsx";
 import { Intro } from "./components/Intro.jsx";
-import { Hero } from "./components/Hero.jsx";
 import { Services } from "./components/Services.jsx";
 import { Designer } from "./components/Designer.jsx";
 import { Materials } from "./components/Materials.jsx";
@@ -8,6 +7,8 @@ import { Work } from "./components/Work.jsx";
 import { Reviews } from "./components/Reviews.jsx";
 import { Quote } from "./components/Quote.jsx";
 import { Footer } from "./components/Footer.jsx";
+import { CookieBanner } from "./components/CookieBanner.jsx";
+import { ConsentAnalytics } from "./components/ConsentAnalytics.jsx";
 
 export function App() {
   return (
@@ -15,15 +16,16 @@ export function App() {
       <Header />
       <main>
         <Intro />
-        <Hero />
+        <Quote />
         <Designer />
         <Services />
         <Work />
         <Materials />
         <Reviews />
-        <Quote />
       </main>
       <Footer />
+      <CookieBanner />
+      <ConsentAnalytics />
     </>
   );
 }

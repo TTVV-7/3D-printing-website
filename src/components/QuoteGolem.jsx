@@ -60,7 +60,7 @@ export function QuoteGolem() {
   }, []);
 
   return (
-    <div ref={wrapRef} className="pointer-events-none absolute -top-5 right-3 z-10 h-24 w-20 sm:right-5">
+    <div ref={wrapRef} className="pointer-events-none absolute -top-9 right-3 z-10 h-24 w-20 sm:right-5">
       <button
         type="button"
         tabIndex={-1}

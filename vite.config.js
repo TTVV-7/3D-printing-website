@@ -53,6 +53,12 @@ function seo() {
         .replaceAll("%SITE_DESCRIPTION%", site.description)
         .replaceAll("%SITE_EMAIL%", site.email)
         .replace(
+          "<!--SITE_VERIFICATION-->",
+          site.googleSiteVerification
+            ? `<meta name="google-site-verification" content="${site.googleSiteVerification}" />`
+            : "",
+        )
+        .replace(
           "<!--STRUCTURED_DATA-->",
           `<script type="application/ld+json">${JSON.stringify(structuredData)}</script>`,
         ),
