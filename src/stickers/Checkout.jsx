@@ -4,8 +4,8 @@ import { clsx } from "clsx";
 import { stickers } from "../../site.config.js";
 import { deliveryCost, sizeOf, lineTotal, itemLabel } from "./pricing.js";
 
-// Uploads each cart line's print-ready image (through the store backend's
-// /api/upload, same as quote attachments), then sends the cart to
+// Uploads each cart line's print file to this site's own Blob store
+// (api/sticker-upload.js), then sends the cart to
 // api/sticker-checkout.js,
 // which hands back a Stripe Checkout page to go to. Until a Stripe key is set
 // there (or in `npm run dev`, where /api goes to the store backend) it can't,
@@ -16,9 +16,9 @@ async function uploadArt(dataUrl, name) {
     const blob = await (await fetch(dataUrl)).blob();
     const { upload } = await import("@vercel/blob/client");
     const id = `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
-    const res = await upload(`requests/sticker-${id}/${name}.png`, blob, {
+    const res = await upload(`stickers/${id}/${name}.png`, blob, {
       access: "public",
-      handleUploadUrl: "/api/upload",
+      handleUploadUrl: "/api/sticker-upload",
     });
     return res.url;
   } catch (err) {
