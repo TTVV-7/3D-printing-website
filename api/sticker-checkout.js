@@ -21,8 +21,8 @@ import { stripe, stripeKey } from "./_stripe.js";
 const RING_NAMES = Object.fromEntries([["none", "none"], ...RING_GROUPS.flatMap(([, r]) => r)]);
 const MAX_QTY = 1000;
 const MAX_ITEMS = 20;
-// Only images uploaded through the store backend's Blob store.
-const BLOB_URL = /^https:\/\/[a-z0-9-]+\.public\.blob\.vercel-storage\.com\/[\w\-./]+\.png$/;
+// Only print files stored by api/sticker-upload.js, linked through this site.
+const FILE_PATH = /^\/api\/sticker-file\?p=stickers%2F[\w-]+%2F[\w-]+\.png$/;
 
 const cents = (cad) => Math.round(cad * 100);
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, Number(v) || 0));
@@ -35,6 +35,8 @@ export default async function handler(req, res) {
   if (!stripeKey()) return res.status(503).json({ error: "Payments are not set up yet" });
 
   const o = req.body || {};
+  const origin = `https://${req.headers["x-forwarded-host"] || req.headers.host}`;
+  const isFile = (u) => typeof u === "string" && u.startsWith(origin) && FILE_PATH.test(u.slice(origin.length));
   const delivery = deliveryOf(o.delivery);
   const list = Array.isArray(o.items) ? o.items : [];
   if (!delivery || !list.length || list.length > MAX_ITEMS) return res.status(400).json({ error: "Unknown option" });
@@ -55,7 +57,7 @@ export default async function handler(req, res) {
       stock,
       qty,
       unit: cents(priceEach(stock, finish.key, qty)),
-      art: BLOB_URL.test(it.art || "") ? it.art : "",
+      art: isFile(it.art) ? it.art : "",
       desc: `${stock.name} label, ${label.toLowerCase()}${it.ring !== "none" ? `, ${RING_NAMES[it.ring].toLowerCase()} ring` : ""}`,
       // Everything needed to print it again, on one line (Stripe allows 500
       // characters per metadata value).
@@ -65,7 +67,7 @@ export default async function handler(req, res) {
         `ring: ${RING_NAMES[it.ring]}`,
         `ink: ${ink.mode === "dither" ? "dotted" : "solid"}, darkness ${clamp(ink.threshold, 0, 255)}${ink.invert ? ", inverted" : ""}`,
         `file: ${short(it.file, 60) || "(sample)"}`,
-        `print file: ${BLOB_URL.test(it.art || "") ? it.art : "(not uploaded)"}`,
+        `print file: ${isFile(it.art) ? it.art : "(not uploaded)"}`,
       ].join(" | ").slice(0, 500),
     });
   }
@@ -92,7 +94,6 @@ export default async function handler(req, res) {
   const subtotal = items.reduce((sum, it) => sum + it.unit * it.qty, 0) / 100;
   const shipping = deliveryCost(delivery, subtotal);
   const count = items.reduce((n, it) => n + it.qty, 0);
-  const origin = `https://${req.headers["x-forwarded-host"] || req.headers.host}`;
 
   const metadata = {
     kind: "sticker",
