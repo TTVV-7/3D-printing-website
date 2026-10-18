@@ -4,8 +4,8 @@ import { clsx } from "clsx";
 import { stickers } from "../../site.config.js";
 import { deliveryCost, sizeOf, lineTotal, itemLabel } from "./pricing.js";
 
-// Uploads each cart line's print file to this site's own Blob store
-// (api/sticker-upload.js), then sends the cart to
+// Sends each cart line's print file to api/sticker-upload.js, which stores
+// it in this site's Blob store, then sends the cart to
 // api/sticker-checkout.js,
 // which hands back a Stripe Checkout page to go to. Until a Stripe key is set
 // there (or in `npm run dev`, where /api goes to the store backend) it can't,
@@ -13,17 +13,17 @@ import { deliveryCost, sizeOf, lineTotal, itemLabel } from "./pricing.js";
 
 async function uploadArt(dataUrl, name) {
   try {
-    const blob = await (await fetch(dataUrl)).blob();
-    const { upload } = await import("@vercel/blob/client");
-    const id = `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
-    const res = await upload(`stickers/${id}/${name}.png`, blob, {
-      access: "public",
-      handleUploadUrl: "/api/sticker-upload",
+    const r = await fetch("/api/sticker-upload", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, data: dataUrl }),
     });
-    return res.url;
+    const { url, error } = await r.json();
+    if (!url) throw new Error(error || `HTTP ${r.status}`);
+    return url;
   } catch (err) {
     // The order still has every setting; the image can be rebuilt from them.
-    console.warn("sticker image not uploaded:", err);
+    console.warn("sticker print file not uploaded:", err);
     return "";
   }
 }
