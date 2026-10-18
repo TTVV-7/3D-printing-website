@@ -56,4 +56,25 @@ export const work = [
     alt: "3D-printed helmet-style mask in navy with a magenta faceplate and lavender cheek vents",
     video: "/work/mask.mp4",
   },
+  {
+    title: "Predator mask",
+    kind: "Multi-colour wearable prop",
+    photo: "/work/predator-mask.webp",
+    focus: "center 62%",
+    alt: "Cream 3D-printed Predator mask with navy weathering spots and white tusks, held in a hand",
+  },
+  {
+    title: "Predator mask, side on",
+    kind: "Colour painted in the print",
+    photo: "/work/predator-mask-side.webp",
+    alt: "Side view of the printed Predator mask showing navy and black camouflage printed into the cream surface",
+  },
+  {
+    title: "Grinning cartoon mask",
+    kind: "Multi-colour wearable prop",
+    photo: "/work/grin-mask.webp",
+    focus: "center 72%",
+    alt: "Cream 3D-printed cartoon mask with red nose and cheeks, black eyebrows and a big white toothy grin",
+    video: "/work/grin-mask.mp4",
+  },
 ];
