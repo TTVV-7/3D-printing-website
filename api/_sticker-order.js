@@ -3,6 +3,7 @@
 // order email). The leading underscore keeps Vercel from serving this file as
 // a function of its own.
 import { priceEach, deliveryCost, finishOf, colourOf, deliveryOf, labelName, sizeOf, onSize } from "../src/stickers/pricing.js";
+import { stickers } from "../site.config.js";
 import { RING_GROUPS } from "../src/stickers/library.js";
 import { STORE_API } from "./_stripe.js";
 
@@ -94,13 +95,20 @@ export function readOrder(body, origin) {
 
 const imageOf = (note) => note.match(/print file: (https:\S+)/)?.[1];
 const qtyOf = (note) => Number(note.match(/^(\d+) x/)?.[1]) || 0;
+// The label roll, as the Sticker Printer app names it ("matte-pink"), from
+// the label name in a note ("Pink matte").
+const LABEL_KEYS = Object.fromEntries(
+  stickers.finishes.flatMap((f) => f.colours.map((c) => [labelName(f, c), `${f.key}-${c.key}`])),
+);
 // Opens the design in the in-shop Sticker Printer app (TTVV-7/Stickers,
-// running on this computer at port 8420) on the right label and copies.
+// running on this computer at port 8420) on the right label, roll colour and
+// copies.
 const appLink = (note) => {
   const file = imageOf(note);
   const code = note.match(/printer size (w\d+h\d+)/)?.[1];
   if (!file || !code) return null;
-  return `http://127.0.0.1:8420/?import=${encodeURIComponent(file)}&size=${code}&copies=${Math.min(50, qtyOf(note))}`;
+  const label = LABEL_KEYS[note.split(" | ")[1]];
+  return `http://127.0.0.1:8420/?import=${encodeURIComponent(file)}&size=${code}&copies=${Math.min(50, qtyOf(note))}${label ? `&label=${label}` : ""}`;
 };
 
 // Saves the order in the store backend and sends the order email. `notes`

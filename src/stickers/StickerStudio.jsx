@@ -148,7 +148,7 @@ export function StickerStudio() {
   const [added, setAdded] = useState(false);
 
   useEffect(() => {
-    loadImage("/stickers/sample.webp")
+    loadImage("/stickers/sample.png")
       .then((img) => setLayers((ls) => (ls.length ? ls : [imageLayer(img)])))
       .catch(() => {});
   }, []);
