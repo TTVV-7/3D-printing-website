@@ -6,6 +6,7 @@
   "rewrites": [
     { "source": "/api/sticker-checkout", "destination": "/api/sticker-checkout" },
     { "source": "/api/sticker-confirm", "destination": "/api/sticker-confirm" },
+    { "source": "/api/sticker-upload", "destination": "/api/sticker-upload" },
     { "source": "/api/:path*", "destination": "https://thomasverigin.ca/3Dprintingstore/api/:path*" }
   ],
   "headers": [
