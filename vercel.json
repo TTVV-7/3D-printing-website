@@ -6,6 +6,7 @@
   "rewrites": [
     { "source": "/api/sticker-checkout", "destination": "/api/sticker-checkout" },
     { "source": "/api/sticker-confirm", "destination": "/api/sticker-confirm" },
+    { "source": "/api/sticker-request", "destination": "/api/sticker-request" },
     { "source": "/api/sticker-upload", "destination": "/api/sticker-upload" },
     { "source": "/api/sticker-file", "destination": "/api/sticker-file" },
     { "source": "/api/quote-upload", "destination": "/api/quote-upload" },

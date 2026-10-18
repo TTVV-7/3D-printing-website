@@ -799,6 +799,10 @@ export function StickerStudio() {
           onClose={() => setCheckout(false)}
           items={cart}
           onRemove={(id) => setCart((c) => c.filter((x) => x.id !== id))}
+          onSent={() => {
+            setCheckout(false);
+            setCart([]); // requested: start fresh
+          }}
         />
       )}
     </section>

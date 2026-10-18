@@ -14,86 +14,17 @@
 //
 // Not reached by `npm run dev` (Vite proxies /api to the store backend);
 // use `npx vercel dev` or a preview deploy to try a real payment.
-import { priceEach, deliveryCost, finishOf, colourOf, deliveryOf, labelName, sizeOf, onSize } from "../src/stickers/pricing.js";
-import { RING_GROUPS } from "../src/stickers/library.js";
+import { readOrder, originOf, cents } from "./_sticker-order.js";
 import { stripe, stripeKey } from "./_stripe.js";
-
-const RING_NAMES = Object.fromEntries([["none", "none"], ...RING_GROUPS.flatMap(([, r]) => r)]);
-const MAX_QTY = 1000;
-const MAX_ITEMS = 20;
-// Only print files stored by api/sticker-upload.js, linked through this site.
-const FILE_PATH = /^\/api\/sticker-file\?p=stickers%2F[\w-]+%2F[\w-]+\.png$/;
-
-const cents = (cad) => Math.round(cad * 100);
-const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, Number(v) || 0));
-const short = (v, n = 200) => String(v ?? "").trim().slice(0, n);
-const POSTAL = /^[A-Z]\d[A-Z] ?\d[A-Z]\d$/;
-const PROVINCES = ["AB", "BC", "MB", "NB", "NL", "NS", "NT", "NU", "ON", "PE", "QC", "SK", "YT"];
 
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "POST only" });
   if (!stripeKey()) return res.status(503).json({ error: "Payments are not set up yet" });
 
-  const o = req.body || {};
-  const origin = `https://${req.headers["x-forwarded-host"] || req.headers.host}`;
-  const isFile = (u) => typeof u === "string" && u.startsWith(origin) && FILE_PATH.test(u.slice(origin.length));
-  const delivery = deliveryOf(o.delivery);
-  const list = Array.isArray(o.items) ? o.items : [];
-  if (!delivery || !list.length || list.length > MAX_ITEMS) return res.status(400).json({ error: "Unknown option" });
-
-  // Each design in the cart, checked and priced here: never trust the page's price.
-  const items = [];
-  for (const it of list) {
-    const finish = finishOf(it?.finish);
-    const colour = colourOf(finish, it?.colour);
-    const stock = sizeOf(it?.size);
-    if (!colour || !stock || !RING_NAMES[it.ring]) return res.status(400).json({ error: "Unknown option" });
-    if (!onSize(colour, stock.key)) return res.status(400).json({ error: `${colour.name} isn't sold in ${stock.name}` });
-    if (it.ring !== "none" && stock.w !== stock.h) return res.status(400).json({ error: "Rings need a round or square label" });
-    const qty = Math.round(clamp(it.qty, 1, MAX_QTY));
-    const ink = it.ink || {};
-    const label = labelName(finish, colour);
-    items.push({
-      stock,
-      qty,
-      unit: cents(priceEach(stock, finish.key, qty)),
-      art: isFile(it.art) ? it.art : "",
-      desc: `${stock.name} label, ${label.toLowerCase()}${it.ring !== "none" ? `, ${RING_NAMES[it.ring].toLowerCase()} ring` : ""}`,
-      // Everything needed to print it again, on one line (Stripe allows 500
-      // characters per metadata value).
-      note: [
-        `${qty} x ${stock.name} (${stock.w} x ${stock.h} mm, printer size ${stock.code})`,
-        label,
-        `ring: ${RING_NAMES[it.ring]}`,
-        `ink: ${ink.mode === "dither" ? "dotted" : "solid"}, darkness ${clamp(ink.threshold, 0, 255)}${ink.invert ? ", inverted" : ""}`,
-        `file: ${short(it.file, 60) || "(sample)"}`,
-        `print file: ${isFile(it.art) ? it.art : "(not uploaded)"}`,
-      ].join(" | ").slice(0, 500),
-    });
-  }
-  const mailed = delivery.key !== "pickup";
-
-  // Name, email and (when mailed) the address, typed on the page.
-  const c = o.customer || {};
-  const name = short(c.name, 100);
-  const email = short(c.email, 200);
-  const a = c.address || {};
-  const address = mailed && {
-    line1: short(a.line1),
-    line2: short(a.line2),
-    city: short(a.city, 100),
-    state: short(a.state, 2),
-    postal_code: short(a.postal_code, 7).toUpperCase(),
-    country: "CA",
-  };
-  if (!name || !email.includes("@")) return res.status(400).json({ error: "Name and email needed" });
-  if (address && (!address.line1 || !address.city || !PROVINCES.includes(address.state) || !POSTAL.test(address.postal_code))) {
-    return res.status(400).json({ error: "Address incomplete" });
-  }
-
-  const subtotal = items.reduce((sum, it) => sum + it.unit * it.qty, 0) / 100;
-  const shipping = deliveryCost(delivery, subtotal);
-  const count = items.reduce((n, it) => n + it.qty, 0);
+  const origin = originOf(req);
+  const order = readOrder(req.body, origin);
+  if (order.error) return res.status(400).json({ error: order.error });
+  const { items, delivery, name, email, address, shipping, count } = order;
 
   const metadata = {
     kind: "sticker",
