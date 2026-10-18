@@ -82,8 +82,8 @@ Label stock, delivery options and prices are all in `site.config.js` → `sticke
 
 **Print files** are stored in this project's own Vercel Blob store
 (`api/sticker-upload.js`). Connect one once: Vercel → printyours → Storage →
-Create → Blob → connect to this project (it adds `BLOB_READ_WRITE_TOKEN`), then
-redeploy. Until then orders still work, but their emails say the print file
+Create → Blob → connect to this project (it adds `BLOB_STORE_ID`, or on older
+setups `BLOB_READ_WRITE_TOKEN`; either works), then redeploy. Until then orders still work, but their emails say the print file
 wasn't uploaded.
 
 `npm run dev` sends `/api` to the store backend, so it can't reach these
