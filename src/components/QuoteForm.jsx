@@ -127,15 +127,17 @@ export function QuoteForm({
     const uploaded = [];
     try {
       // ~100 KB of client SDK, only loaded when something is attached.
-      const { upload } = files.length ? await import("@vercel/blob/client") : { upload: null };
+      const { uploadPresigned } = files.length ? await import("@vercel/blob/client") : { uploadPresigned: null };
 
       for (const [i, file] of files.entries()) {
         setProgress(`Uploading ${i + 1} of ${files.length}: ${file.name}`);
-        const blob = await upload(`requests/${id}/${file.name}`, file, {
-          access: "public",
-          handleUploadUrl: "/api/upload",
+        // Private store (api/quote-upload.js); the link opens it through this site.
+        const blob = await uploadPresigned(`requests/${id}/${file.name}`, file, {
+          access: "private",
+          handleUploadUrl: "/api/quote-upload",
         });
-        uploaded.push({ name: file.name, size: file.size, url: blob.url });
+        const url = `${location.origin}/api/sticker-file?p=${encodeURIComponent(blob.pathname)}`;
+        uploaded.push({ name: file.name, size: file.size, url });
       }
     } catch {
       setProgress(null);

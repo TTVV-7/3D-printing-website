@@ -29,7 +29,9 @@ function useCart() {
   const [cart, setCart] = useState([]);
   useEffect(() => {
     try {
-      setCart(JSON.parse(localStorage.getItem("sticker-cart")) || []);
+      // Drop lines for label sizes no longer offered.
+      const saved = JSON.parse(localStorage.getItem("sticker-cart")) || [];
+      setCart(saved.filter((it) => sizeOf(it.sizeKey)));
     } catch {
       // No storage (private window): the cart just won't outlast the page.
     }
