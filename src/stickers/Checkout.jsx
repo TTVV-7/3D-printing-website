@@ -11,12 +11,12 @@ import { deliveryCost, sizeOf, lineTotal, itemLabel } from "./pricing.js";
 // there (or in `npm run dev`, where /api goes to the store backend) it can't,
 // and this says so instead.
 
-async function uploadArt(dataUrl) {
+async function uploadArt(dataUrl, name) {
   try {
     const blob = await (await fetch(dataUrl)).blob();
     const { upload } = await import("@vercel/blob/client");
     const id = `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
-    const res = await upload(`requests/sticker-${id}/sticker.png`, blob, {
+    const res = await upload(`requests/sticker-${id}/${name}.png`, blob, {
       access: "public",
       handleUploadUrl: "/api/upload",
     });
@@ -79,7 +79,10 @@ export function Checkout({ items, onRemove, onClose }) {
     if (p) return;
     setBusy(true);
     try {
-      const arts = await Promise.all(items.map((it) => uploadArt(it.art)));
+      // The black-on-white print file; carts saved before it existed send the preview.
+      const arts = await Promise.all(
+        items.map((it, i) => uploadArt(it.print || it.art, `${i + 1}-${sizeOf(it.sizeKey).code}-x${it.qty}`)),
+      );
       const r = await fetch("/api/sticker-checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

@@ -45,7 +45,7 @@ export default async function handler(req, res) {
     .filter((k) => /^item\d+$/.test(k))
     .sort((a, b) => a.slice(4) - b.slice(4))
     .map((k) => m[k]);
-  const imageOf = (note) => note.match(/image: (https:\S+)/)?.[1];
+  const imageOf = (note) => note.match(/print file: (https:\S+)/)?.[1];
   const qtyOf = (note) => Number(note.match(/^(\d+) x/)?.[1]) || 0;
   const count = items.reduce((n, note) => n + qtyOf(note), 0);
 
@@ -53,6 +53,9 @@ export default async function handler(req, res) {
     `PAID STICKER ORDER${live ? "" : " (Stripe TEST mode, no real money)"}`,
     `Card held, not charged yet: capture it in Stripe once printed, or cancel the hold.`,
     `${dashboard}`,
+    ``,
+    `To print: open each print file in the Sticker Printer app, pick its printer size, Fit, then Print.`,
+    `Each file is black on white, 1 pixel per print dot (203 dpi), the exact label size.`,
     ``,
     `${items.length} design${items.length > 1 ? "s" : ""}, ${count} stickers:`,
     ...items.flatMap((note, i) => [``, `${i + 1}. ${note.split(" | ").join("\n   ")}`]),

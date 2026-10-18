@@ -286,3 +286,25 @@ export function renderThermal(design, { w, h, mode, threshold, invert, paper }) 
   ctx.globalCompositeOperation = "source-over";
   return canvas;
 }
+
+// The file to print: the sticker as pure black dots on white, label-sized at
+// 203 dpi (1 pixel = 1 print dot), with no label colour and nothing
+// see-through, ready for the in-shop app's "Fit" and "Print".
+export function printFile(art) {
+  const c = document.createElement("canvas");
+  c.width = art.width;
+  c.height = art.height;
+  const g = c.getContext("2d");
+  g.fillStyle = "#fff";
+  g.fillRect(0, 0, c.width, c.height);
+  g.drawImage(art, 0, 0);
+  const im = g.getImageData(0, 0, c.width, c.height);
+  const px = im.data;
+  for (let i = 0; i < px.length; i += 4) {
+    const v = px[i] + px[i + 1] + px[i + 2] < 300 ? 0 : 255; // ink is near-black; every label colour is light
+    px[i] = px[i + 1] = px[i + 2] = v;
+    px[i + 3] = 255;
+  }
+  g.putImageData(im, 0, 0);
+  return c.toDataURL("image/png");
+}

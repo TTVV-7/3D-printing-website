@@ -14,7 +14,7 @@
 //
 // Not reached by `npm run dev` (Vite proxies /api to the store backend);
 // use `npx vercel dev` or a preview deploy to try a real payment.
-import { priceEach, deliveryCost, finishOf, colourOf, deliveryOf, labelName, sizeOf } from "../src/stickers/pricing.js";
+import { priceEach, deliveryCost, finishOf, colourOf, deliveryOf, labelName, sizeOf, onSize } from "../src/stickers/pricing.js";
 import { RING_GROUPS } from "../src/stickers/library.js";
 import { stripe, stripeKey } from "./_stripe.js";
 
@@ -46,6 +46,7 @@ export default async function handler(req, res) {
     const colour = colourOf(finish, it?.colour);
     const stock = sizeOf(it?.size);
     if (!colour || !stock || !RING_NAMES[it.ring]) return res.status(400).json({ error: "Unknown option" });
+    if (!onSize(colour, stock.key)) return res.status(400).json({ error: `${colour.name} isn't sold in ${stock.name}` });
     if (it.ring !== "none" && stock.w !== stock.h) return res.status(400).json({ error: "Rings need a round or square label" });
     const qty = Math.round(clamp(it.qty, 1, MAX_QTY));
     const ink = it.ink || {};
@@ -64,7 +65,7 @@ export default async function handler(req, res) {
         `ring: ${RING_NAMES[it.ring]}`,
         `ink: ${ink.mode === "dither" ? "dotted" : "solid"}, darkness ${clamp(ink.threshold, 0, 255)}${ink.invert ? ", inverted" : ""}`,
         `file: ${short(it.file, 60) || "(sample)"}`,
-        `image: ${BLOB_URL.test(it.art || "") ? it.art : "(not uploaded)"}`,
+        `print file: ${BLOB_URL.test(it.art || "") ? it.art : "(not uploaded)"}`,
       ].join(" | ").slice(0, 500),
     });
   }

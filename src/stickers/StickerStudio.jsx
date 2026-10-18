@@ -4,12 +4,12 @@ import {
 } from "lucide-react";
 import { clsx } from "clsx";
 import { stickers } from "../../site.config.js";
-import { renderThermal, DOTS_PER_MM } from "./thermal.js";
+import { renderThermal, printFile, DOTS_PER_MM } from "./thermal.js";
 import { DesignControls } from "./DesignControls.jsx";
 
 import { StickerEditor } from "./StickerEditor.jsx";
 import { Checkout } from "./Checkout.jsx";
-import { priceEach, sizeOf, lineTotal, itemLabel } from "./pricing.js";
+import { priceEach, sizeOf, lineTotal, itemLabel, finishesFor } from "./pricing.js";
 
 // Typefaces for text layers; loaded in stickers/index.html.
 const FONTS = [
@@ -126,13 +126,16 @@ export function StickerStudio() {
   const [dragging, setDragging] = useState(false);
   const [finishKey, setFinishKey] = useState(stickers.finishes[0].key);
   const [colourKeys, setColourKeys] = useState({}); // last colour picked per finish
-  const finishDef = stickers.finishes.find((f) => f.key === finishKey);
-  const colour = finishDef.colours.find((c) => c.key === colourKeys[finishKey]) || finishDef.colours[0];
-  const finish = finishDef.key;
-  const paper = colour.hex;
   const [realCard, setRealCard] = useState(false);
   // Label size, background design and edge ring (DesignControls).
   const [d, setD] = useState({ sizeKey: "round-2in", pattern: "none", patternSeed: 7, ring: "none" });
+  // Only the label colours sold in this size; a pick that isn't falls back
+  // to the first that is (white matte).
+  const finishes = finishesFor(d.sizeKey);
+  const finishDef = finishes.find((f) => f.key === finishKey) || finishes[0];
+  const colour = finishDef.colours.find((c) => c.key === colourKeys[finishDef.key]) || finishDef.colours[0];
+  const finish = finishDef.key;
+  const paper = colour.hex;
   const setDesign = (patch) => setD((cur) => ({ ...cur, ...patch }));
   const [mode, setMode] = useState("solid");
   const [threshold, setThreshold] = useState(140);
@@ -276,7 +279,8 @@ export function StickerStudio() {
   // setting needed to price, print and make it again.
   const cartItem = () => ({
     id: `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-    art: art.toDataURL("image/png"),
+    art: art.toDataURL("image/png"), // the preview, for the cart
+    print: printFile(art), // what gets printed (thermal.js)
     sizeKey: d.sizeKey,
     ring: d.ring,
     finishKey: finishDef.key,
@@ -617,9 +621,11 @@ export function StickerStudio() {
             </div>
 
             <div>
-              <Label hint="ink is always black">Finish</Label>
+              <Label hint={finishes.length === 1 && finishDef.colours.length === 1 ? `only ${colour.name.toLowerCase()} in this size` : "ink is always black"}>
+                Finish
+              </Label>
               <div className="grid grid-cols-2 gap-2">
-                {stickers.finishes.map((f) => (
+                {finishes.map((f) => (
                   <button
                     key={f.key}
                     type="button"
@@ -656,7 +662,7 @@ export function StickerStudio() {
                       <button
                         key={c.key}
                         type="button"
-                        onClick={() => setColourKeys((k) => ({ ...k, [finishKey]: c.key }))}
+                        onClick={() => setColourKeys((k) => ({ ...k, [finishDef.key]: c.key }))}
                         aria-pressed={colour.key === c.key}
                         title={c.name}
                         className={clsx(

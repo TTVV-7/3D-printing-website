@@ -133,6 +133,10 @@ export const stickers = {
   ],
   // Label stock on hand, by finish. Each finish has its colours; `hex` is how
   // it looks on screen. A finish with one colour shows no colour choice.
+  // `sizes` limits a colour to the label sizes it's sold in: size keys or
+  // whole groups ("Round", "Small"). No `sizes` = every size. Kept
+  // conservative: white is everywhere; colours and chrome only where rolls
+  // are easy to find. Widen as you stock more.
   finishes: [
     {
       key: "matte",
@@ -140,18 +144,19 @@ export const stickers = {
       body: "Plain paper label. No glare, easy to write on.",
       colours: [
         { key: "white", name: "White", hex: "#f7f6f2" },
-        { key: "yellow", name: "Yellow", hex: "#f7d84a" },
-        { key: "orange", name: "Orange", hex: "#f59a4a" },
-        { key: "pink", name: "Pink", hex: "#f4a7c0" },
-        { key: "blue", name: "Blue", hex: "#8fc3ea" },
-        { key: "green", name: "Green", hex: "#9ed49a" },
+        { key: "yellow", name: "Yellow", hex: "#f7d84a", sizes: ["Round", "Small"] },
+        { key: "pink", name: "Pink", hex: "#f4a7c0", sizes: ["Round", "Small"] },
+        // Easy to find in 4" x 3" and 4" x 4", harder in rounds:
+        // { key: "orange", name: "Orange", hex: "#f59a4a", sizes: ["4x3in"] },
+        // { key: "green", name: "Green", hex: "#9ed49a", sizes: ["4x3in"] },
+        // { key: "blue", name: "Blue", hex: "#8fc3ea", sizes: ["Round"] },
       ],
     },
     {
       key: "chrome",
       name: "Chrome silver",
       body: "Mirror-shiny metallic label.",
-      colours: [{ key: "silver", name: "Silver", hex: "#e6e9ed" }],
+      colours: [{ key: "silver", name: "Silver", hex: "#e6e9ed", sizes: ["round-2in"] }],
     },
   ],
   // Offered at checkout, in CAD. `freeOver` waives it on bigger orders.

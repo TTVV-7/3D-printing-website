@@ -11,6 +11,17 @@ export const colourOf = (finish, key) => finish?.colours.find((c) => c.key === k
 export const labelName = (finish, colour) =>
   finish.colours.length > 1 ? `${colour.name} ${finish.name.toLowerCase()}` : finish.name;
 export const sizeOf = (key) => stickers.sizes.find((s) => s.key === key);
+
+// Is this label colour sold in this size? (site.config.js: `sizes`)
+export function onSize(colour, sizeKey) {
+  return !colour.sizes || colour.sizes.includes(sizeKey) || colour.sizes.includes(sizeOf(sizeKey)?.group);
+}
+// The finishes and colours on offer for a size; finishes with none drop out.
+export function finishesFor(sizeKey) {
+  return stickers.finishes
+    .map((f) => ({ ...f, colours: f.colours.filter((c) => onSize(c, sizeKey)) }))
+    .filter((f) => f.colours.length);
+}
 export const deliveryOf = (key) => stickers.delivery.find((d) => d.key === key);
 
 // Per sticker, in CAD, for a sticker w × h mm.
