@@ -1,9 +1,10 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/react";
 import { Header } from "../components/Header.jsx";
 import { Footer } from "../components/Footer.jsx";
+import { CookieBanner } from "../components/CookieBanner.jsx";
+import { ConsentAnalytics } from "../components/ConsentAnalytics.jsx";
 import { StickerStudio } from "./StickerStudio.jsx";
 import "../index.css";
 
@@ -15,7 +16,8 @@ ReactDOM.createRoot(document.getElementById("root")).render(
       <StickerStudio />
     </main>
     <Footer home="/" />
-    <Analytics />
+    <CookieBanner />
+    <ConsentAnalytics />
     <SpeedInsights />
   </React.StrictMode>,
 );
