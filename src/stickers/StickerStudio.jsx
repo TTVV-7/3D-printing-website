@@ -4,7 +4,7 @@ import {
 } from "lucide-react";
 import { clsx } from "clsx";
 import { stickers } from "../../site.config.js";
-import { renderThermal, printFile, DOTS_PER_MM } from "./thermal.js";
+import { renderThermal, printFile, previewArt, DOTS_PER_MM } from "./thermal.js";
 import { DesignControls } from "./DesignControls.jsx";
 
 import { StickerEditor } from "./StickerEditor.jsx";
@@ -167,15 +167,17 @@ export function StickerStudio() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [layers, size, d, mode, threshold, invert, paper, fontsReady],
   );
+  // What the 3D view and editor show: the same dots, smooth at screen size.
+  const view = useMemo(() => art && previewArt(art, paper), [art, paper]);
 
   useEffect(() => {
     // While editing, the 3D view is hidden: catch it up when editing ends.
-    if (!ready || !art || editing) return;
-    stage.current.update({ art, w: size.w, h: size.h, crop, finish, paper });
+    if (!ready || !view || editing) return;
+    stage.current.update({ art: view, w: size.w, h: size.h, crop, finish, paper });
     stage.current.onCardClick(() => setRealCard((r) => !r));
     stage.current.onStickerClick(() => setEditing(true));
     stage.current.start();
-  }, [ready, art, size, crop, finish, paper, stage, editing]);
+  }, [ready, view, size, crop, finish, paper, stage, editing]);
 
   useEffect(() => {
     if (ready) stage.current.cardLook(realCard);
@@ -338,7 +340,7 @@ export function StickerStudio() {
               )}
               {editing && (
                 <StickerEditor
-                  art={art}
+                  art={view}
                   sticker={{ w: size.w, h: size.h, crop, ring: d.ring }}
                   layers={layers}
                   selected={selected}
@@ -799,6 +801,10 @@ export function StickerStudio() {
           onClose={() => setCheckout(false)}
           items={cart}
           onRemove={(id) => setCart((c) => c.filter((x) => x.id !== id))}
+          onSent={() => {
+            setCheckout(false);
+            setCart([]); // requested: start fresh
+          }}
         />
       )}
     </section>

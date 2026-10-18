@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { X, Lock, CreditCard, ArrowRight, Loader2 } from "lucide-react";
+import { X, Lock, CreditCard, ArrowRight, Loader2, Heart, Send, CheckCircle2 } from "lucide-react";
 import { clsx } from "clsx";
 import { stickers } from "../../site.config.js";
 import { deliveryCost, sizeOf, lineTotal, itemLabel } from "./pricing.js";
@@ -9,7 +9,8 @@ import { deliveryCost, sizeOf, lineTotal, itemLabel } from "./pricing.js";
 // api/sticker-checkout.js,
 // which hands back a Stripe Checkout page to go to. Until a Stripe key is set
 // there (or in `npm run dev`, where /api goes to the store backend) it can't,
-// and this says so instead.
+// and this says so instead. Friends and family can send the cart as a request
+// instead (api/sticker-request.js): no payment, just the order email.
 
 async function uploadArt(dataUrl, name) {
   try {
@@ -41,8 +42,10 @@ function Field({ label, className, ...props }) {
   );
 }
 
-export function Checkout({ items, onRemove, onClose }) {
-  const [step, setStep] = useState("pay"); // pay -> (Stripe) | preview
+export function Checkout({ items, onRemove, onClose, onSent }) {
+  const [step, setStep] = useState("pay"); // pay -> (Stripe) | preview | sent
+  const [family, setFamily] = useState(false); // friends & family: a request, no payment
+  const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const [delivery, setDelivery] = useState(stickers.delivery[0]);
   const [who, setWho] = useState({ name: "", email: "", line1: "", line2: "", city: "", province: "BC", postal: "" });
@@ -50,11 +53,13 @@ export function Checkout({ items, onRemove, onClose }) {
   const set = (k) => (e) => setWho((w) => ({ ...w, [k]: e.target.value }));
   const mailed = delivery.key !== "pickup";
 
+  // Once a request is sent, closing empties the cart too.
+  const close = step === "sent" ? onSent : onClose;
   useEffect(() => {
-    const onKey = (e) => e.key === "Escape" && onClose();
+    const onKey = (e) => e.key === "Escape" && close();
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  }, [close]);
 
   const subtotal = items.reduce((sum, it) => sum + lineTotal(it), 0);
   const shipping = deliveryCost(delivery, subtotal);
@@ -83,10 +88,11 @@ export function Checkout({ items, onRemove, onClose }) {
       const arts = await Promise.all(
         items.map((it, i) => uploadArt(it.print || it.art, `${i + 1}-${sizeOf(it.sizeKey).code}-x${it.qty}`)),
       );
-      const r = await fetch("/api/sticker-checkout", {
+      const r = await fetch(family ? "/api/sticker-request" : "/api/sticker-checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          ...(family && { message: message.trim() }),
           items: items.map((it, i) => ({
             size: it.sizeKey,
             ring: it.ring,
@@ -113,17 +119,23 @@ export function Checkout({ items, onRemove, onClose }) {
           delivery: delivery.key,
         }),
       });
+      if (family) {
+        setBusy(false);
+        if (r.ok) return setStep("sent");
+        return setError("That didn't send. Try again, or email me the design.");
+      }
       const { url } = r.ok ? await r.json() : {};
       if (url) return window.location.assign(url);
     } catch {
       // Fall through to the not-set-up message.
     }
     setBusy(false);
+    if (family) return setError("That didn't send. Try again, or email me the design.");
     setStep("preview");
   }
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-end justify-center bg-ink/60 p-0 backdrop-blur-sm sm:items-center sm:p-6" onClick={onClose}>
+    <div className="fixed inset-0 z-[60] flex items-end justify-center bg-ink/60 p-0 backdrop-blur-sm sm:items-center sm:p-6" onClick={close}>
       <div
         role="dialog"
         aria-modal="true"
@@ -131,7 +143,7 @@ export function Checkout({ items, onRemove, onClose }) {
         onClick={(e) => e.stopPropagation()}
         className="relative max-h-[92vh] w-full max-w-md overflow-y-auto rounded-t-3xl bg-paper p-6 shadow-2xl sm:rounded-3xl"
       >
-        <button type="button" onClick={onClose} className="absolute right-4 top-4 rounded-full p-2 hover:bg-ink/5" aria-label="Close">
+        <button type="button" onClick={close} className="absolute right-4 top-4 rounded-full p-2 hover:bg-ink/5" aria-label="Close">
           <X size={18} />
         </button>
         <p className="font-mono text-[10px] uppercase tracking-widest text-flame">Check out</p>
@@ -163,7 +175,34 @@ export function Checkout({ items, onRemove, onClose }) {
 
         {step === "pay" && (
           <form className="mt-6" onSubmit={pay} noValidate>
-            <h2 className="text-xl font-bold">Delivery</h2>
+            <div className="grid grid-cols-2 gap-1 rounded-xl bg-ink/5 p-1 text-sm font-semibold" role="radiogroup" aria-label="How to order">
+              {[
+                [false, "Pay now"],
+                [true, "Friends & family"],
+              ].map(([v, label]) => (
+                <button
+                  key={label}
+                  type="button"
+                  role="radio"
+                  aria-checked={family === v}
+                  onClick={() => {
+                    setFamily(v);
+                    setError("");
+                  }}
+                  className={clsx("rounded-lg px-3 py-2 transition", family === v ? "bg-white shadow-sm ring-1 ring-ink/10" : "text-ink/55 hover:text-ink")}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            {family && (
+              <p className="mt-3 flex gap-2 rounded-xl bg-flame-100 px-3 py-2 text-sm text-ink/75">
+                <Heart size={16} className="mt-0.5 flex-none text-flame" />
+                Know me? Send this as a request instead of paying. I'll get your design and be in touch.
+              </p>
+            )}
+
+            <h2 className="mt-6 text-xl font-bold">Delivery</h2>
             <div className="mt-3 space-y-2" role="radiogroup" aria-label="Delivery">
               {stickers.delivery.map((d) => {
                 const cost = deliveryCost(d, subtotal);
@@ -212,6 +251,17 @@ export function Checkout({ items, onRemove, onClose }) {
               )}
             </div>
             {!mailed && <p className="mt-2 text-xs text-ink/50">I'll email you the pickup spot when it's ready.</p>}
+            {family && (
+              <Field label="Message (optional)" className="mt-3">
+                <textarea
+                  className="field min-h-[5rem]"
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  maxLength={1000}
+                  placeholder="Who you are, when you need them..."
+                />
+              </Field>
+            )}
 
             <dl className="mt-5 space-y-2 text-sm">
               <div className="flex justify-between">
@@ -225,21 +275,42 @@ export function Checkout({ items, onRemove, onClose }) {
                 <dd>{shipping ? `$${shipping.toFixed(2)}` : "Free"}</dd>
               </div>
               <div className="flex justify-between border-t border-ink/10 pt-2 font-semibold">
-                <dt>Total before tax</dt>
-                <dd>${(subtotal + shipping).toFixed(2)}</dd>
+                <dt>{family ? "Usually, before tax" : "Total before tax"}</dt>
+                <dd className={clsx(family && "text-ink/45 line-through")}>${(subtotal + shipping).toFixed(2)}</dd>
               </div>
             </dl>
             {error && <p className="mt-4 rounded-xl bg-flame-100 px-3 py-2 text-sm text-flame-600">{error}</p>}
-            <button type="submit" disabled={busy} className="btn mt-6 w-full bg-[#635bff] text-white hover:bg-[#5249e0] disabled:opacity-70">
-              {busy ? <Loader2 size={16} className="animate-spin" /> : <Lock size={16} />} Pay with Stripe <ArrowRight size={16} />
-            </button>
-            <p className="mt-3 flex items-center justify-center gap-1.5 text-xs text-ink/50">
-              <CreditCard size={14} /> Card, Apple Pay and Google Pay on Stripe's secure page
-            </p>
-            <p className="mt-1 text-center text-xs text-ink/50">
-              Your card is held, and only charged once your stickers are printed.
-            </p>
+            {family ? (
+              <button type="submit" disabled={busy} className="btn-primary mt-6 w-full disabled:opacity-70">
+                {busy ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />} Send request
+              </button>
+            ) : (
+              <>
+                <button type="submit" disabled={busy} className="btn mt-6 w-full bg-[#635bff] text-white hover:bg-[#5249e0] disabled:opacity-70">
+                  {busy ? <Loader2 size={16} className="animate-spin" /> : <Lock size={16} />} Pay with Stripe <ArrowRight size={16} />
+                </button>
+                <p className="mt-3 flex items-center justify-center gap-1.5 text-xs text-ink/50">
+                  <CreditCard size={14} /> Card, Apple Pay and Google Pay on Stripe's secure page
+                </p>
+                <p className="mt-1 text-center text-xs text-ink/50">
+                  Your card is held, and only charged once your stickers are printed.
+                </p>
+              </>
+            )}
           </form>
+        )}
+
+        {step === "sent" && (
+          <div className="mt-6 text-center">
+            <CheckCircle2 size={36} className="mx-auto text-flame" />
+            <h2 className="mt-3 text-2xl font-bold">Request sent!</h2>
+            <p className="mt-2 text-sm text-ink/60">
+              I've got your design{items.length > 1 ? "s" : ""} and will be in touch at {who.email.trim()}.
+            </p>
+            <button type="button" onClick={onSent} className="btn-primary mt-6">
+              Done
+            </button>
+          </div>
         )}
 
         {step === "preview" && (

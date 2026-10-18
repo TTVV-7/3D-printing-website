@@ -72,6 +72,12 @@ order. If someone closes the tab before landing back, the order is still in
 Stripe; switch on Stripe → Settings → Notifications → successful payments as a
 backstop.
 
+**Friends & family:** the checkout has a "Friends & family" tab that skips
+payment. `api/sticker-request.js` checks the cart the same way and files it with
+the same admin panel and email, marked as a request (no payment, with what it
+would have cost and an optional message). Anyone can pick it, so it's a request
+you decide on, not an order.
+
 1. Stripe dashboard → Developers → API keys. Start with the **test** secret key
    (`sk_test_...`); pay with card `4242 4242 4242 4242`, any future date and CVC.
 2. Vercel → project → Settings → Environment Variables: `STRIPE_SECRET_KEY`
