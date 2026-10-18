@@ -139,3 +139,79 @@ export const reviews = {
     // { name: "Sarah K.", rating: 5, text: "Printed a replacement dishwasher clip in two days. Fits perfectly.", source: "Facebook Marketplace" },
   ],
 };
+
+// The sticker shop (/stickers). Thermal printing on a Nelko PL70E-BT: one
+// ink, black, on whatever label stock is loaded. DRAFT numbers -- adjust to taste.
+export const stickers = {
+  // Die-cut label stock for the Nelko PL70E-BT, from the in-shop Sticker
+  // Printer app's size list (TTVV-7/Stickers). `code` is the printer's
+  // PageSize; `crop` is the shape a round label starts with.
+  sizes: [
+    // Rounds: the usual direct-thermal sizes sold for 4" label printers. Only
+    // 2" is in the app's size list yet; the others print on custom page
+    // sizes (points = inches x 72).
+    { key: "round-1in", group: "Round", name: '1" round', w: 25.4, h: 25.4, code: "w72h72", crop: "circle" },
+    { key: "round-1.5in", group: "Round", name: '1.5" round', w: 38.1, h: 38.1, code: "w108h108", crop: "circle" },
+    { key: "round-2in", group: "Round", name: '2" round', w: 50.8, h: 50.8, code: "w144h144", crop: "circle" },
+    { key: "round-2.5in", group: "Round", name: '2.5" round', w: 63.5, h: 63.5, code: "w180h180", crop: "circle" },
+    { key: "round-3in", group: "Round", name: '3" round', w: 76.2, h: 76.2, code: "w216h216", crop: "circle" },
+    { key: "sq-50", group: "Square", name: "50 × 50 mm", w: 50, h: 50, code: "w141h141" },
+    { key: "sq-2in", group: "Square", name: '2" square', w: 50.8, h: 50.8, code: "w144h144" },
+    { key: "sq-53", group: "Square", name: "53 × 53 mm", w: 53, h: 53, code: "w150h150" },
+    { key: "sq-3in", group: "Square", name: '3" square', w: 76.2, h: 76.2, code: "w216h216" },
+    { key: "sq-4in", group: "Square", name: '4" square', w: 101.6, h: 101.6, code: "w288h288" },
+    { key: "40x30", group: "Small", name: "40 × 30 mm", w: 40, h: 30, code: "w113h85" },
+    { key: "50x30", group: "Small", name: "50 × 30 mm", w: 50, h: 30, code: "w141h85" },
+    { key: "50x40", group: "Small", name: "50 × 40 mm", w: 50, h: 40, code: "w141h113" },
+    { key: "60x40", group: "Small", name: "60 × 40 mm", w: 60, h: 40, code: "w170h113" },
+    { key: "70x50", group: "Small", name: "70 × 50 mm", w: 70, h: 50, code: "w198h141" },
+    { key: "2x4in", group: "Large", name: '2" × 4"', w: 50.8, h: 101.6, code: "w144h288" },
+    { key: "4x2in", group: "Large", name: '4" × 2"', w: 101.6, h: 50.8, code: "w288h144" },
+    { key: "4x3in", group: "Large", name: '4" × 3"', w: 101.6, h: 76.2, code: "w288h216" },
+    { key: "3x4in", group: "Large", name: '3" × 4.4"', w: 75, h: 112, code: "w212h317" },
+  ],
+  // Label stock on hand, by finish. Each finish has its colours; `hex` is how
+  // it looks on screen. A finish with one colour shows no colour choice.
+  // `sizes` limits a colour to the label sizes it's sold in: size keys or
+  // whole groups ("Round", "Small"). No `sizes` = every size. Kept
+  // conservative: white is everywhere; colours and chrome only where rolls
+  // are easy to find. Widen as you stock more.
+  finishes: [
+    {
+      key: "matte",
+      name: "Matte",
+      body: "Plain paper label. No glare, easy to write on.",
+      colours: [
+        { key: "white", name: "White", hex: "#f7f6f2" },
+        { key: "yellow", name: "Yellow", hex: "#f7d84a", sizes: ["Round", "Small"] },
+        { key: "pink", name: "Pink", hex: "#f4a7c0", sizes: ["Round", "Small"] },
+        { key: "orange", name: "Orange", hex: "#f59a4a", sizes: ["Round", "Small"] },
+        { key: "green", name: "Green", hex: "#9ed49a", sizes: ["Round", "Small"] },
+        { key: "blue", name: "Blue", hex: "#8fc3ea", sizes: ["Round", "Small"] },
+      ],
+    },
+    {
+      key: "chrome",
+      name: "Chrome silver",
+      body: "Mirror-shiny metallic label.",
+      colours: [{ key: "silver", name: "Silver", hex: "#e6e9ed", sizes: ["round-2in"] }],
+    },
+  ],
+  // Offered at checkout, in CAD. `freeOver` waives it on bigger orders.
+  delivery: [
+    { key: "pickup", name: "Pickup in Vancouver", amount: 0, days: [1, 3], body: "Free. You'll get an email when it's ready." },
+    { key: "lettermail", name: "Lettermail, untracked", amount: 2.5, freeOver: 25, days: [3, 8], body: "Flat in an envelope. Free on orders over $25." },
+    { key: "tracked", name: "Tracked mail", amount: 12, days: [2, 5], body: "Canada Post with a tracking number." },
+  ],
+  // Price per sticker = max(minEach, square inches x perSqIn), then the
+  // biggest quantity break that applies.
+  pricing: {
+    perSqIn: 0.15,
+    minEach: 0.5,
+    chromeExtra: 0.1, // per sticker
+    breaks: [
+      { qty: 25, off: 0.15 },
+      { qty: 100, off: 0.3 },
+    ],
+  },
+};
