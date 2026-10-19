@@ -88,6 +88,32 @@ export const pricing = {
   ],
 };
 
+// Automatic rough estimate for STL / 3MF files attached to a quote request.
+// Shown as a price range per file and for the whole order, in your
+// notification email and in the customer's confirmation email. All CAD.
+// DRAFT numbers -- adjust until the ranges match what you actually charge.
+export const estimate = {
+  setupFee: 5, // once per order
+  minimumOrder: 15, // the total never goes below this
+  perHour: 2.5, // machine time
+  // $ per gram and density (g/cm³). Unknown or "not sure" prices as PLA.
+  materials: {
+    PLA: { perGram: 0.1, density: 1.24 },
+    PETG: { perGram: 0.12, density: 1.27 },
+    Nylon: { perGram: 0.2, density: 1.08 },
+    TPU: { perGram: 0.18, density: 1.21 },
+  },
+  // Print-time multiplier per quality choice ("" = not sure, standard).
+  quality: { "Draft 0.28mm": 0.75, "Standard 0.20mm": 1, "Fine 0.12mm": 1.6 },
+  // Grams per hour the printer gets through: fast end, slow end of the range.
+  gramsPerHour: [22, 14],
+  // Infill share of the part's inside: light end, heavy end of the range.
+  infill: [0.12, 0.25],
+  wallMm: 0.85, // walls / top / bottom thickness
+  supportAllowance: 0.15, // extra material on the high end for supports
+  bedMm: 256, // parts bigger than this get flagged as needing to be split
+};
+
 // Customer reviews. The section stays hidden until there's at least one
 // review or one link. Copy reviews word-for-word from where they were left
 // and only post ones you have permission to share -- first name + initial is plenty.

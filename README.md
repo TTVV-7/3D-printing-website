@@ -22,6 +22,7 @@ so new requests show up in the same admin panel as before. Nothing to migrate.
 | --- | --- |
 | Business name, description, email, social links | `site.config.js` |
 | Prices | `site.config.js` → `pricing` |
+| Automatic rough estimate for STL / 3MF uploads | `site.config.js` → `estimate` |
 | Reviews and Marketplace link | `site.config.js` → `reviews` |
 | Generator app link ("Design your own") | `site.config.js` → `designerUrl` |
 | Generator cards | `src/components/Designer.jsx` + `public/designer/` |

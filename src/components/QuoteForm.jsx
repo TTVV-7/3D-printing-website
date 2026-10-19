@@ -7,6 +7,11 @@ import { track } from "@vercel/analytics";
 import { printRequests as api } from "../lib/api.js";
 import { site } from "../../site.config.js";
 
+const MODEL_EXTENSIONS = [".stl", ".3mf"];
+const IMAGE_EXTENSIONS = [".jpg", ".jpeg", ".png", ".heic"];
+const hasExtension = (name, list) => list.some((ext) => name.toLowerCase().endsWith(ext));
+const money = ([low, high]) => (low === high ? `$${low}` : `$${low}–$${high}`);
+
 const MATERIALS = [
   { value: "", label: "Not sure, recommend one" },
   { value: "PLA", label: "PLA: general purpose, best detail" },
@@ -50,6 +55,12 @@ function Submitted({ entry, onReset }) {
         <span className="font-medium text-ink">{entry.email}</span> within one business day with
         a quote and a realistic turnaround.
       </p>
+      {entry.estimate && (
+        <p className="mx-auto mt-4 max-w-sm rounded-xl bg-flame-100/60 px-4 py-3 text-sm text-ink/75">
+          Rough estimate: <span className="font-semibold text-ink">{money(entry.estimate.price)}</span>
+          {entry.estimate.partial && " for the files I could measure"}. I'll confirm the price when I reply.
+        </p>
+      )}
       <p className="mt-3 font-mono text-xs text-ink/40">Ref {entry.id.slice(0, 8).toUpperCase()}</p>
       <button type="button" className="btn-outline-dark mt-6" onClick={onReset}>
         Send another request
@@ -107,6 +118,24 @@ export function QuoteForm({
 
     const id = `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
 
+    const quantity = Number(form.quantity) || 1;
+
+    // Rough price range and a preview image for each STL / 3MF. The estimator
+    // pulls in three.js loaders, so it only loads when a model is attached.
+    const analysis = new Map();
+    const models = files.filter((f) => hasExtension(f.name, MODEL_EXTENSIONS));
+    if (models.length) {
+      try {
+        const { analyzeFile } = await import("../lib/estimate.js");
+        for (const file of models) {
+          setProgress(`Measuring ${file.name}`);
+          analysis.set(file, await analyzeFile(file, { material: form.material, quality: form.quality, quantity }));
+        }
+      } catch {
+        // The estimate is a bonus; the request goes out without it.
+      }
+    }
+
     const uploaded = [];
     try {
       // ~100 KB of client SDK, only loaded when something is attached.
@@ -118,7 +147,25 @@ export function QuoteForm({
           access: "public",
           handleUploadUrl: "/api/upload",
         });
-        uploaded.push({ name: file.name, size: file.size, url: blob.url });
+        const item = { name: file.name, size: file.size, url: blob.url };
+
+        const result = analysis.get(file);
+        if (result) {
+          item.estimate = result.estimate;
+          if (result.preview) {
+            try {
+              const preview = await upload(`requests/${id}/previews/${file.name}.png`, result.preview, {
+                access: "public",
+                handleUploadUrl: "/api/upload",
+                contentType: "image/png",
+              });
+              item.previewUrl = preview.url;
+            } catch {
+              // Missing preview image only; the file itself made it.
+            }
+          }
+        }
+        uploaded.push(item);
       }
     } catch {
       setProgress(null);
@@ -132,6 +179,18 @@ export function QuoteForm({
 
     setProgress(null);
 
+    const estimates = uploaded.filter((f) => f.estimate).map((f) => f.estimate);
+    const unpriced =
+      Boolean(form.url.trim()) ||
+      uploaded.some((f) => !hasExtension(f.name, MODEL_EXTENSIONS) && !hasExtension(f.name, IMAGE_EXTENSIONS));
+    let estimate = null;
+    if (estimates.length) {
+      const { orderTotal } = await import("../lib/estimate.js");
+      estimate = orderTotal(estimates, unpriced);
+    }
+    const mid = (pair) => (pair ? Math.round(((pair[0] + pair[1]) / 2) * 10) / 10 : null);
+    const firstModel = uploaded.find((f) => f.estimate);
+
     // Same shape the store backend has always accepted.
     const entry = {
       id,
@@ -142,18 +201,21 @@ export function QuoteForm({
       url: form.url.trim() || null,
       material: form.material || null,
       quality: form.quality || null,
-      quantity: Number(form.quantity) || 1,
+      quantity,
       deadline: form.deadline || null,
       budget: form.budget.trim() || null,
       files: uploaded,
       title: titlePrefix + (form.details.trim().slice(0, 120) || form.url.trim()),
-      stlName: null,
-      thumbnailUrl: null,
-      weightG: null,
-      printTimeHrs: null,
+      stlName: firstModel?.name ?? null,
+      thumbnailUrl: uploaded.find((f) => f.previewUrl)?.previewUrl ?? null,
+      // Midpoints of the estimate; the full ranges ride along in `estimate`
+      // and in each file's `estimate`.
+      weightG: mid(estimate?.grams),
+      printTimeHrs: mid(estimate?.hours),
       filamentCost: null,
       timeCost: null,
-      totalCost: null,
+      totalCost: mid(estimate?.price),
+      estimate,
       submittedAt: new Date().toISOString(),
     };
 
@@ -167,6 +229,7 @@ export function QuoteForm({
         quantity: entry.quantity,
         hasFiles: uploaded.length > 0,
         hasLink: Boolean(entry.url),
+        hasEstimate: Boolean(estimate),
       });
       setSubmitted(entry);
       setForm(EMPTY);
