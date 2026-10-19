@@ -2,7 +2,10 @@
 // /stickers page, and filing one with the store backend (its admin panel and
 // order email). The leading underscore keeps Vercel from serving this file as
 // a function of its own.
-import { priceEach, deliveryCost, finishOf, colourOf, deliveryOf, labelName, sizeOf, onSize } from "../src/stickers/pricing.js";
+import {
+  priceEach, deliveryCost, finishOf, colourOf, deliveryOf, labelName, sizeOf, onSize,
+  priceColourEach, colourFinishOf, colourShapeOf, colourFits,
+} from "../src/stickers/pricing.js";
 import { stickers } from "../site.config.js";
 import { RING_GROUPS } from "../src/stickers/library.js";
 import { STORE_API } from "./_stripe.js";
@@ -34,6 +37,12 @@ export function readOrder(body, origin) {
 
   const items = [];
   for (const it of list) {
+    if (it?.kind === "colour") {
+      const item = readColourItem(it, isFile);
+      if (item.error) return item;
+      items.push(item);
+      continue;
+    }
     const finish = finishOf(it?.finish);
     const colour = colourOf(finish, it?.colour);
     const stock = sizeOf(it?.size);
@@ -97,6 +106,34 @@ export function readOrder(body, origin) {
   };
 }
 
+// A full-colour, custom-cut sticker (Cricut Print Then Cut), priced from its
+// size here.
+function readColourItem(it, isFile) {
+  const finish = colourFinishOf(it.finish);
+  const shape = colourShapeOf(it.shape);
+  const w = Math.round(Number(it.w) * 10) / 10;
+  const h = Math.round(Number(it.h) * 10) / 10;
+  if (!finish || !shape || !(w > 0) || !(h > 0)) return { error: "Unknown option" };
+  if (!colourFits(w, h)) return { error: "That sticker size can't be printed" };
+  const qty = Math.round(clamp(it.qty, 1, MAX_QTY));
+  const size = `${Math.round(w)} x ${Math.round(h)} mm`;
+  const shapeName = shape.key === "contour" ? "die-cut" : shape.name.toLowerCase();
+  return {
+    qty,
+    unit: cents(priceColourEach({ w, h }, qty)),
+    art: isFile(it.art) ? it.art : "",
+    preview: isFile(it.preview) ? it.preview : "",
+    desc: `${size} ${shapeName} sticker, full colour, ${finish.name.toLowerCase()}`,
+    note: [
+      `${qty} x ${size} ${shapeName}, full colour (Cricut print then cut)`,
+      finish.name,
+      `cricut: upload the print file to Design Space as a Print Then Cut image, size ${w} x ${h} mm`,
+      `file: ${short(it.file, 60) || "(sample)"}`,
+      `print file: ${isFile(it.art) ? it.art : "(not uploaded)"}`,
+    ].join(" | ").slice(0, 500),
+  };
+}
+
 const imageOf = (note) => note.match(/print file: (https:\S+)/)?.[1];
 const qtyOf = (note) => Number(note.match(/^(\d+) x/)?.[1]) || 0;
 // The label roll, as the Sticker Printer app names it ("matte-pink"), from
@@ -124,9 +161,16 @@ export async function fileOrder({ id, title, heading, notes, delivery, shipTo, p
   const details = [
     ...heading,
     ``,
-    `To print: with the Sticker Printer app running, click "open in Sticker Printer" under each design.`,
-    `It opens on the right label size and copies; check it, then Print. (The app prints up to 50 copies at a time.)`,
-    ``,
+    ...(notes.some(appLink)
+      ? [
+          `To print: with the Sticker Printer app running, click "open in Sticker Printer" under each design.`,
+          `It opens on the right label size and copies; check it, then Print. (The app prints up to 50 copies at a time.)`,
+          ``,
+        ]
+      : []),
+    ...(notes.some((n) => n.includes("Cricut print then cut"))
+      ? [`Full-colour stickers: open each print file in Cricut Design Space, upload it as a Print Then Cut image at the size listed, print, then cut.`, ``]
+      : []),
     `${notes.length} design${notes.length > 1 ? "s" : ""}, ${count} stickers:`,
     ...notes.flatMap((note, i) => [
       ``,

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { X, Lock, CreditCard, ArrowRight, Loader2, Heart, Send, CheckCircle2 } from "lucide-react";
 import { clsx } from "clsx";
 import { stickers } from "../../site.config.js";
-import { deliveryCost, sizeOf, lineTotal, itemLabel } from "./pricing.js";
+import { deliveryCost, sizeOf, lineTotal, itemLabel, isColour, itemSizeName } from "./pricing.js";
 
 // Sends each cart line's print file to api/sticker-upload.js, which stores
 // it in this site's Blob store, then sends the cart to
@@ -12,7 +12,7 @@ import { deliveryCost, sizeOf, lineTotal, itemLabel } from "./pricing.js";
 // and this says so instead. Friends and family can send the cart as a request
 // instead (api/sticker-request.js): no payment, just the order email.
 
-async function uploadArt(dataUrl, name) {
+export async function uploadArt(dataUrl, name) {
   try {
     const r = await fetch("/api/sticker-upload", {
       method: "POST",
@@ -84,9 +84,15 @@ export function Checkout({ items, onRemove, onClose, onSent }) {
     if (p) return;
     setBusy(true);
     try {
-      // The black-on-white print file; carts saved before it existed send the preview.
+      // The black-on-white print file (thermal) or the full-colour one; carts
+      // saved before it existed send the preview. Colour files may already be
+      // uploaded (ColourStudio uploads them as they go in the cart).
       const arts = await Promise.all(
-        items.map((it, i) => uploadArt(it.print || it.art, `${i + 1}-${sizeOf(it.sizeKey).code}-x${it.qty}`)),
+        items.map((it, i) =>
+          isColour(it)
+            ? it.printUrl || uploadArt(it.print || it.art, `${i + 1}-colour-${Math.round(it.w)}x${Math.round(it.h)}mm-x${it.qty}`)
+            : uploadArt(it.print || it.art, `${i + 1}-${sizeOf(it.sizeKey).code}-x${it.qty}`),
+        ),
       );
       // The sticker as shown on screen, for the customer's confirmation email.
       const previews = await Promise.all(items.map((it, i) => uploadArt(it.art, `${i + 1}-preview`)));
@@ -96,6 +102,7 @@ export function Checkout({ items, onRemove, onClose, onSent }) {
         body: JSON.stringify({
           ...(family && { message: message.trim() }),
           items: items.map((it, i) => ({
+            ...(isColour(it) && { kind: "colour", w: it.w, h: it.h, shape: it.shape }),
             size: it.sizeKey,
             ring: it.ring,
             finish: it.finishKey,
@@ -154,10 +161,10 @@ export function Checkout({ items, onRemove, onClose, onSent }) {
         <ul className="mt-4 divide-y divide-ink/10 rounded-2xl bg-white px-3 ring-1 ring-ink/10">
           {items.map((it) => (
             <li key={it.id} className="flex items-center gap-3 py-2.5">
-              <img src={it.art} alt="" className="h-14 w-14 flex-none rounded-xl bg-paper-dark object-contain p-1 [image-rendering:pixelated]" />
+              <img src={it.art} alt="" className={clsx("h-14 w-14 flex-none rounded-xl bg-paper-dark object-contain p-1", !isColour(it) && "[image-rendering:pixelated]")} />
               <div className="min-w-0 flex-1 text-sm">
                 <p className="font-semibold">
-                  {it.qty} × {sizeOf(it.sizeKey).name} sticker{it.qty > 1 ? "s" : ""}
+                  {it.qty} × {itemSizeName(it)} sticker{it.qty > 1 ? "s" : ""}
                 </p>
                 <p className="truncate text-ink/55">{itemLabel(it)}</p>
               </div>

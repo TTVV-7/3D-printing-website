@@ -38,12 +38,45 @@ export function deliveryCost(d, subtotal) {
   return d.freeOver && subtotal >= d.freeOver ? 0 : d.amount;
 }
 
+// Full-colour, custom-cut stickers (Cricut Print Then Cut).
+export const COLOUR_SHAPES = [
+  { key: "contour", name: "Die-cut", body: "Cut around your design" },
+  { key: "circle", name: "Circle" },
+  { key: "square", name: "Square" },
+  { key: "rounded", name: "Rounded" },
+];
+export const colourShapeOf = (key) => COLOUR_SHAPES.find((s) => s.key === key);
+export const colourFinishOf = (key) => stickers.colour.finishes.find((f) => f.key === key);
+
+// Does a w × h mm sticker fit Print Then Cut's area, either way round?
+export function colourFits(w, h) {
+  const [mw, mh] = stickers.colour.maxMm;
+  const min = stickers.colour.minMm;
+  return Math.min(w, h) >= min && ((w <= mw && h <= mh) || (w <= mh && h <= mw));
+}
+
+// Per full-colour sticker, in CAD, for a sticker w × h mm.
+export function priceColourEach({ w, h }, qty) {
+  const { perSqIn, minEach, breaks } = stickers.colour.pricing;
+  const each = Math.max(minEach, (w / 25.4) * (h / 25.4) * perSqIn);
+  const off = breaks.filter((b) => qty >= b.qty).reduce((a, b) => Math.max(a, b.off), 0);
+  // Whole cents, as Stripe charges it, so the page shows what's charged.
+  return Math.round(each * (1 - off) * 100) / 100;
+}
+
+// A cart line is a thermal label (the default) or, with kind "colour", a
+// full-colour sticker of its own size.
+export const isColour = (it) => it.kind === "colour";
+export const itemSizeName = (it) => (isColour(it) ? `${Math.round(it.w)} × ${Math.round(it.h)} mm` : sizeOf(it.sizeKey).name);
+
 // A cart line's price, and how it reads ("White matte · Laurel ring").
 export function lineTotal(it) {
+  if (isColour(it)) return priceColourEach(it, it.qty) * it.qty;
   const { w, h } = sizeOf(it.sizeKey);
   return priceEach({ w, h }, it.finishKey, it.qty) * it.qty;
 }
 export function itemLabel(it) {
+  if (isColour(it)) return `Full colour · ${colourShapeOf(it.shape)?.name || "Die-cut"} · ${colourFinishOf(it.finishKey)?.name || ""}`;
   const finish = finishOf(it.finishKey);
   const label = labelName(finish, colourOf(finish, it.colourKey));
   const ring = it.ring !== "none" && ringName(it.ring);

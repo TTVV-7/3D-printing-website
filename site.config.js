@@ -211,4 +211,27 @@ export const stickers = {
       { qty: 100, off: 0.3 },
     ],
   },
+  // Full-colour, custom-cut stickers: printed on the inkjet and cut on the
+  // Cricut with Print Then Cut. DRAFT prices -- tune once you've made a few.
+  colour: {
+    // Print Then Cut's largest printable area on letter paper (mm), and the
+    // smallest sticker worth cutting. Either orientation fits.
+    maxMm: [171, 235],
+    minMm: 25,
+    finishes: [
+      { key: "gloss", name: "Gloss vinyl", body: "Bright, shiny colours. Water resistant." },
+      { key: "matte", name: "Matte vinyl", body: "Soft look, no glare. Water resistant." },
+    ],
+    // Per sticker = max(minEach, square inches x perSqIn), then the biggest
+    // quantity break that applies.
+    pricing: {
+      perSqIn: 0.35,
+      minEach: 1.25,
+      breaks: [
+        { qty: 10, off: 0.1 },
+        { qty: 25, off: 0.2 },
+        { qty: 50, off: 0.3 },
+      ],
+    },
+  },
 };

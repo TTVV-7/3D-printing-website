@@ -342,6 +342,11 @@ export async function mountStickers(canvas, { reducedMotion }) {
     start() {
       if (!raf) tick();
     },
+    // Pauses rendering while the page shows the full-colour maker instead.
+    stop() {
+      cancelAnimationFrame(raf);
+      raf = 0;
+    },
     resetView() {
       camera.position.set(0, 0.85, 0.75);
       controls.autoRotate = !reducedMotion;

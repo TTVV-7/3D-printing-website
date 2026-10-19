@@ -25,6 +25,7 @@ so new requests show up in the same admin panel as before. Nothing to migrate.
 | Reviews and Marketplace link | `site.config.js` → `reviews` |
 | Generator app link ("Design your own") | `site.config.js` → `designerUrl` |
 | Sticker page (/stickers): paper colours, finishes, max width, prices | `site.config.js` → `stickers`, code in `src/stickers/` |
+| Full-colour, custom-cut stickers (/stickers/#colour): materials, size limits, prices | `site.config.js` → `stickers.colour`, code in `src/stickers/ColourStudio.jsx` + `colour.js` |
 | Generator cards | `src/components/Designer.jsx` + `public/designer/` |
 | Portfolio photos | `public/work/` + `src/work.js` |
 | Specs & materials (confirm before launch) | `src/components/Materials.jsx` |
@@ -102,6 +103,21 @@ you decide on, not an order.
 3. When ready for real money, swap in the live key (`sk_live_...`).
 
 Label stock, delivery options and prices are all in `site.config.js` → `stickers`.
+
+**Full-colour, custom-cut stickers** are the second tab on `/stickers` (link
+straight to it with `/stickers/#colour`). The customer uploads any image,
+picks die-cut (cut around the design), circle, square or rounded, a border,
+a backing colour, a size and gloss or matte vinyl. They share the cart,
+checkout, Stripe and emails with the thermal labels, and the server prices
+them from their size the same way.
+
+Each one's print file is a 300 dpi PNG whose outline is the cut line:
+see-through outside, the backing colour inside. To make one, open the print
+file from the order email, upload it to Cricut Design Space (it detects the
+outline, so choose Print Then Cut), set the size listed in the order, print
+on the inkjet and let the Cricut cut it. Sizes are capped to Print Then Cut's
+6.75 × 9.25 in area (`stickers.colour.maxMm`); check that against your
+machine.
 
 **Print files** are stored in this project's own Vercel Blob store
 (`api/sticker-upload.js`). Connect one once: Vercel → printyours → Storage →

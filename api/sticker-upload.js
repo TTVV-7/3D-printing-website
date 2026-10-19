@@ -1,7 +1,8 @@
-// POST /api/sticker-upload { name, data }: stores one design's print file
-// (a PNG data URL, a few kB) privately in this project's Vercel Blob store and
-// returns a link to it through api/sticker-file.js, for the order email. The
-// link carries the file's random suffix, so it can't be guessed.
+// POST /api/sticker-upload { name, data }: stores one design's print file (a
+// PNG data URL: a few kB for thermal, up to 3 MB for full colour) privately
+// in this project's Vercel Blob store and returns a link to it through
+// api/sticker-file.js, for the order email. The link carries the file's
+// random suffix, so it can't be guessed.
 //
 // The upload happens here on the server, so it works with however the Blob
 // store is connected: the newer connection (BLOB_STORE_ID, signed in through
@@ -11,7 +12,9 @@
 import { put } from "@vercel/blob";
 
 const NAME = /^[\w-]{1,60}$/;
-const MAX_BYTES = 2 * 1024 * 1024;
+// Full-colour print files run larger than thermal ones; base64 keeps this
+// under Vercel's 4.5 MB request limit.
+const MAX_BYTES = 3 * 1024 * 1024;
 
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "POST only" });
