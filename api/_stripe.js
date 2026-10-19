@@ -2,8 +2,11 @@
 // serving this file as a function of its own.
 import Stripe from "stripe";
 
-// STRIPE_SECRET_KEY, or a variable called just STRIPE.
-export const stripeKey = () => process.env.STRIPE_SECRET_KEY || process.env.STRIPE;
+// STRIPE_SECRET_KEY if set. Otherwise the live site (VERCEL_ENV production)
+// uses STRIPE_PRODUCTION, the live key, and everything else (previews, local)
+// the test key in STRIPE, so a preview link never takes real money.
+const live = () => (process.env.VERCEL_ENV === "production" ? process.env.STRIPE_PRODUCTION : undefined);
+export const stripeKey = () => process.env.STRIPE_SECRET_KEY || live() || process.env.STRIPE;
 export const stripe = () => new Stripe(stripeKey());
 
 // The store backend (filament-shopping): its admin panel and order emails.

@@ -95,7 +95,10 @@ you decide on, not an order.
 1. Stripe dashboard → Developers → API keys. Start with the **test** secret key
    (`sk_test_...`); pay with card `4242 4242 4242 4242`, any future date and CVC.
 2. Vercel → project → Settings → Environment Variables: `STRIPE_SECRET_KEY`
-   (or `STRIPE`). Redeploy after adding it.
+   (or `STRIPE`). Redeploy after adding it. `STRIPE_PRODUCTION` holds the live
+   key: it's used on the production site only, so previews keep the test key in
+   `STRIPE`. Best as a restricted key (`rk_live_...`) with Checkout Sessions and
+   PaymentIntents set to Write and nothing else.
 3. When ready for real money, swap in the live key (`sk_live_...`).
 
 Label stock, delivery options and prices are all in `site.config.js` → `stickers`.
