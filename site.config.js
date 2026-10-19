@@ -214,6 +214,10 @@ export const stickers = {
   // Full-colour, custom-cut stickers: printed on the inkjet and cut on the
   // Cricut with Print Then Cut. DRAFT prices -- tune once you've made a few.
   colour: {
+    // false: the tab shows "Coming soon" and lets people design and preview,
+    // but nothing can be added to the cart or checked out (the server refuses
+    // colour items too). Set to true to start taking orders.
+    available: false,
     // Print Then Cut's largest printable area on letter paper (mm), and the
     // smallest sticker worth cutting. Either orientation fits.
     maxMm: [171, 235],

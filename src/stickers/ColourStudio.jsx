@@ -145,6 +145,9 @@ function Stage({ art, opts, width }) {
 }
 
 export function ColourStudio({ setCart, cartPanel, cartEmpty, openCheckout }) {
+  // Until they're on sale (stickers.colour.available), people can design and
+  // preview but not order.
+  const available = cfg.available;
   const fileRef = useRef(null);
   const [image, setImage] = useState(null);
   const [fileName, setFileName] = useState("");
@@ -375,7 +378,21 @@ export function ColourStudio({ setCart, cartPanel, cartEmpty, openCheckout }) {
           </div>
         </div>
 
-        <div className="rounded-2xl bg-ink p-5 text-white">
+        {!available && (
+          <div className="rounded-2xl bg-ink p-5 text-white">
+            <p className="flex items-center gap-2 font-semibold">
+              <span className="rounded-full bg-flame px-2 py-0.5 text-[10px] uppercase tracking-wider">Coming soon</span>
+              Full-colour stickers aren't on sale yet
+            </p>
+            <p className="mt-2 text-sm text-white/65">
+              Play with your design here in the meantime. Need some sooner? Send the image through a{" "}
+              <a href="/#quote" className="font-semibold text-white underline underline-offset-2">free quote</a>
+              {" "}and I'll let you know what I can do.
+            </p>
+          </div>
+        )}
+
+        {available && <div className="rounded-2xl bg-ink p-5 text-white">
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center rounded-full bg-white/10">
               <button type="button" onClick={() => setQty((q) => Math.max(1, q - 1))} className="p-2.5" aria-label="One fewer">
@@ -417,10 +434,10 @@ export function ColourStudio({ setCart, cartPanel, cartEmpty, openCheckout }) {
               <><Plus size={18} /> Add to cart</>
             )}
           </button>
-        </div>
+        </div>}
 
         {cartPanel}
-        {cartEmpty && (
+        {available && cartEmpty && (
           <button
             type="button"
             disabled={busy || !art}

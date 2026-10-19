@@ -109,6 +109,7 @@ export function readOrder(body, origin) {
 // A full-colour, custom-cut sticker (Cricut Print Then Cut), priced from its
 // size here.
 function readColourItem(it, isFile) {
+  if (!stickers.colour.available) return { error: "Full-colour stickers aren't available yet" };
   const finish = colourFinishOf(it.finish);
   const shape = colourShapeOf(it.shape);
   const w = Math.round(Number(it.w) * 10) / 10;

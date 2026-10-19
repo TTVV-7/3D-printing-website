@@ -105,7 +105,10 @@ you decide on, not an order.
 Label stock, delivery options and prices are all in `site.config.js` → `stickers`.
 
 **Full-colour, custom-cut stickers** are the second tab on `/stickers` (link
-straight to it with `/stickers/#colour`). The customer uploads any image,
+straight to it with `/stickers/#colour`). For now the tab says **Coming soon**:
+people can design and preview, but can't add one to the cart, and the server
+refuses them at checkout. Set `stickers.colour.available` to `true` in
+`site.config.js` to start taking orders. The customer uploads any image,
 picks die-cut (cut around the design), circle, square or rounded, a border,
 a backing colour, a size and gloss or matte vinyl. They share the cart,
 checkout, Stripe and emails with the thermal labels, and the server prices

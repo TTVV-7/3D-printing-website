@@ -32,7 +32,8 @@ function useCart() {
     try {
       // Drop lines for label sizes no longer offered.
       const saved = JSON.parse(localStorage.getItem("sticker-cart")) || [];
-      setCart(saved.filter((it) => isColour(it) || sizeOf(it.sizeKey)));
+      // Full-colour lines only while those are on sale (stickers.colour.available).
+      setCart(saved.filter((it) => (isColour(it) ? stickers.colour.available : sizeOf(it.sizeKey))));
     } catch {
       // No storage (private window): the cart just won't outlast the page.
     }
@@ -119,7 +120,7 @@ function Label({ children, hint }) {
 // the Cricut (ColourStudio.jsx). #colour in the address opens the second.
 const MODES = [
   { key: "thermal", name: "Thermal labels", sub: "Black ink on die-cut labels · cheapest" },
-  { key: "colour", name: "Full colour, custom cut", sub: "Any image, any shape, cut to fit" },
+  { key: "colour", name: "Full colour, custom cut", sub: "Any image, any shape, cut to fit", soon: !stickers.colour.available },
 ];
 
 export function StickerStudio() {
@@ -395,7 +396,14 @@ export function StickerStudio() {
                 maker === m.key ? "bg-ink text-white" : "text-ink hover:bg-paper",
               )}
             >
-              <span className="block text-sm font-semibold">{m.name}</span>
+              <span className="flex flex-wrap items-center gap-x-2 text-sm font-semibold">
+                {m.name}
+                {m.soon && (
+                  <span className={clsx("rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider", maker === m.key ? "bg-flame text-white" : "bg-flame/10 text-flame")}>
+                    Coming soon
+                  </span>
+                )}
+              </span>
               <span className={clsx("block text-xs", maker === m.key ? "text-white/60" : "text-ink/50")}>{m.sub}</span>
             </button>
           ))}
