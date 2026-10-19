@@ -1,5 +1,6 @@
 import { site } from "../../site.config.js";
 import { Logo } from "./Logo.jsx";
+import { reopenConsent } from "../lib/consent.js";
 
 const LABELS = {
   instagram: "Instagram",
@@ -9,7 +10,7 @@ const LABELS = {
   makerworld: "MakerWorld",
 };
 
-export function Footer() {
+export function Footer({ home = "" }) {
   const socials = Object.entries(site.social).filter(([, href]) => href);
 
   return (
@@ -33,15 +34,20 @@ export function Footer() {
               {LABELS[key] || key}
             </a>
           ))}
-          <a href="#quote" className="text-flame hover:text-white">
+          <a href={`${home}#quote`} className="text-flame hover:text-white">
             Get a quote
           </a>
         </nav>
       </div>
       <div className="border-t border-white/10">
-        <p className="container-page py-5 text-xs text-white/40">
-          © {new Date().getFullYear()} {site.name}. Printed in Vancouver.
-        </p>
+        <div className="container-page flex flex-wrap items-center justify-between gap-2 py-5 text-xs text-white/40">
+          <p>
+            © {new Date().getFullYear()} {site.name}. Printed in Vancouver.
+          </p>
+          <button type="button" onClick={reopenConsent} className="hover:text-white">
+            Cookie settings
+          </button>
+        </div>
       </div>
     </footer>
   );

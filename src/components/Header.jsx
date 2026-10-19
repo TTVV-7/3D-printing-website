@@ -8,9 +8,13 @@ const NAV = [
   { href: "#services", label: "Pricing" },
   { href: "#work", label: "Work" },
   { href: "#materials", label: "Materials" },
+  { href: "/stickers/", label: "Stickers" },
 ];
 
-export function Header() {
+// On other pages (home="/") the section links point back at the home page.
+const link = (home, href) => (href.startsWith("#") ? home + href : href);
+
+export function Header({ home = "" }) {
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
 
@@ -25,11 +29,11 @@ export function Header() {
     <header
       className={clsx(
         "fixed inset-x-0 top-0 z-50 transition-colors duration-300",
-        scrolled || open ? "bg-ink/95 backdrop-blur border-b border-white/10" : "bg-transparent",
+        scrolled || open || home ? "bg-ink/95 backdrop-blur border-b border-white/10" : "bg-transparent",
       )}
     >
       <div className="container-page flex h-16 items-center justify-between gap-4 text-white">
-        <a href="#top" aria-label="Print Yours home">
+        <a href={home || "#top"} aria-label="Print Yours home">
           <Logo />
         </a>
 
@@ -37,7 +41,7 @@ export function Header() {
           {NAV.map((n) => (
             <a
               key={n.href}
-              href={n.href}
+              href={link(home, n.href)}
               // The Design your own button takes over on wide screens.
               className={clsx("hover:text-white transition-colors", n.href === "#design" && "lg:hidden")}
             >
@@ -47,10 +51,10 @@ export function Header() {
         </nav>
 
         <div className="flex items-center gap-2">
-          <a href="#design" className="btn-outline-light h-10 px-5 text-sm hidden lg:inline-flex">
+          <a href={link(home, "#design")} className="btn-outline-light h-10 px-5 text-sm hidden lg:inline-flex">
             <Sparkles size={15} className="text-flame" /> Design your own
           </a>
-          <a href="#quote" className="btn-primary h-9 px-4 text-sm sm:h-10 sm:px-5">
+          <a href={link(home, "#quote")} className="btn-primary h-9 px-4 text-sm sm:h-10 sm:px-5">
             <span className="sm:hidden">Quote</span>
             <span className="hidden sm:inline">Get a free quote</span>
           </a>
@@ -71,7 +75,7 @@ export function Header() {
           {NAV.map((n) => (
             <a
               key={n.href}
-              href={n.href}
+              href={link(home, n.href)}
               onClick={() => setOpen(false)}
               className="py-2.5 text-lg font-display border-b border-white/10 last:border-0"
             >

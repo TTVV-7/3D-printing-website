@@ -2,15 +2,11 @@ import { useState } from "react";
 import { Loader2, CheckCircle2, AlertCircle, ArrowRight, ChevronDown } from "lucide-react";
 import { clsx } from "clsx";
 import { FileDrop } from "./FileDrop.jsx";
+import { InstantEstimate, useInstantEstimate } from "./InstantEstimate.jsx";
 import { QuoteGolem } from "./QuoteGolem.jsx";
 import { track } from "@vercel/analytics";
 import { printRequests as api } from "../lib/api.js";
 import { site } from "../../site.config.js";
-
-const MODEL_EXTENSIONS = [".stl", ".3mf"];
-const IMAGE_EXTENSIONS = [".jpg", ".jpeg", ".png", ".heic"];
-const hasExtension = (name, list) => list.some((ext) => name.toLowerCase().endsWith(ext));
-const money = ([low, high]) => (low === high ? `$${low}` : `$${low}–$${high}`);
 
 const MATERIALS = [
   { value: "", label: "Not sure, recommend one" },
@@ -25,11 +21,13 @@ const QUALITIES = [
   { value: "Draft 0.28mm", label: "Draft: 0.28 mm, fastest" },
   { value: "Standard 0.20mm", label: "Standard: 0.20 mm" },
   { value: "Fine 0.12mm", label: "Fine: 0.12 mm, best finish" },
+  { value: "Extra fine 0.08mm", label: "Extra fine: 0.08 mm, smoothest, slowest" },
+  { value: "Adaptive", label: "Adaptive: fine on curves, quick on straight walls" },
 ];
 
 const EMPTY = {
   name: "", email: "", details: "", url: "",
-  material: "", quality: "", quantity: "1", deadline: "", budget: "",
+  material: "", quality: "", quantity: "1", deadline: "",
 };
 
 function Field({ label, required, hint, children }) {
@@ -55,12 +53,6 @@ function Submitted({ entry, onReset }) {
         <span className="font-medium text-ink">{entry.email}</span> within one business day with
         a quote and a realistic turnaround.
       </p>
-      {entry.estimate && (
-        <p className="mx-auto mt-4 max-w-sm rounded-xl bg-flame-100/60 px-4 py-3 text-sm text-ink/75">
-          Rough estimate: <span className="font-semibold text-ink">{money(entry.estimate.price)}</span>
-          {entry.estimate.partial && " for the files I could measure"}. I'll confirm the price when I reply.
-        </p>
-      )}
       <p className="mt-3 font-mono text-xs text-ink/40">Ref {entry.id.slice(0, 8).toUpperCase()}</p>
       <button type="button" className="btn-outline-dark mt-6" onClick={onReset}>
         Send another request
@@ -95,7 +87,7 @@ export function QuoteForm({
   golem = false,
   detailsLabel = "Describe the part",
   detailsPlaceholder = "e.g. Replacement bracket for a shelf, about 8 cm wide, needs to hold ~2 kg.",
-  filesHint = "(STL, 3MF, STEP, or a photo)",
+  filesHint = "(a model file, or just a photo or sketch)",
   submitLabel = "Send my request",
   titlePrefix = "",
 }) {
@@ -109,7 +101,21 @@ export function QuoteForm({
   // Wider screens always show everything.
   const [more, setMore] = useState(false);
 
+  const estimate = useInstantEstimate(files, form);
+
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
+
+  const printOptions = (
+    <div className="grid gap-4 sm:grid-cols-3">
+      <MaterialField value={form.material} onChange={set("material")} />
+      <Field label="Quality">
+        <select className="field" value={form.quality} onChange={set("quality")}>
+          {QUALITIES.map((q) => <option key={q.label} value={q.value}>{q.label}</option>)}
+        </select>
+      </Field>
+      <QuantityField value={form.quantity} onChange={set("quantity")} />
+    </div>
+  );
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -118,54 +124,20 @@ export function QuoteForm({
 
     const id = `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
 
-    const quantity = Number(form.quantity) || 1;
-
-    // Rough price range and a preview image for each STL / 3MF. The estimator
-    // pulls in three.js loaders, so it only loads when a model is attached.
-    const analysis = new Map();
-    const models = files.filter((f) => hasExtension(f.name, MODEL_EXTENSIONS));
-    if (models.length) {
-      try {
-        const { analyzeFile } = await import("../lib/estimate.js");
-        for (const file of models) {
-          setProgress(`Measuring ${file.name}`);
-          analysis.set(file, await analyzeFile(file, { material: form.material, quality: form.quality, quantity }));
-        }
-      } catch {
-        // The estimate is a bonus; the request goes out without it.
-      }
-    }
-
     const uploaded = [];
     try {
       // ~100 KB of client SDK, only loaded when something is attached.
-      const { upload } = files.length ? await import("@vercel/blob/client") : { upload: null };
+      const { uploadPresigned } = files.length ? await import("@vercel/blob/client") : { uploadPresigned: null };
 
       for (const [i, file] of files.entries()) {
         setProgress(`Uploading ${i + 1} of ${files.length}: ${file.name}`);
-        const blob = await upload(`requests/${id}/${file.name}`, file, {
-          access: "public",
-          handleUploadUrl: "/api/upload",
+        // Private store (api/quote-upload.js); the link opens it through this site.
+        const blob = await uploadPresigned(`requests/${id}/${file.name}`, file, {
+          access: "private",
+          handleUploadUrl: "/api/quote-upload",
         });
-        const item = { name: file.name, size: file.size, url: blob.url };
-
-        const result = analysis.get(file);
-        if (result) {
-          item.estimate = result.estimate;
-          if (result.preview) {
-            try {
-              const preview = await upload(`requests/${id}/previews/${file.name}.png`, result.preview, {
-                access: "public",
-                handleUploadUrl: "/api/upload",
-                contentType: "image/png",
-              });
-              item.previewUrl = preview.url;
-            } catch {
-              // Missing preview image only; the file itself made it.
-            }
-          }
-        }
-        uploaded.push(item);
+        const url = `${location.origin}/api/sticker-file?p=${encodeURIComponent(blob.pathname)}`;
+        uploaded.push({ name: file.name, size: file.size, url });
       }
     } catch {
       setProgress(null);
@@ -177,19 +149,35 @@ export function QuoteForm({
       return;
     }
 
+    // A still of the first model, for the admin panel and the customer's
+    // confirmation email. Skipped quietly if anything about it fails.
+    let thumbnailUrl = null;
+    const model = estimate.parts.find((p) => p.status === "ok");
+    if (model) {
+      try {
+        setProgress("Saving a preview of your model");
+        const { snapshot } = await import("./PreviewScene.js");
+        const png = snapshot(model.geometries);
+        if (png) {
+          const { uploadPresigned } = await import("@vercel/blob/client");
+          const blob = await uploadPresigned(`requests/${id}/preview.png`, await (await fetch(png)).blob(), {
+            access: "private",
+            handleUploadUrl: "/api/quote-upload",
+          });
+          thumbnailUrl = `${location.origin}/api/sticker-file?p=${encodeURIComponent(blob.pathname)}`;
+        }
+      } catch (err) {
+        console.warn("model preview skipped:", err);
+      }
+    }
+
     setProgress(null);
 
-    const estimates = uploaded.filter((f) => f.estimate).map((f) => f.estimate);
-    const unpriced =
-      Boolean(form.url.trim()) ||
-      uploaded.some((f) => !hasExtension(f.name, MODEL_EXTENSIONS) && !hasExtension(f.name, IMAGE_EXTENSIONS));
-    let estimate = null;
-    if (estimates.length) {
-      const { orderTotal } = await import("../lib/estimate.js");
-      estimate = orderTotal(estimates, unpriced);
-    }
-    const mid = (pair) => (pair ? Math.round(((pair[0] + pair[1]) / 2) * 10) / 10 : null);
-    const firstModel = uploaded.find((f) => f.estimate);
+    // The instant estimate, if any, rides along in the cost fields so it
+    // shows next to the request in the admin panel. It's never binding.
+    const est = estimate.order;
+    const firstMesh = estimate.parts[0]?.file.name ?? null;
+    const round2 = (n) => Math.round(n * 100) / 100;
 
     // Same shape the store backend has always accepted.
     const entry = {
@@ -201,27 +189,31 @@ export function QuoteForm({
       url: form.url.trim() || null,
       material: form.material || null,
       quality: form.quality || null,
-      quantity,
+      quantity: Number(form.quantity) || 1,
       deadline: form.deadline || null,
-      budget: form.budget.trim() || null,
+      budget: null,
       files: uploaded,
       title: titlePrefix + (form.details.trim().slice(0, 120) || form.url.trim()),
-      stlName: firstModel?.name ?? null,
-      thumbnailUrl: uploaded.find((f) => f.previewUrl)?.previewUrl ?? null,
-      // Midpoints of the estimate; the full ranges ride along in `estimate`
-      // and in each file's `estimate`.
-      weightG: mid(estimate?.grams),
-      printTimeHrs: mid(estimate?.hours),
-      filamentCost: null,
-      timeCost: null,
-      totalCost: mid(estimate?.price),
-      estimate,
+      stlName: firstMesh,
+      thumbnailUrl,
+      weightG: est ? Math.round(est.grams) : null,
+      printTimeHrs: est ? round2(est.hours) : null,
+      filamentCost: est ? round2(est.filamentCost) : null,
+      timeCost: est ? round2(est.timeCost) : null,
+      totalCost: est ? round2(est.total) : null,
       submittedAt: new Date().toISOString(),
     };
 
     try {
       await api.create(entry);
       api.notify(entry);
+      // The customer's confirmation email (api/quote-confirm.js).
+      fetch("/api/quote-confirm", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        keepalive: true,
+        body: JSON.stringify(entry),
+      }).catch(() => {});
       // Shows up under Analytics → Events in Vercel. No personal details sent.
       track("Quote submitted", {
         form: titlePrefix ? "design your own" : "quote",
@@ -229,7 +221,7 @@ export function QuoteForm({
         quantity: entry.quantity,
         hasFiles: uploaded.length > 0,
         hasLink: Boolean(entry.url),
-        hasEstimate: Boolean(estimate),
+        hasEstimate: Boolean(est),
       });
       setSubmitted(entry);
       setForm(EMPTY);
@@ -269,13 +261,24 @@ export function QuoteForm({
         <FileDrop files={files} onChange={setFiles} disabled={submitting} />
       </Field>
 
+      {/* With a model attached, material / quality / quantity sit inside the
+          estimate so the price visibly follows them. */}
+      <InstantEstimate
+        estimate={estimate}
+        material={form.material}
+        quality={form.quality}
+        onQuantity={(q) => setForm((f) => ({ ...f, quantity: String(q) }))}
+      >
+        {printOptions}
+      </InstantEstimate>
+
       <button
         type="button"
         onClick={() => setMore((m) => !m)}
         aria-expanded={more}
         className="flex w-full items-center justify-between gap-2 rounded-xl border border-dashed border-ink/15 px-3.5 py-2.5 text-left text-sm font-medium text-ink/70 sm:hidden"
       >
-        More details (link, material, quantity, date)
+        More details ({estimate.parts.length ? "link, date" : "link, material, quantity, date"})
         <ChevronDown size={16} className={clsx("transition-transform", more && "rotate-180")} />
       </button>
 
@@ -283,23 +286,20 @@ export function QuoteForm({
         <Field label="Reference link" hint="(MakerWorld, Printables, Thingiverse…)">
           <input className="field" type="url" value={form.url} onChange={set("url")} placeholder="https://" />
         </Field>
+        {/* Model sites don't allow fetching their files from here, so point
+            people at the upload for an instant price. */}
+        {form.url.trim() && !estimate.parts.length && (
+          <p className="-mt-2 text-xs text-ink/55">
+            Want an instant estimate? Download the STL or 3MF from that page and add it under Files.
+            Otherwise I'll price it from the link.
+          </p>
+        )}
+
+        {!estimate.parts.length && printOptions}
 
         <div className="grid gap-4 sm:grid-cols-3">
-          <MaterialField value={form.material} onChange={set("material")} />
-          <Field label="Quality">
-            <select className="field" value={form.quality} onChange={set("quality")}>
-              {QUALITIES.map((q) => <option key={q.label} value={q.value}>{q.label}</option>)}
-            </select>
-          </Field>
-          <QuantityField value={form.quantity} onChange={set("quantity")} />
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
           <Field label="Needed by" hint="(optional)">
             <input className="field" type="date" value={form.deadline} onChange={set("deadline")} />
-          </Field>
-          <Field label="Budget" hint="(optional)">
-            <input className="field" value={form.budget} onChange={set("budget")} placeholder="e.g. under $40" />
           </Field>
         </div>
       </div>
