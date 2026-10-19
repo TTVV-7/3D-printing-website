@@ -9,7 +9,8 @@
 // landing back, the order is still in Stripe (and Stripe's own payment
 // email, if that's switched on in its settings), just not emailed from here.
 import { deliveryOf } from "../src/stickers/pricing.js";
-import { fileOrder, money } from "./_sticker-order.js";
+import { fileOrder, money, confirmationEmail } from "./_sticker-order.js";
+import { sendMail } from "./_mail.js";
 import { stripe, stripeKey } from "./_stripe.js";
 
 export default async function handler(req, res) {
@@ -61,6 +62,20 @@ export default async function handler(req, res) {
       total: session.amount_total / 100,
     });
     await s.paymentIntents.update(pi.id, { metadata: { notified: new Date().toISOString() } });
+    const customer = session.customer_email || c.email;
+    if (customer) {
+      await sendMail({
+        to: customer,
+        ...confirmationEmail({
+          paid: true,
+          name: m.name || c.name,
+          items: notes.map((note, i) => ({ note, preview: m[`prev${i + 1}`] || "" })),
+          delivery: deliveryOf(m.delivery),
+          total: money(session.amount_total),
+          test: !live,
+        }),
+      });
+    }
   } catch (err) {
     // The order is safe in Stripe either way; this only loses the email.
     console.error("sticker order not filed:", err.message);

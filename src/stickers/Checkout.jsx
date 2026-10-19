@@ -88,6 +88,8 @@ export function Checkout({ items, onRemove, onClose, onSent }) {
       const arts = await Promise.all(
         items.map((it, i) => uploadArt(it.print || it.art, `${i + 1}-${sizeOf(it.sizeKey).code}-x${it.qty}`)),
       );
+      // The sticker as shown on screen, for the customer's confirmation email.
+      const previews = await Promise.all(items.map((it, i) => uploadArt(it.art, `${i + 1}-preview`)));
       const r = await fetch(family ? "/api/sticker-request" : "/api/sticker-checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -102,6 +104,7 @@ export function Checkout({ items, onRemove, onClose, onSent }) {
             ink: it.ink,
             file: it.fileName,
             art: arts[i],
+            preview: previews[i],
           })),
           customer: {
             name: who.name.trim(),

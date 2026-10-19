@@ -1,8 +1,8 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { UploadCloud, File as FileIcon, X, AlertCircle } from "lucide-react";
 import { clsx } from "clsx";
 
-// Matches the limits enforced by the backend's /api/upload route.
+// Matches the limits enforced by api/quote-upload.js.
 export const ACCEPTED = [
   ".stl", ".3mf", ".obj", ".step", ".stp", ".gcode", ".zip",
   ".jpg", ".jpeg", ".png", ".heic", ".pdf",
@@ -14,6 +14,20 @@ function formatSize(bytes) {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+}
+
+// A small preview of an attached photo (HEIC can't show in most browsers,
+// so it keeps the file icon).
+function Thumb({ file }) {
+  const [url, setUrl] = useState(null);
+  useEffect(() => {
+    if (!/^image\/(png|jpeg|webp|gif)$/.test(file.type)) return;
+    const u = URL.createObjectURL(file);
+    setUrl(u);
+    return () => URL.revokeObjectURL(u);
+  }, [file]);
+  if (!url) return <FileIcon size={14} className="flex-shrink-0 text-flame" />;
+  return <img src={url} alt="" className="h-8 w-8 flex-shrink-0 rounded-md object-cover" />;
 }
 
 function extensionOf(name) {
@@ -81,7 +95,7 @@ export function FileDrop({ files, onChange, disabled }) {
           <span className="font-medium text-flame">Choose files</span> or drag them here
         </p>
         <p className="mt-1 text-xs text-ink/45">
-          STL, 3MF, STEP, OBJ, ZIP or photos · up to {MAX_FILE_MB} MB each
+          A model (STL, 3MF, STEP, OBJ, ZIP) or a photo or sketch of what you need · up to {MAX_FILE_MB} MB each
         </p>
         <input
           ref={inputRef}
@@ -97,7 +111,7 @@ export function FileDrop({ files, onChange, disabled }) {
         <ul className="space-y-1.5">
           {files.map((file) => (
             <li key={`${file.name}-${file.size}`} className="flex items-center gap-2.5 rounded-xl border border-ink/10 bg-white px-3 py-2">
-              <FileIcon size={14} className="flex-shrink-0 text-flame" />
+              <Thumb file={file} />
               <span className="flex-1 truncate text-sm">{file.name}</span>
               <span className="flex-shrink-0 text-xs text-ink/45">{formatSize(file.size)}</span>
               <button

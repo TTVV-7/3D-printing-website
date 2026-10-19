@@ -163,3 +163,59 @@ export function mountPreview(canvas, { reducedMotion }) {
     },
   };
 }
+
+// A still of the part for the confirmation email and the admin panel: the
+// same orange, lighting and three-quarter view as the live preview, on white.
+// Returns a PNG data URL, or null if WebGL isn't available.
+export function snapshot(geometries, { width = 640, height = 480 } = {}) {
+  let renderer;
+  try {
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    renderer = new WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true });
+  } catch {
+    return null;
+  }
+  renderer.setSize(width, height, false);
+  renderer.outputColorSpace = SRGBColorSpace;
+  renderer.toneMapping = ACESFilmicToneMapping;
+  renderer.setClearColor(0xffffff, 1);
+
+  const scene = new Scene();
+  const pmrem = new PMREMGenerator(renderer);
+  const envMap = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+  scene.environment = envMap;
+  const key = new DirectionalLight(0xffffff, 1.2);
+  key.position.set(2, 4, 3);
+  scene.add(key);
+  const material = new MeshStandardMaterial({ color: 0xff5b1f, roughness: 0.55, metalness: 0, flatShading: true });
+
+  const part = new Group();
+  for (const g of geometries) part.add(new Mesh(g, material));
+  part.rotation.x = -Math.PI / 2;
+  part.updateMatrixWorld(true);
+  const box = new Box3().setFromObject(part);
+  part.position.sub(box.getCenter(new Vector3()));
+  const radius = box.getBoundingSphere(new Sphere()).radius || 50;
+  const pivot = new Group();
+  pivot.rotation.set(TILT, -0.6, 0);
+  pivot.add(part);
+  scene.add(pivot);
+
+  const camera = new PerspectiveCamera(30, width / height, 1, 10000);
+  const tanV = Math.tan((camera.fov * Math.PI) / 360);
+  const dist = (radius / Math.min(tanV, tanV * (width / height))) * 1.15;
+  camera.position.set(0, 0, dist);
+  camera.near = dist / 50;
+  camera.far = dist * 4;
+  camera.updateProjectionMatrix();
+
+  renderer.render(scene, camera);
+  const url = renderer.domElement.toDataURL("image/png");
+  material.dispose();
+  envMap.dispose();
+  pmrem.dispose();
+  renderer.dispose();
+  return url;
+}
