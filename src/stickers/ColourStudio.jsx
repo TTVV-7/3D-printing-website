@@ -1,9 +1,12 @@
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
-import { Check, ImageUp, Loader2, Minus, Plus, ShoppingBag } from "lucide-react";
+import { Check, Hand, ImageUp, Loader2, Minus, Plus, RotateCcw, ShoppingBag } from "lucide-react";
 import { clsx } from "clsx";
 import { stickers } from "../../site.config.js";
 import { COLOUR_SHAPES, colourFits, priceColourEach } from "./pricing.js";
-import { BORDERS, inspect, prepareArt, layout, widthRange, renderSticker, printFile } from "./colour.js";
+import {
+  BORDERS, inspect, prepareArt, layout, widthRange, renderSticker, printFile,
+  PLACE_START, ZOOM, placeKind, clampPlace, cropArt,
+} from "./colour.js";
 import { uploadArt } from "./Checkout.jsx";
 
 // The full-colour, custom-cut sticker maker: printed on the inkjet, cut on
@@ -59,10 +62,27 @@ function Label({ children, hint }) {
 
 // The sticker to scale on a cutting mat (1 cm grid), beside a credit card.
 // The thin dark edge is the cut line.
-function Stage({ art, opts, width }) {
+// Dragging on it reports how far the pointer moved in sticker millimetres
+// (onPan); the wheel or a two-finger pinch reports a zoom factor (onZoom).
+function Stage({ art, opts, width, onPan, onZoom }) {
   const boxRef = useRef(null);
+  const scaleRef = useRef(1); // canvas px per mm, from the last draw
+  const pointers = useRef(new Map());
   const canvasRef = useRef(null);
   const [box, setBox] = useState({ w: 0, h: 0 });
+
+  // Wheel to zoom, without scrolling the page (needs a non-passive listener).
+  const zoomRef = useRef(onZoom);
+  zoomRef.current = onZoom;
+  useEffect(() => {
+    const c = canvasRef.current;
+    const onWheel = (e) => {
+      e.preventDefault();
+      zoomRef.current(Math.exp(-e.deltaY * 0.0015));
+    };
+    c.addEventListener("wheel", onWheel, { passive: false });
+    return () => c.removeEventListener("wheel", onWheel);
+  }, []);
 
   useEffect(() => {
     const ro = new ResizeObserver(([e]) => setBox({ w: e.contentRect.width, h: e.contentRect.height }));
@@ -82,6 +102,7 @@ function Stage({ art, opts, width }) {
     const sceneW = l.w + gap + CARD.w;
     const sceneH = Math.max(l.h, CARD.h);
     const pxPerMm = Math.min((c.width * 0.86) / sceneW, (c.height * 0.8) / sceneH);
+    scaleRef.current = pxPerMm / dpr;
 
     // Mat and grid.
     ctx.fillStyle = "#e9efe9";
@@ -137,8 +158,31 @@ function Stage({ art, opts, width }) {
       <canvas
         ref={canvasRef}
         role="img"
-        aria-label="Your sticker to scale beside a credit card. The thin dark edge is where it's cut."
-        className="absolute inset-0 h-full w-full"
+        aria-label="Your sticker to scale beside a credit card. The thin dark edge is where it's cut. Drag to move the image."
+        className="absolute inset-0 h-full w-full cursor-grab touch-none active:cursor-grabbing"
+        onPointerDown={(e) => {
+          e.currentTarget.setPointerCapture(e.pointerId);
+          pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+        }}
+        onPointerMove={(e) => {
+          const ps = pointers.current;
+          const last = ps.get(e.pointerId);
+          if (!last) return;
+          if (ps.size === 2) {
+            // Pinch: the change in distance between the two fingers.
+            const [a, b] = [...ps.values()];
+            const before = Math.hypot(a.x - b.x, a.y - b.y);
+            ps.set(e.pointerId, { x: e.clientX, y: e.clientY });
+            const [c, d] = [...ps.values()];
+            const after = Math.hypot(c.x - d.x, c.y - d.y);
+            if (before > 0) onZoom(after / before);
+            return;
+          }
+          ps.set(e.pointerId, { x: e.clientX, y: e.clientY });
+          onPan((e.clientX - last.x) / scaleRef.current, (e.clientY - last.y) / scaleRef.current);
+        }}
+        onPointerUp={(e) => pointers.current.delete(e.pointerId)}
+        onPointerCancel={(e) => pointers.current.delete(e.pointerId)}
       />
     </div>
   );
@@ -183,7 +227,14 @@ export function ColourStudio({ setCart, cartPanel, cartEmpty, openCheckout }) {
   }
 
   const art = useMemo(() => (image ? prepareArt(image, { removeWhite }) : null), [image, removeWhite]);
-  const opts = useMemo(() => ({ shape, border, bg }), [shape, border, bg]);
+  // Where the image sits in the sticker (colour.js); starts afresh when the
+  // image or the kind of shape changes.
+  const kind = placeKind(shape);
+  const [place, setPlace] = useState(PLACE_START.contour);
+  useEffect(() => setPlace(PLACE_START[kind]), [kind, image]);
+  const opts = useMemo(() => ({ shape, border, bg, place }), [shape, border, bg, place]);
+  // Die-cut keeps only the zoomed-in part of the image, and cuts around that.
+  const shown = useMemo(() => (art && kind === "contour" ? cropArt(art, place) : art), [art, kind, place]);
   const range = useMemo(
     () => art && widthRange(art, opts, colourFits, [cfg.minMm, Math.max(...cfg.maxMm)]),
     [art, opts],
@@ -196,11 +247,27 @@ export function ColourStudio({ setCart, cartPanel, cartEmpty, openCheckout }) {
   // The stage redraws a beat behind the slider, so dragging stays smooth.
   const stageWidth = useDeferredValue(width);
   const stageOpts = useDeferredValue(opts);
+  const stageArt = useDeferredValue(shown);
+
+  // Drag on the preview: die-cut moves the kept part the other way (the image
+  // follows the finger); shapes move the image itself.
+  function pan(dxMm, dyMm) {
+    if (!size) return;
+    setPlace((p) =>
+      clampPlace(
+        shape,
+        kind === "contour"
+          ? { ...p, x: p.x - dxMm / (size.art.w * p.zoom), y: p.y - dyMm / (size.art.h * p.zoom) }
+          : { ...p, x: p.x + (2 * dxMm) / size.w, y: p.y + (2 * dyMm) / size.h },
+      ),
+    );
+  }
+  const zoomBy = (f) => setPlace((p) => clampPlace(shape, { ...p, zoom: p.zoom * f }));
 
   const each = size ? priceColourEach(size, qty) : 0;
   const total = each * qty;
   const nextBreak = cfg.pricing.breaks.find((b) => qty < b.qty);
-  useEffect(() => setAdded(false), [art, opts, width, qty, finishKey]);
+  useEffect(() => setAdded(false), [shown, opts, width, qty, finishKey]);
 
   // Renders the print file, uploads it right away (so the cart stays small),
   // and puts the sticker in the cart.
@@ -208,8 +275,8 @@ export function ColourStudio({ setCart, cartPanel, cartEmpty, openCheckout }) {
     if (!art || !size) return null;
     setBusy(true);
     await new Promise((r) => setTimeout(r, 30)); // let the spinner show
-    const { dataUrl } = printFile(art, opts, width);
-    const thumb = renderSticker(art, opts, width, 240 / Math.max(size.w, size.h)).canvas.toDataURL("image/png");
+    const { dataUrl } = printFile(shown, opts, width);
+    const thumb = renderSticker(shown, opts, width, 240 / Math.max(size.w, size.h)).canvas.toDataURL("image/png");
     const w = Math.round(size.w * 10) / 10, h = Math.round(size.h * 10) / 10;
     const printUrl = await uploadArt(dataUrl, `colour-${Math.round(w)}x${Math.round(h)}mm`);
     const item = {
@@ -237,7 +304,7 @@ export function ColourStudio({ setCart, cartPanel, cartEmpty, openCheckout }) {
       <div className="flex min-w-0 flex-col gap-4 lg:sticky lg:top-20 lg:self-start">
         <div className="relative">
           {art ? (
-            <Stage art={art} opts={stageOpts} width={stageWidth} />
+            <Stage art={stageArt} opts={stageOpts} width={stageWidth} onPan={pan} onZoom={zoomBy} />
           ) : (
             <div className="flex aspect-square items-center justify-center rounded-3xl bg-[#e9efe9] text-sm text-ink/50 ring-1 ring-ink/10 sm:aspect-[4/3]">
               {image ? "Nothing left to print: try turning off “Remove white background”." : "Loading…"}
@@ -335,6 +402,41 @@ export function ColourStudio({ setCart, cartPanel, cartEmpty, openCheckout }) {
             </label>
           </div>
         </div>
+
+        {art && (
+          <div>
+            <Label hint={kind === "contour" ? "zoom in to crop" : "trimmed to the shape"}>Image position</Label>
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-ink/60">Zoom</span>
+              <input
+                type="range"
+                min={Math.log(ZOOM[kind][0])}
+                max={Math.log(ZOOM[kind][1])}
+                step={0.01}
+                value={Math.log(place.zoom)}
+                onChange={(e) => setPlace((p) => clampPlace(shape, { ...p, zoom: Math.exp(+e.target.value) }))}
+                className="min-w-0 flex-1 accent-flame"
+                aria-label="Zoom"
+              />
+              <span className="w-12 text-right font-mono text-xs text-ink/50">{Math.round(place.zoom * 100)}%</span>
+              <button
+                type="button"
+                onClick={() => setPlace(PLACE_START[kind])}
+                className="btn-outline-dark h-9 px-3 text-sm"
+              >
+                <RotateCcw size={14} /> Reset
+              </button>
+            </div>
+            <p className="mt-1.5 flex items-center gap-1.5 text-xs text-ink/50">
+              <Hand size={13} />
+              {kind === "contour"
+                ? place.zoom > 1
+                  ? "Drag the preview to choose which part to keep. The cut follows it."
+                  : "Zoom in to crop the image, then drag to choose which part to keep."
+                : "Drag the preview to move the image; zoom or scroll to resize it."}
+            </p>
+          </div>
+        )}
 
         {range && size && (
           <div>

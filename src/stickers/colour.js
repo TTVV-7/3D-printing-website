@@ -104,6 +104,36 @@ export function prepareArt(image, { removeWhite }) {
   return out;
 }
 
+// Where the image sits in the sticker: `zoom` and a pan `x`, `y`.
+//  - Die-cut: the outline follows the image, so zoom crops it (1 = whole
+//    image) and x, y (0..1) are the centre of the part that's kept.
+//  - Circle / square / rounded: zoom scales the image in the shape and x, y
+//    (-1..1) move it, as a fraction of the sticker's size; the shape trims it.
+export const PLACE_START = { contour: { zoom: 1, x: 0.5, y: 0.5 }, shape: { zoom: 1, x: 0, y: 0 } };
+export const ZOOM = { contour: [1, 5], shape: [0.3, 4] };
+export const placeKind = (shape) => (shape === "contour" ? "contour" : "shape");
+
+// Keeps a placement inside what makes sense for the shape.
+export function clampPlace(shape, { zoom, x, y }) {
+  const kind = placeKind(shape);
+  const [lo, hi] = ZOOM[kind];
+  const z = Math.min(hi, Math.max(lo, zoom));
+  if (kind === "shape") return { zoom: z, x: Math.min(1, Math.max(-1, x)), y: Math.min(1, Math.max(-1, y)) };
+  const half = 0.5 / z;
+  return { zoom: z, x: Math.min(1 - half, Math.max(half, x)), y: Math.min(1 - half, Math.max(half, y)) };
+}
+
+// The part of the art a die-cut sticker keeps (same shape as the art, so the
+// sticker's size doesn't change as you zoom).
+export function cropArt(art, place) {
+  const { zoom, x, y } = clampPlace("contour", place);
+  if (zoom === 1) return art;
+  const w = art.width / zoom, h = art.height / zoom;
+  const out = canvasOf(w, h);
+  out.getContext("2d").drawImage(art, x * art.width - w / 2, y * art.height - h / 2, w, h, 0, 0, out.width, out.height);
+  return out;
+}
+
 // The sticker's outside size (mm) for a given width, and where the art sits
 // inside it. Pure maths, so sizes and prices update without drawing.
 export function layout(art, { shape, border }, widthMm) {
@@ -210,13 +240,16 @@ export function renderSticker(art, opts, widthMm, pxPerMm) {
   const px = (mm) => mm * pxPerMm;
   const out = canvasOf(px(l.w), px(l.h));
   const ctx = out.getContext("2d");
-  const ax = (out.width - px(l.art.w)) / 2;
-  const ay = (out.height - px(l.art.h)) / 2;
+  // Die-cut: the crop is already in `art` (cropArt). Shapes: scale and move.
+  const place = shape === "contour" ? PLACE_START.shape : clampPlace(shape, opts.place || PLACE_START.shape);
+  const artW = px(l.art.w) * place.zoom, artH = px(l.art.h) * place.zoom;
+  const ax = (out.width - artW) / 2 + place.x * out.width / 2;
+  const ay = (out.height - artH) / 2 + place.y * out.height / 2;
 
   if (shape === "contour") {
     const sil = canvasOf(out.width, out.height);
     const sctx = sil.getContext("2d");
-    sctx.drawImage(art, ax, ay, px(l.art.w), px(l.art.h));
+    sctx.drawImage(art, ax, ay, artW, artH);
     sctx.globalCompositeOperation = "source-in";
     sctx.fillStyle = "#000";
     sctx.fillRect(0, 0, sil.width, sil.height);
@@ -242,7 +275,7 @@ export function renderSticker(art, opts, widthMm, pxPerMm) {
     ctx.clip();
   }
   ctx.imageSmoothingQuality = "high";
-  ctx.drawImage(art, ax, ay, px(l.art.w), px(l.art.h));
+  ctx.drawImage(art, ax, ay, artW, artH);
   if (shape !== "contour") ctx.restore();
   return { canvas: out, w: l.w, h: l.h };
 }
