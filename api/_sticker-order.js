@@ -6,6 +6,7 @@ import { priceEach, deliveryCost, finishOf, colourOf, deliveryOf, labelName, siz
 import { stickers } from "../site.config.js";
 import { RING_GROUPS } from "../src/stickers/library.js";
 import { STORE_API } from "./_stripe.js";
+import { esc, layout } from "./_mail.js";
 
 const RING_NAMES = Object.fromEntries([["none", "none"], ...RING_GROUPS.flatMap(([, r]) => r)]);
 const MAX_QTY = 1000;
@@ -47,6 +48,9 @@ export function readOrder(body, origin) {
       qty,
       unit: cents(priceEach(stock, finish.key, qty)),
       art: isFile(it.art) ? it.art : "",
+      // The on-screen sticker (label colour, see-through outside the shape),
+      // for the customer's confirmation email.
+      preview: isFile(it.preview) ? it.preview : "",
       desc: `${stock.name} label, ${label.toLowerCase()}${it.ring !== "none" ? `, ${RING_NAMES[it.ring].toLowerCase()} ring` : ""}`,
       // Everything needed to print it again, on one line (Stripe allows 500
       // characters per metadata value).
@@ -177,4 +181,35 @@ export async function fileOrder({ id, title, heading, notes, delivery, shipTo, p
   if (!saved.ok) throw new Error(`print-requests ${saved.status}`);
   const mailed = await post("notify-request");
   if (!mailed.ok) throw new Error(`notify-request ${mailed.status}`);
+}
+
+// The customer's confirmation email: each sticker as they designed it, on its
+// label colour. `items` are { note, preview } (note as in readOrder).
+export function confirmationEmail({ paid, name, items, delivery, total, test }) {
+  const first = String(name || "").split(" ")[0];
+  const rows = items
+    .map(({ note, preview }) => {
+      const [what, label] = note.split(" | ");
+      const qty = qtyOf(note);
+      const size = what.replace(/^\d+ x /, "").replace(/ \(.*$/, "");
+      const img = preview || imageOf(note);
+      return `<tr>
+<td width="96" style="padding:8px 12px 8px 0;vertical-align:middle">${img ? `<img src="${esc(img)}" width="88" height="88" alt="Your sticker" style="display:block;width:88px;height:88px;object-fit:contain;border-radius:12px;background:#f4f1ea">` : ""}</td>
+<td style="padding:8px 0;vertical-align:middle;font-size:15px;line-height:1.4"><strong>${qty} × ${esc(size)} sticker${qty > 1 ? "s" : ""}</strong><br><span style="color:#7a8494">${esc(label || "")}</span></td>
+</tr>`;
+    })
+    .join("");
+  const totalLine = paid
+    ? `<p style="margin:16px 0 0;font-size:15px"><strong>Total: ${esc(total)} CAD</strong>${test ? " (test payment)" : ""}<br><span style="color:#7a8494;font-size:13px">Your card is held, and only charged once your stickers are printed.</span></p>`
+    : `<p style="margin:16px 0 0;font-size:14px;color:#7a8494">No payment taken: this is a friends &amp; family request.</p>`;
+  const body = `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid #eee;border-bottom:1px solid #eee">${rows}</table>
+${totalLine}
+<p style="margin:16px 0 0;font-size:14px;color:#4a5566">Delivery: ${esc(delivery?.name || "-")}${delivery?.key === "pickup" ? ". I'll email you where to pick them up when they're ready." : ""}</p>`;
+  const heading = paid ? "Order received, thank you!" : "Request received!";
+  const intro = `Hi ${esc(first) || "there"}, ${paid ? "your sticker order is in. I'll print it, usually within two business days, and let you know when it's on its way." : "I've got your sticker request and will be in touch soon."}`;
+  return {
+    subject: paid ? "Your printyours sticker order" : "Your printyours sticker request",
+    html: layout({ heading, intro, body }),
+    text: `${heading}\n\n${intro.replace(/<[^>]+>/g, "")}\n\n${items.map(({ note }) => note.split(" | ").slice(0, 2).join(", ")).join("\n")}\n\nDelivery: ${delivery?.name || "-"}${paid ? `\nTotal: ${total} CAD (held, charged once printed)` : ""}`,
+  };
 }

@@ -72,6 +72,20 @@ order. If someone closes the tab before landing back, the order is still in
 Stripe; switch on Stripe → Settings → Notifications → successful payments as a
 backstop.
 
+**Customer confirmation emails:** after a quote request, a paid sticker order
+or a friends & family request, the customer gets a confirmation email
+(`api/_mail.js`, through [Resend](https://resend.com)). Sticker emails show
+each sticker as designed, on its label colour. Quote emails show a picture of
+the uploaded model (rendered in their browser), their photos, the link they
+gave and their details. Replies go to `site.email`. To switch it on:
+
+1. Sign up at resend.com, add the domain `printyours.ca` and add the DNS records
+   it shows in Vercel → Domains → printyours.ca.
+2. Create an API key and add it in Vercel as `RESEND_API_KEY` (optionally
+   `MAIL_FROM`, default `printyours <orders@printyours.ca>`), then redeploy.
+
+Without the key, nothing is sent and everything else works as before.
+
 **Friends & family:** the checkout has a "Friends & family" tab that skips
 payment. `api/sticker-request.js` checks the cart the same way and files it with
 the same admin panel and email, marked as a request (no payment, with what it

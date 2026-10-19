@@ -32,6 +32,8 @@ export default async function handler(req, res) {
     delivery: delivery.key,
     designs: items.length,
     ...Object.fromEntries(items.map((it, i) => [`item${i + 1}`, it.note])),
+    // The on-screen previews, for the customer's confirmation email.
+    ...Object.fromEntries(items.filter((it) => it.preview).map((it) => [`prev${items.indexOf(it) + 1}`, it.preview])),
   };
 
   try {

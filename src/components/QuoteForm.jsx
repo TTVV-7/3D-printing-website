@@ -87,7 +87,7 @@ export function QuoteForm({
   golem = false,
   detailsLabel = "Describe the part",
   detailsPlaceholder = "e.g. Replacement bracket for a shelf, about 8 cm wide, needs to hold ~2 kg.",
-  filesHint = "(STL, 3MF, STEP, or a photo)",
+  filesHint = "(a model file, or just a photo or sketch)",
   submitLabel = "Send my request",
   titlePrefix = "",
 }) {
@@ -149,6 +149,28 @@ export function QuoteForm({
       return;
     }
 
+    // A still of the first model, for the admin panel and the customer's
+    // confirmation email. Skipped quietly if anything about it fails.
+    let thumbnailUrl = null;
+    const model = estimate.parts.find((p) => p.status === "ok");
+    if (model) {
+      try {
+        setProgress("Saving a preview of your model");
+        const { snapshot } = await import("./PreviewScene.js");
+        const png = snapshot(model.geometries);
+        if (png) {
+          const { uploadPresigned } = await import("@vercel/blob/client");
+          const blob = await uploadPresigned(`requests/${id}/preview.png`, await (await fetch(png)).blob(), {
+            access: "private",
+            handleUploadUrl: "/api/quote-upload",
+          });
+          thumbnailUrl = `${location.origin}/api/sticker-file?p=${encodeURIComponent(blob.pathname)}`;
+        }
+      } catch (err) {
+        console.warn("model preview skipped:", err);
+      }
+    }
+
     setProgress(null);
 
     // The instant estimate, if any, rides along in the cost fields so it
@@ -173,7 +195,7 @@ export function QuoteForm({
       files: uploaded,
       title: titlePrefix + (form.details.trim().slice(0, 120) || form.url.trim()),
       stlName: firstMesh,
-      thumbnailUrl: null,
+      thumbnailUrl,
       weightG: est ? Math.round(est.grams) : null,
       printTimeHrs: est ? round2(est.hours) : null,
       filamentCost: est ? round2(est.filamentCost) : null,
@@ -185,6 +207,13 @@ export function QuoteForm({
     try {
       await api.create(entry);
       api.notify(entry);
+      // The customer's confirmation email (api/quote-confirm.js).
+      fetch("/api/quote-confirm", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        keepalive: true,
+        body: JSON.stringify(entry),
+      }).catch(() => {});
       // Shows up under Analytics → Events in Vercel. No personal details sent.
       track("Quote submitted", {
         form: titlePrefix ? "design your own" : "quote",

@@ -10,6 +10,7 @@
     { "source": "/api/sticker-upload", "destination": "/api/sticker-upload" },
     { "source": "/api/sticker-file", "destination": "/api/sticker-file" },
     { "source": "/api/quote-upload", "destination": "/api/quote-upload" },
+    { "source": "/api/quote-confirm", "destination": "/api/quote-confirm" },
     { "source": "/api/:path*", "destination": "https://thomasverigin.ca/3Dprintingstore/api/:path*" }
   ],
   "headers": [
