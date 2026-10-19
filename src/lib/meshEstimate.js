@@ -1,9 +1,86 @@
 // Measures STL / 3MF files in the browser and turns the measurements into a
 // ballpark price. Imported dynamically so three.js only loads once someone
 // actually drops a model into the quote form.
-import { Vector3 } from "three";
+import { BufferAttribute, BufferGeometry, Matrix4, Vector3 } from "three";
 import { STLLoader } from "three/examples/jsm/loaders/STLLoader.js";
-import { ThreeMFLoader } from "three/examples/jsm/loaders/3MFLoader.js";
+import { unzipSync, strFromU8 } from "three/examples/jsm/libs/fflate.module.js";
+
+const UNIT_MM = { micron: 0.001, millimeter: 1, centimeter: 10, inch: 25.4, foot: 304.8, meter: 1000 };
+
+// 3MF transforms are "m00 m01 m02 m10 m11 m12 m20 m21 m22 m30 m31 m32"
+// (row vectors). Matrix4.set takes rows of the column-vector form.
+function parseTransform(attr) {
+  const m = new Matrix4();
+  if (!attr) return m;
+  const v = attr.trim().split(/\s+/).map(Number);
+  if (v.length !== 12 || v.some(Number.isNaN)) return m;
+  m.set(v[0], v[3], v[6], v[9], v[1], v[4], v[7], v[10], v[2], v[5], v[8], v[11], 0, 0, 0, 1);
+  return m;
+}
+
+// Children and attributes by local name, so namespace prefixes don't matter.
+const kids = (node, name) => Array.from(node?.children || []).filter((c) => c.localName === name);
+const kid = (node, name) => kids(node, name)[0];
+const attr = (node, name) => Array.from(node.attributes).find((a) => a.localName === name)?.value;
+
+// Reads a 3MF into one geometry per build item, in millimetres. Handles plain
+// 3MFs and Bambu Studio / Orca projects, which keep each part in its own
+// 3D/Objects/*.model file behind p:path components -- three's 3MFLoader
+// doesn't follow those and finds no triangles.
+function parse3mf(buffer) {
+  const zip = unzipSync(new Uint8Array(buffer), {
+    filter: (f) => /\.model$/i.test(f.name) || /_rels\/\.rels$/i.test(f.name),
+  });
+  const models = {};
+  let rels = null;
+  for (const [name, bytes] of Object.entries(zip)) {
+    if (/_rels\/\.rels$/i.test(name)) rels = strFromU8(bytes);
+    else models["/" + name.replace(/^\//, "")] = new DOMParser().parseFromString(strFromU8(bytes), "application/xml").documentElement;
+  }
+  const target = rels?.match(/Target="([^"]+\.model)"/i)?.[1];
+  const rootPath = target ? "/" + target.replace(/^\//, "") : Object.keys(models).find((p) => /^\/3D\/3dmodel\.model$/i.test(p));
+  const root = models[rootPath];
+  if (!root) throw new Error("No 3D model inside this 3MF");
+
+  const v = new Vector3();
+  function emit(out, path, id, matrix, depth) {
+    const model = models[path];
+    const object = depth < 16 && kids(kid(model, "resources"), "object").find((o) => o.getAttribute("id") === id);
+    if (!object) return;
+    const unit = UNIT_MM[model.getAttribute("unit") || "millimeter"] ?? 1;
+
+    const mesh = kid(object, "mesh");
+    if (mesh) {
+      const coords = kids(kid(mesh, "vertices"), "vertex").map((n) => ["x", "y", "z"].map((k) => parseFloat(n.getAttribute(k)) * unit));
+      // A mirroring transform flips the winding; undo it so volumes don't cancel.
+      const corners = matrix.determinant() < 0 ? ["v1", "v3", "v2"] : ["v1", "v2", "v3"];
+      for (const t of kids(kid(mesh, "triangles"), "triangle")) {
+        const tri = corners.map((a) => coords[Number(t.getAttribute(a))]);
+        if (tri.some((c) => !c)) continue;
+        for (const c of tri) {
+          v.set(c[0], c[1], c[2]).applyMatrix4(matrix);
+          out.push(v.x, v.y, v.z);
+        }
+      }
+    }
+    for (const comp of kids(kid(object, "components"), "component")) {
+      const m = matrix.clone().multiply(parseTransform(comp.getAttribute("transform")));
+      emit(out, attr(comp, "path") || path, comp.getAttribute("objectid"), m, depth + 1);
+    }
+  }
+
+  const geometries = [];
+  for (const item of kids(kid(root, "build"), "item")) {
+    if (item.getAttribute("printable") === "0") continue;
+    const out = [];
+    emit(out, attr(item, "path") || rootPath, item.getAttribute("objectid"), parseTransform(item.getAttribute("transform")), 0);
+    if (!out.length) continue;
+    const g = new BufferGeometry();
+    g.setAttribute("position", new BufferAttribute(new Float32Array(out), 3));
+    geometries.push(g);
+  }
+  return geometries;
+}
 
 // Sums over every triangle: signed tetrahedron volume (closed meshes give the
 // enclosed volume), surface area and the bounding box. All in file units.
@@ -45,13 +122,10 @@ export async function measureFile(file) {
   const geometries = [];
 
   if (file.name.toLowerCase().endsWith(".3mf")) {
-    const group = new ThreeMFLoader().parse(buffer);
-    group.updateMatrixWorld(true);
-    group.traverse((o) => {
-      if (!o.isMesh) return;
-      addGeometry(acc, o.geometry, o.matrixWorld);
-      geometries.push(o.geometry.clone().applyMatrix4(o.matrixWorld));
-    });
+    for (const g of parse3mf(buffer)) {
+      addGeometry(acc, g, null);
+      geometries.push(g);
+    }
   } else {
     const geometry = new STLLoader().parse(buffer);
     addGeometry(acc, geometry, null);
@@ -105,6 +179,23 @@ export function partUsage(m, { material, quality }, cfg) {
   // A little fixed time per part for heating, homing and first layer.
   const hours = grams / rate + 0.15;
   return { grams, hours, perGram: mat.perGram };
+}
+
+// Price range for one part on its own, all copies, setup included. The order
+// minimum applies to the whole order only, so it isn't in here.
+export function partEstimate(m, options, cfg) {
+  const quantity = Math.max(1, Number(options.quantity) || 1);
+  const off = cfg.bulk.find((b) => quantity >= b.min)?.off ?? 0;
+  const u = partUsage(m, options, cfg);
+  const each = u.grams * u.perGram + u.hours * cfg.machinePerHour;
+  const total = (each * quantity + cfg.setupPerPart) * (1 - off);
+  const round1 = (n) => Math.round(n * 10) / 10;
+  return {
+    grams: round1(u.grams * quantity),
+    hours: round1(u.hours * quantity),
+    low: Math.max(1, Math.floor(total * cfg.low)),
+    high: Math.max(1, Math.ceil(total * cfg.high)),
+  };
 }
 
 // Prices a whole order: `parts` is [{ measure }], options are the form's

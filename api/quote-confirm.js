@@ -13,6 +13,30 @@ const FILE = /^\/api\/sticker-file\?p=requests%2F[\w-]{1,40}%2F[^&#?]{1,200}$/;
 const IMAGE = /\.(png|jpe?g)$/i;
 const text = (v, n) => String(v ?? "").trim().slice(0, n);
 
+// A [low, high] dollar pair from the form, or null. Only ever numbers.
+function range(v) {
+  if (!Array.isArray(v) || v.length !== 2) return null;
+  const [lo, hi] = v.map((n) => Math.round(Number(n)));
+  return Number.isFinite(lo) && Number.isFinite(hi) && lo >= 0 && hi >= lo && hi < 1e6 ? [lo, hi] : null;
+}
+const money = ([lo, hi]) => (lo === hi ? `$${lo}` : `$${lo}–$${hi}`);
+
+// One row per measured model: its picture, size and price range.
+function partRow(f, ours) {
+  const e = f.estimate || {};
+  const price = range(e.price);
+  const size = Array.isArray(e.sizeMm) && e.sizeMm.length === 3 && e.sizeMm.every((d) => Number.isFinite(Number(d)))
+    ? e.sizeMm.map((d) => Math.round(Number(d))).join(" × ") + " mm"
+    : "";
+  const img = ours(f.previewUrl)
+    ? `<img src="${esc(f.previewUrl)}" alt="" width="120" style="display:block;width:120px;height:90px;object-fit:cover;border-radius:10px;background:#f4f1ea">`
+    : "";
+  const detail = price
+    ? `${size ? `<div style="color:#7a8494;font-size:13px">${esc(size)}</div>` : ""}<div style="font-size:16px;font-weight:700;margin-top:4px">${esc(money(price))}</div>`
+    : `<div style="color:#7a8494;font-size:13px">I'll price this one by hand.</div>`;
+  return `<tr><td style="padding:0 14px 12px 0;vertical-align:top;width:120px">${img}</td><td style="padding:0 0 12px;vertical-align:top;font-size:14px;word-break:break-all"><div style="font-weight:600">${esc(text(f.name, 120))}</div>${detail}</td></tr>`;
+}
+
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "POST only" });
   const o = req.body || {};
@@ -25,14 +49,19 @@ export default async function handler(req, res) {
 
   const files = (Array.isArray(o.files) ? o.files : []).slice(0, 5).filter((f) => ours(f?.url));
   const photos = files.filter((f) => IMAGE.test(String(f.name)));
-  const others = files.filter((f) => !IMAGE.test(String(f.name)));
+  const models = files.filter((f) => f.estimate && typeof f.estimate === "object");
+  const others = files.filter((f) => !IMAGE.test(String(f.name)) && !models.includes(f));
+  const total = range(o.estimate?.price);
+  const minimum = Math.round(Number(o.estimate?.minimumOrder)) || 0;
   const thumb = ours(o.thumbnailUrl) ? o.thumbnailUrl : null;
   const link = /^https?:\/\/\S+$/i.test(text(o.url, 300)) ? text(o.url, 300) : "";
   const details = text(o.details, 600);
   const ref = text(o.id, 40).slice(0, 8).toUpperCase();
 
+  // With per-part rows the model pictures are in those; the lone thumbnail
+  // is for requests that came without them.
   const pictures = [
-    ...(thumb ? [{ src: thumb, alt: "Your model" }] : []),
+    ...(thumb && !models.length ? [{ src: thumb, alt: "Your model" }] : []),
     ...photos.map((f) => ({ src: f.url, alt: text(f.name, 120) })),
   ].slice(0, 4);
   const facts = [
@@ -43,7 +72,16 @@ export default async function handler(req, res) {
     ...(others.length ? [["Files", others.map((f) => text(f.name, 120)).join(", ")]] : []),
   ];
 
-  const body = `${pictures
+  const estimateHtml = models.length
+    ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0">${models.map((f) => partRow(f, ours)).join("")}</table>
+${total ? `<div style="margin:4px 0 12px;padding:14px 16px;background:#fff4ee;border-radius:12px">
+<div style="font-size:13px;color:#7a8494">Rough total${o.estimate?.partial ? " for the files I could measure" : ""}</div>
+<div style="font-size:24px;font-weight:700">${esc(money(total))}</div>
+<div style="font-size:12px;color:#7a8494;margin-top:2px">Automatic estimate from your files, CAD before tax${minimum ? `; orders start at $${minimum}` : ""}. I'll confirm the final price when I reply.</div>
+</div>` : ""}`
+    : "";
+
+  const body = `${estimateHtml}${pictures
     .map(
       (p) =>
         `<img src="${esc(p.src)}" alt="${esc(p.alt)}" width="512" style="display:block;width:100%;max-width:512px;height:auto;margin:0 0 12px;border-radius:14px;background:#f4f1ea">`,
@@ -56,12 +94,15 @@ ${facts.map(([k, v]) => `<tr><td style="padding:4px 12px 4px 0;color:#7a8494;ver
 ${ref ? `<p style="margin:16px 0 0;font-size:12px;color:#7a8494">Ref ${esc(ref)}</p>` : ""}`;
 
   const first = name.split(" ")[0];
-  const intro = `Hi ${esc(first)}, thanks for your request. I'll reply within one business day with a quote and a realistic turnaround. Here's what you sent:`;
+  const intro = `Hi ${esc(first)}, thanks for your request. I'll reply within one business day with a quote and a realistic turnaround. Here's what you sent${total ? ", with a rough price" : ""}:`;
+  const priceText = models.length
+    ? `\n\n${models.map((f) => `${text(f.name, 120)}: ${range(f.estimate.price) ? money(range(f.estimate.price)) : "priced by hand"}`).join("\n")}${total ? `\nRough total: ${money(total)} (automatic estimate, I'll confirm the final price)` : ""}`
+    : "";
   const sent = await sendMail({
     to: email,
     subject: "Your printyours quote request",
     html: layout({ heading: "Request received", intro, body }),
-    text: `Hi ${first}, thanks for your request. I'll reply within one business day with a quote and a realistic turnaround.\n\n${details}\n\n${facts.map(([k, v]) => `${k}: ${v}`).join("\n")}${ref ? `\n\nRef ${ref}` : ""}`,
+    text: `Hi ${first}, thanks for your request. I'll reply within one business day with a quote and a realistic turnaround.${priceText}\n\n${details}\n\n${facts.map(([k, v]) => `${k}: ${v}`).join("\n")}${ref ? `\n\nRef ${ref}` : ""}`,
   });
   res.status(200).json({ ok: true, sent });
 }

@@ -6,7 +6,9 @@ import { InstantEstimate, useInstantEstimate } from "./InstantEstimate.jsx";
 import { QuoteGolem } from "./QuoteGolem.jsx";
 import { track } from "@vercel/analytics";
 import { printRequests as api } from "../lib/api.js";
-import { site } from "../../site.config.js";
+import { site, estimate as estimateConfig } from "../../site.config.js";
+
+const IMAGE_EXTENSIONS = [".jpg", ".jpeg", ".png", ".heic"];
 
 const MATERIALS = [
   { value: "", label: "Not sure, recommend one" },
@@ -149,33 +151,52 @@ export function QuoteForm({
       return;
     }
 
-    // A still of the first model, for the admin panel and the customer's
-    // confirmation email. Skipped quietly if anything about it fails.
-    let thumbnailUrl = null;
-    const model = estimate.parts.find((p) => p.status === "ok");
-    if (model) {
-      try {
-        setProgress("Saving a preview of your model");
-        const { snapshot } = await import("./PreviewScene.js");
-        const png = snapshot(model.geometries);
-        if (png) {
-          const { uploadPresigned } = await import("@vercel/blob/client");
-          const blob = await uploadPresigned(`requests/${id}/preview.png`, await (await fetch(png)).blob(), {
-            access: "private",
-            handleUploadUrl: "/api/quote-upload",
-          });
-          thumbnailUrl = `${location.origin}/api/sticker-file?p=${encodeURIComponent(blob.pathname)}`;
+    // Each model gets its own price range and a still of it, for the admin
+    // panel, your notification email and the customer's confirmation email.
+    // A preview that fails is skipped quietly.
+    const est = estimate.order;
+    const models = estimate.parts.filter((p) => p.status === "ok" || p.status === "error");
+    if (models.length) {
+      const lib = await import("../lib/meshEstimate.js");
+      const { snapshot } = await import("./PreviewScene.js").catch(() => ({ snapshot: null }));
+      for (const [i, part] of models.entries()) {
+        const item = uploaded[files.indexOf(part.file)];
+        if (!item) continue;
+        if (part.status !== "ok" || part.checks.unreliable) {
+          item.estimate = { error: part.status === "ok" ? "measurements look off" : "couldn't read the file" };
+          continue;
         }
-      } catch (err) {
-        console.warn("model preview skipped:", err);
+        const p = lib.partEstimate(part.measure, form, estimateConfig);
+        item.estimate = {
+          sizeMm: part.measure.size.map((d) => Math.round(d)),
+          grams: p.grams,
+          hours: p.hours,
+          price: [p.low, p.high],
+          tooBig: part.checks.tooBig,
+        };
+        try {
+          setProgress(`Saving a preview of ${part.file.name}`);
+          const png = snapshot?.(part.geometries);
+          if (png) {
+            const { uploadPresigned } = await import("@vercel/blob/client");
+            const blob = await uploadPresigned(`requests/${id}/preview-${i + 1}.png`, await (await fetch(png)).blob(), {
+              access: "private",
+              handleUploadUrl: "/api/quote-upload",
+            });
+            item.previewUrl = `${location.origin}/api/sticker-file?p=${encodeURIComponent(blob.pathname)}`;
+          }
+        } catch (err) {
+          console.warn("model preview skipped:", err);
+        }
       }
     }
+    const thumbnailUrl = uploaded.find((f) => f.previewUrl)?.previewUrl ?? null;
 
     setProgress(null);
 
     // The instant estimate, if any, rides along in the cost fields so it
-    // shows next to the request in the admin panel. It's never binding.
-    const est = estimate.order;
+    // shows next to the request in the admin panel, and as a range in
+    // `estimate` for the emails. It's never binding.
     const firstMesh = estimate.parts[0]?.file.name ?? null;
     const round2 = (n) => Math.round(n * 100) / 100;
 
@@ -201,6 +222,17 @@ export function QuoteForm({
       filamentCost: est ? round2(est.filamentCost) : null,
       timeCost: est ? round2(est.timeCost) : null,
       totalCost: est ? round2(est.total) : null,
+      estimate: est
+        ? {
+            price: [est.low, est.high],
+            setupPerPart: estimateConfig.setupPerPart,
+            minimumOrder: estimateConfig.orderMinimum,
+            // Some of what was sent still needs pricing by hand.
+            partial:
+              Boolean(form.url.trim()) ||
+              uploaded.some((f) => (f.estimate ? f.estimate.error : !IMAGE_EXTENSIONS.some((x) => f.name.toLowerCase().endsWith(x)))),
+          }
+        : null,
       submittedAt: new Date().toISOString(),
     };
 
