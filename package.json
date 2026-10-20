@@ -6,7 +6,10 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build && vite build --ssr src/entry-server.jsx --outDir dist-ssr && node scripts/prerender.js",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "build:cf": "CF_BUILD=1 npm run build && node cloudflare/write-headers.mjs",
+    "dev:cf": "npm run build:cf && npx wrangler dev",
+    "deploy:cf": "npm run build:cf && npx wrangler deploy"
   },
   "dependencies": {
     "@vercel/analytics": "^2.0.1",
