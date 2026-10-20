@@ -93,12 +93,22 @@ export function inspect(image) {
 }
 
 // A crop of the image: `rect` is { x, y, w, h } as fractions of its size.
+// With a `path` (a list of [x, y] corners, also fractions of the image) only
+// what's inside that outline is kept; the rest goes see-through, so a die-cut
+// follows the outline.
 export function cropImage(image, rect) {
   const iw = image.naturalWidth || image.width;
   const ih = image.naturalHeight || image.height;
   const sx = rect.x * iw, sy = rect.y * ih, sw = rect.w * iw, sh = rect.h * ih;
   const out = canvasOf(sw, sh);
-  out.getContext("2d").drawImage(image, sx, sy, sw, sh, 0, 0, out.width, out.height);
+  const ctx = out.getContext("2d");
+  if (rect.path) {
+    ctx.beginPath();
+    rect.path.forEach(([x, y], i) => ctx[i ? "lineTo" : "moveTo"](x * iw - sx, y * ih - sy));
+    ctx.closePath();
+    ctx.clip();
+  }
+  ctx.drawImage(image, sx, sy, sw, sh, 0, 0, out.width, out.height);
   return out;
 }
 
