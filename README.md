@@ -25,7 +25,7 @@ so new requests show up in the same admin panel as before. Nothing to migrate.
 | Reviews and Marketplace link | `site.config.js` → `reviews` |
 | Generator app link ("Design your own") | `site.config.js` → `designerUrl` |
 | Sticker page (/stickers): paper colours, finishes, max width, prices | `site.config.js` → `stickers`, code in `src/stickers/` |
-| Full-colour, custom-cut stickers (/stickers/#colour): materials, size limits, prices | `site.config.js` → `stickers.colour`, code in `src/stickers/ColourStudio.jsx` + `colour.js` |
+| Full-colour, custom-cut stickers (/stickers/#colour): materials, size limits, prices | `site.config.js` → `stickers.colour`, code in `src/stickers/ColourStudio.jsx` + `colour.js`, crop / auto-crop in `CropDialog.jsx` |
 | Generator cards | `src/components/Designer.jsx` + `public/designer/` |
 | Portfolio photos | `public/work/` + `src/work.js` |
 | Specs & materials (confirm before launch) | `src/components/Materials.jsx` |

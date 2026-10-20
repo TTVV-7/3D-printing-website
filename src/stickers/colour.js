@@ -30,17 +30,32 @@ function canvasOf(w, h) {
   return c;
 }
 
-const nearWhite = (d, i) => d[i + 3] < ALPHA_MIN || (d[i] > 232 && d[i + 1] > 232 && d[i + 2] > 232);
+// How far (0-255, any channel) a pixel can be from the backdrop colour and
+// still count as backdrop: covers JPG noise and soft shadows on white.
+const BACKDROP_TOL = 28;
+const near = (d, i, [r, g, b], tol) =>
+  Math.abs(d[i] - r) <= tol && Math.abs(d[i + 1] - g) <= tol && Math.abs(d[i + 2] - b) <= tol;
+const isBackdrop = (d, i, colour) => d[i + 3] < ALPHA_MIN || near(d, i, colour, BACKDROP_TOL);
 
-// Clears every near-white pixel connected to the image's edge: the backdrop of
-// a logo on white, without touching white inside the design.
-function clearBackdrop(img) {
+// The colour behind the design, if the four corners agree on one (a logo on
+// white, a product shot on grey); null for a busy photo.
+function backdropOf(d, w, h) {
+  const corners = [0, w - 1, w * (h - 1), w * h - 1].map((p) => [d[p * 4], d[p * 4 + 1], d[p * 4 + 2], d[p * 4 + 3]]);
+  const solid = corners.filter((c) => c[3] >= ALPHA_MIN);
+  if (solid.length < 4) return null;
+  const mean = [0, 1, 2].map((k) => Math.round(solid.reduce((s, c) => s + c[k], 0) / solid.length));
+  return solid.every((c) => near(c, 0, mean, BACKDROP_TOL)) ? mean : null;
+}
+
+// Clears every backdrop-coloured pixel connected to the image's edge, without
+// touching the same colour inside the design.
+function clearBackdrop(img, colour) {
   const { width: w, height: h, data: d } = img;
   const seen = new Uint8Array(w * h);
   const stack = [];
   const push = (x, y) => {
     const p = y * w + x;
-    if (!seen[p] && nearWhite(d, p * 4)) {
+    if (!seen[p] && isBackdrop(d, p * 4, colour)) {
       seen[p] = 1;
       stack.push(p);
     }
@@ -58,31 +73,78 @@ function clearBackdrop(img) {
   }
 }
 
-// What an image looks like before any choices: is it already cut out
-// (transparent background), and are its corners white (a logo on white)?
-export function inspect(image) {
-  const c = canvasOf(64, 64);
-  const ctx = c.getContext("2d", { willReadFrequently: true });
-  ctx.drawImage(image, 0, 0, 64, 64);
-  const d = ctx.getImageData(0, 0, 64, 64).data;
-  let clear = 0;
-  for (let i = 3; i < d.length; i += 4) if (d[i] < ALPHA_MIN) clear++;
-  const corners = [0, 63, 64 * 63, 64 * 64 - 1].every((p) => nearWhite(d, p * 4));
-  return { transparent: clear > 64, whiteCorners: corners };
-}
-
-// The art, trimmed to what's visible, optionally with a white backdrop
-// removed. Returns a canvas, or null if nothing is left.
-export function prepareArt(image, { removeWhite }) {
+function pixels(image, maxPx) {
   const iw = image.naturalWidth || image.width;
   const ih = image.naturalHeight || image.height;
-  const scale = Math.min(1, MAX_SOURCE_PX / Math.max(iw, ih));
-  const src = canvasOf(iw * scale, ih * scale);
-  const ctx = src.getContext("2d", { willReadFrequently: true });
-  ctx.drawImage(image, 0, 0, src.width, src.height);
-  const data = ctx.getImageData(0, 0, src.width, src.height);
-  if (removeWhite) {
-    clearBackdrop(data);
+  const scale = Math.min(1, maxPx / Math.max(iw, ih));
+  const c = canvasOf(iw * scale, ih * scale);
+  const ctx = c.getContext("2d", { willReadFrequently: true });
+  ctx.drawImage(image, 0, 0, c.width, c.height);
+  return { canvas: c, ctx, data: ctx.getImageData(0, 0, c.width, c.height) };
+}
+
+// What an image looks like before any choices: is it already cut out
+// (transparent background), and does it sit on a plain colour?
+export function inspect(image) {
+  const { width: w, height: h, data: d } = pixels(image, 64).data;
+  let clear = 0;
+  for (let i = 3; i < d.length; i += 4) if (d[i] < ALPHA_MIN) clear++;
+  return { transparent: clear > (w * h) / 64, plain: !!backdropOf(d, w, h) };
+}
+
+// A crop of the image: `rect` is { x, y, w, h } as fractions of its size.
+export function cropImage(image, rect) {
+  const iw = image.naturalWidth || image.width;
+  const ih = image.naturalHeight || image.height;
+  const sx = rect.x * iw, sy = rect.y * ih, sw = rect.w * iw, sh = rect.h * ih;
+  const out = canvasOf(sw, sh);
+  out.getContext("2d").drawImage(image, sx, sy, sw, sh, 0, 0, out.width, out.height);
+  return out;
+}
+
+// A suggested crop: the box around the design, found by looking for what
+// isn't see-through or the plain backdrop colour, with a little room spare.
+// Returns { x, y, w, h } (fractions), or null when there's nothing to trim
+// (a busy photo, or the design already fills the image).
+export function autoCrop(image) {
+  const { width: w, height: h, data: d } = pixels(image, 480).data;
+  const colour = backdropOf(d, w, h);
+  let clear = 0;
+  for (let i = 3; i < d.length; i += 4) if (d[i] < ALPHA_MIN) clear++;
+  if (!colour && clear < (w * h) / 64) return null;
+  const rows = new Uint32Array(h), cols = new Uint32Array(w);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const i = (y * w + x) * 4;
+      const back = d[i + 3] < ALPHA_MIN || (colour && near(d, i, colour, BACKDROP_TOL * 1.5));
+      if (!back) rows[y]++, cols[x]++;
+    }
+  }
+  // A row or column needs a few design pixels to count, so specks of JPG
+  // noise or dust on a scan don't stretch the box.
+  const span = (counts, len, other) => {
+    const min = Math.max(2, other * 0.004);
+    let a = 0, b = len - 1;
+    while (a < len && counts[a] < min) a++;
+    while (b > a && counts[b] < min) b--;
+    return a > b ? null : [a, b + 1];
+  };
+  const xs = span(cols, w, h), ys = span(rows, h, w);
+  if (!xs || !ys) return null;
+  const pad = 0.03 * Math.max(xs[1] - xs[0], ys[1] - ys[0]);
+  const x0 = Math.max(0, xs[0] - pad), x1 = Math.min(w, xs[1] + pad);
+  const y0 = Math.max(0, ys[0] - pad), y1 = Math.min(h, ys[1] + pad);
+  const rect = { x: x0 / w, y: y0 / h, w: (x1 - x0) / w, h: (y1 - y0) / h };
+  return rect.w > 0.97 && rect.h > 0.97 ? null : rect;
+}
+
+// The art, trimmed to what's visible, optionally with a plain backdrop
+// removed. Returns a canvas, or null if nothing is left.
+export function prepareArt(image, { removeBackdrop }) {
+  const { canvas: src, ctx, data } = pixels(image, MAX_SOURCE_PX);
+  const colour = removeBackdrop && backdropOf(data.data, data.width, data.height);
+  if (colour) {
+    clearBackdrop(data, colour);
     ctx.putImageData(data, 0, 0);
   }
 

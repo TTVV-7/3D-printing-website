@@ -1,13 +1,14 @@
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
-import { Check, Hand, ImageUp, Loader2, Minus, Plus, RotateCcw, ShoppingBag } from "lucide-react";
+import { Check, Crop, Hand, ImageUp, Loader2, Minus, Plus, RotateCcw, ShoppingBag } from "lucide-react";
 import { clsx } from "clsx";
 import { stickers } from "../../site.config.js";
 import { COLOUR_SHAPES, colourFits, priceColourEach } from "./pricing.js";
 import {
   BORDERS, inspect, prepareArt, layout, widthRange, renderSticker, printFile,
-  PLACE_START, ZOOM, placeKind, clampPlace, cropArt,
+  PLACE_START, ZOOM, placeKind, clampPlace, cropArt, cropImage,
 } from "./colour.js";
 import { uploadArt } from "./Checkout.jsx";
+import { CropDialog } from "./CropDialog.jsx";
 
 // The full-colour, custom-cut sticker maker: printed on the inkjet, cut on
 // the Cricut (colour.js). Shares the cart and checkout with the thermal
@@ -195,7 +196,11 @@ export function ColourStudio({ setCart, cartPanel, cartEmpty, openCheckout }) {
   const fileRef = useRef(null);
   const [image, setImage] = useState(null);
   const [fileName, setFileName] = useState("");
-  const [removeWhite, setRemoveWhite] = useState(false);
+  const [removeBackdrop, setRemoveBackdrop] = useState(false);
+  // The part of the upload to use ({ x, y, w, h } fractions; null = all of
+  // it), and whether the crop dialog is open (it opens on every upload).
+  const [crop, setCrop] = useState(null);
+  const [cropping, setCropping] = useState(false);
   const [dragging, setDragging] = useState(false);
   const [shape, setShape] = useState("contour");
   const [border, setBorder] = useState("medium");
@@ -207,11 +212,25 @@ export function ColourStudio({ setCart, cartPanel, cartEmpty, openCheckout }) {
   const [added, setAdded] = useState(false);
   const [error, setError] = useState("");
 
+  // Turns background removal on for a design on a plain colour.
+  function look(img) {
+    const { transparent, plain } = inspect(img);
+    setRemoveBackdrop(!transparent && plain);
+  }
+
   function use(img, name) {
-    const { transparent, whiteCorners } = inspect(img);
-    setRemoveWhite(!transparent && whiteCorners);
+    look(img);
     setImage(img);
+    setCrop(null);
     setFileName(name);
+    setCropping(true);
+  }
+
+  function applyCrop(rect) {
+    setCrop(rect);
+    setCropping(false);
+    // Cropping can leave a plain background where the whole image had a busy one.
+    look(rect ? cropImage(image, rect) : image);
   }
 
   useEffect(() => {
@@ -226,12 +245,13 @@ export function ColourStudio({ setCart, cartPanel, cartEmpty, openCheckout }) {
       .catch(() => setError("That image couldn't be opened. Try a PNG or JPG."));
   }
 
-  const art = useMemo(() => (image ? prepareArt(image, { removeWhite }) : null), [image, removeWhite]);
+  const source = useMemo(() => (image && crop ? cropImage(image, crop) : image), [image, crop]);
+  const art = useMemo(() => (source ? prepareArt(source, { removeBackdrop }) : null), [source, removeBackdrop]);
   // Where the image sits in the sticker (colour.js); starts afresh when the
   // image or the kind of shape changes.
   const kind = placeKind(shape);
   const [place, setPlace] = useState(PLACE_START.contour);
-  useEffect(() => setPlace(PLACE_START[kind]), [kind, image]);
+  useEffect(() => setPlace(PLACE_START[kind]), [kind, source]);
   const opts = useMemo(() => ({ shape, border, bg, place }), [shape, border, bg, place]);
   // Die-cut keeps only the zoomed-in part of the image, and cuts around that.
   const shown = useMemo(() => (art && kind === "contour" ? cropArt(art, place) : art), [art, kind, place]);
@@ -307,7 +327,7 @@ export function ColourStudio({ setCart, cartPanel, cartEmpty, openCheckout }) {
             <Stage art={stageArt} opts={stageOpts} width={stageWidth} onPan={pan} onZoom={zoomBy} />
           ) : (
             <div className="flex aspect-square items-center justify-center rounded-3xl bg-[#e9efe9] text-sm text-ink/50 ring-1 ring-ink/10 sm:aspect-[4/3]">
-              {image ? "Nothing left to print: try turning off “Remove white background”." : "Loading…"}
+              {image ? "Nothing left to print: try turning off “Remove plain background”." : "Loading…"}
             </div>
           )}
           {size && (
@@ -352,11 +372,27 @@ export function ColourStudio({ setCart, cartPanel, cartEmpty, openCheckout }) {
           <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => pick(e.target.files[0])} />
         </div>
         {error && <p className="-mt-3 text-sm text-flame-600">{error}</p>}
-        <label className="-mt-3 flex items-center gap-2 text-sm">
-          <input type="checkbox" checked={removeWhite} onChange={(e) => setRemoveWhite(e.target.checked)} className="accent-flame" />
-          Remove white background
-          <span className="text-ink/45">(for logos on white)</span>
-        </label>
+        <div className="-mt-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={removeBackdrop} onChange={(e) => setRemoveBackdrop(e.target.checked)} className="accent-flame" />
+            Remove plain background
+            <span className="text-ink/45">(e.g. a logo on white)</span>
+          </label>
+          {image && (
+            <button type="button" onClick={() => setCropping(true)} className="btn-outline-dark h-9 px-3 text-sm">
+              <Crop size={14} /> {crop ? "Edit crop" : "Crop image"}
+            </button>
+          )}
+        </div>
+        {cropping && image && (
+          <CropDialog
+            image={image}
+            initial={crop}
+            fresh={!crop}
+            onApply={applyCrop}
+            onClose={() => setCropping(false)}
+          />
+        )}
 
         <div>
           <Label>Shape</Label>
