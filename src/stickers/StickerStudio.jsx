@@ -11,6 +11,7 @@ import { StickerEditor } from "./StickerEditor.jsx";
 import { Checkout } from "./Checkout.jsx";
 import { priceEach, sizeOf, lineTotal, itemLabel, finishesFor, isColour, itemSizeName } from "./pricing.js";
 import { ColourStudio } from "./ColourStudio.jsx";
+import { AiSticker, STICKER_AI } from "./AiSticker.jsx";
 
 // Typefaces for text layers; loaded in stickers/index.html.
 const FONTS = [
@@ -692,6 +693,12 @@ export function StickerStudio() {
                 onChange={(e) => pick(e.target.files[0])}
               />
             </div>
+
+            {STICKER_AI && (
+              <div className="-mt-3">
+                <AiSticker maker="thermal" onImage={(file) => pick(file)} />
+              </div>
+            )}
 
             <button type="button" onClick={addText} className="btn-outline-dark -mt-3 h-11 w-full text-sm">
               <Type size={16} /> Add text to your sticker

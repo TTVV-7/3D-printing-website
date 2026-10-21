@@ -9,6 +9,7 @@ import {
 } from "./colour.js";
 import { uploadArt } from "./Checkout.jsx";
 import { CropDialog } from "./CropDialog.jsx";
+import { AiSticker, STICKER_AI } from "./AiSticker.jsx";
 
 // The full-colour, custom-cut sticker maker: printed on the inkjet, cut on
 // the Cricut (colour.js). Shares the cart and checkout with the thermal
@@ -372,6 +373,18 @@ export function ColourStudio({ setCart, cartPanel, cartEmpty, openCheckout }) {
           <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => pick(e.target.files[0])} />
         </div>
         {error && <p className="-mt-3 text-sm text-flame-600">{error}</p>}
+        {STICKER_AI && (
+          <div className="-mt-3">
+            <AiSticker
+              maker="colour"
+              onImage={(file) => {
+                // AI art comes on plain white: knock it out so the cut follows the design.
+                setRemoveBackdrop(true);
+                pick(file);
+              }}
+            />
+          </div>
+        )}
         <div className="-mt-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
           <label className="flex items-center gap-2 text-sm">
             <input type="checkbox" checked={removeBackdrop} onChange={(e) => setRemoveBackdrop(e.target.checked)} className="accent-flame" />

@@ -43,6 +43,30 @@ are as they were, so the Vercel deployment keeps working alongside.
    Domains & Routes → add printyours.ca and www.printyours.ca. Remove them
    from the Vercel project at the same time. Switching back is the reverse.
 
+## AI sticker maker (Cloudflare only)
+
+`/stickers` gets a "Make one with AI" panel in both studios: describe a
+sticker, or turn a photo into one. The result goes into the normal upload
+flow, so customers still crop, shape and order it as usual. It's only in the
+Cloudflare build (`VITE_STICKER_AI=1`); the Vercel site doesn't show it.
+
+- **Model**: FLUX.2 [klein] 4B on Workers AI (`cloudflare/sticker-ai.js`).
+  Thermal stickers always get bold black line art; full colour offers
+  cartoon, cute, retro, watercolour and line art.
+- **Limits**: `AI_PER_VISITOR` (default 5) per visitor per day and
+  `AI_PER_DAY` (default 60) site-wide, in `wrangler.jsonc`, counted in the KV
+  namespace `printyours-ai-limits` (already created). Visitor IPs are hashed.
+  Failed generations don't count.
+- **Filter**: prompts naming well-known characters, brands or adult content
+  are refused. It's a first line only: check AI designs before printing.
+- **Turnstile (recommended)**: Cloudflare → Turnstile → add a widget for
+  printyours.ca. Put the site key in the build variable
+  `VITE_TURNSTILE_SITE_KEY` and the secret in the Worker secret
+  `TURNSTILE_SECRET`. Without them the panel still works, limits only.
+- **Cost**: Workers AI's free 10,000 neurons a day covers light use. Raise
+  `AI_PER_DAY` only after checking usage in Cloudflare → Workers AI, and
+  past the free allowance it needs the $5/month Workers Paid plan.
+
 ## Not carried over
 
 - Files uploaded before the switch stay in Vercel Blob. Their links in old

@@ -3,6 +3,7 @@
 //
 //   /api/<name> for a file in api/   -> that file, run through node-adapter.js
 //   /api/quote-upload                -> cloudflare/quote-upload.js (R2 upload)
+//   /api/sticker-ai                  -> cloudflare/sticker-ai.js (AI sticker art)
 //   any other /api/...               -> the store backend on thomasverigin.ca,
 //                                       as vercel.json's catch-all rewrite does
 //   everything else                  -> the built site in dist/ (static assets;
@@ -12,6 +13,7 @@
 // working side by side with this one.
 import { toNode } from "./node-adapter.js";
 import quoteUpload from "./quote-upload.js";
+import stickerAi from "./sticker-ai.js";
 import quoteConfirm from "../api/quote-confirm.js";
 import stickerCheckout from "../api/sticker-checkout.js";
 import stickerConfirm from "../api/sticker-confirm.js";
@@ -28,6 +30,7 @@ const PRODUCTION_HOSTS = new Set(["printyours.ca", "www.printyours.ca"]);
 
 const routes = {
   "quote-upload": quoteUpload,
+  "sticker-ai": stickerAi,
   "quote-confirm": toNode(quoteConfirm),
   "sticker-checkout": toNode(stickerCheckout),
   "sticker-confirm": toNode(stickerConfirm),

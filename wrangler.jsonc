@@ -15,6 +15,13 @@
   },
   // Sticker print files and quote attachments (Vercel Blob's job on Vercel).
   "r2_buckets": [{ "binding": "UPLOADS", "bucket_name": "printyours-uploads" }],
+  // AI sticker art on /stickers (cloudflare/sticker-ai.js), and its daily limits.
+  "ai": { "binding": "AI" },
+  "kv_namespaces": [{ "binding": "AI_LIMITS", "id": "1d97c22d17824be8b483fa63c36273e7" }],
+  "vars": {
+    "AI_PER_VISITOR": "5",
+    "AI_PER_DAY": "60"
+  },
   // The api/ files import Vercel Blob; on Cloudflare they get R2 instead.
   "alias": {
     "@vercel/blob/client": "./cloudflare/blob-r2.js",
