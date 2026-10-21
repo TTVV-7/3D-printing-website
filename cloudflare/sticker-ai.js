@@ -50,6 +50,14 @@ const BLOCKED = [
   "nike", "adidas", "supreme", "gucci", "louis vuitton", "chanel", "rolex", "ferrari", "lamborghini",
   "apple logo", "coca-cola", "coca cola", "pepsi", "starbucks", "mcdonalds", "mcdonald's", "red bull", "monster energy",
   "nfl", "nba", "nhl", "mlb", "fifa", "canucks", "lakers", "yankees",
+  // Bike and outdoor brands: riders ask for replacement frame decals. Words
+  // that are also everyday ones ("giant", "cube", "orbea"...) stay off the
+  // list, or "a giant cat" would be refused.
+  "rocky mountain bicycles", "rocky mountain bikes", "norco", "santa cruz bicycles", "santa cruz bikes", "trek bikes", "trek bicycles",
+  "specialized bikes", "specialized bicycles", "s-works", "cannondale", "yeti cycles", "pivot cycles", "transition bikes", "commencal", "canyon bikes", "kona bikes",
+  "devinci", "evil bikes", "ibis cycles", "intense cycles", "marin bikes", "scott bikes", "we are one composites", "forbidden bike",
+  "shimano", "sram", "fox racing", "fox shox", "rockshox", "maxxis", "chris king", "industry nine", "oneup components",
+  "arc'teryx", "arcteryx", "lululemon", "patagonia", "the north face", "red bull rampage", "crankworx",
   "nude", "naked", "nsfw", "sexy", "porn", "hentai", "boobs", "genitals", "swastika", "nazi",
 ];
 const blockedRe = new RegExp(`(^|[^a-z0-9])(${BLOCKED.map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})([^a-z0-9]|$)`, "i");
