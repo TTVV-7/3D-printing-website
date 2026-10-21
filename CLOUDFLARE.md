@@ -25,12 +25,19 @@ are as they were, so the Vercel deployment keeps working alongside.
 ## One-time setup
 
 1. **R2 bucket**: `printyours-uploads` already exists in the Cloudflare account.
-2. **Connect the repo**: Cloudflare dashboard → Workers & Pages → Create →
-   Import a repository → this repo. Build command `npm run build:cf`, deploy
-   command `npx wrangler deploy`. Pick this branch for now so `main` keeps
-   deploying only to Vercel.
-   The Worker is called `3d-printing-website`; the `name` in `wrangler.jsonc`
-   must stay the same, or every build fails.
+2. **Connect the repo** (done): the Worker `3d-printing-website` builds from
+   this repo. Its settings (Worker → Settings → Build) must be:
+   - Production branch: `main` (it built `claude/sleepy-einstein-ezricn`
+     until that was merged)
+   - Build command `npm run build:cf`, deploy command `npx wrangler deploy`
+   - Previews off. Cloudflare's default preview deploy (`npx wrangler
+     preview`) needs a `previews` block this config doesn't have, so with
+     previews on every non-production branch build fails.
+   - workers.dev on (Settings → Domains & Routes), for testing:
+     https://3d-printing-website.thomas-verigin.workers.dev
+
+   The `name` in `wrangler.jsonc` must stay `3d-printing-website`, or every
+   build fails.
 3. **Secrets** (Worker → Settings → Variables and Secrets), same values as on Vercel:
    - `STRIPE` (test key) and `STRIPE_PRODUCTION` (live key), or `STRIPE_SECRET_KEY`
    - `RESEND_API_KEY`
