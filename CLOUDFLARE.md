@@ -29,6 +29,8 @@ are as they were, so the Vercel deployment keeps working alongside.
    Import a repository → this repo. Build command `npm run build:cf`, deploy
    command `npx wrangler deploy`. Pick this branch for now so `main` keeps
    deploying only to Vercel.
+   The Worker is called `3d-printing-website`; the `name` in `wrangler.jsonc`
+   must stay the same, or every build fails.
 3. **Secrets** (Worker → Settings → Variables and Secrets), same values as on Vercel:
    - `STRIPE` (test key) and `STRIPE_PRODUCTION` (live key), or `STRIPE_SECRET_KEY`
    - `RESEND_API_KEY`

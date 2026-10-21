@@ -2,7 +2,8 @@
 // CLOUDFLARE.md for setup, and cloudflare/worker.js for how requests route.
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "printyours",
+  // Must match the Worker's name in the Cloudflare dashboard, or Workers Builds refuses to deploy.
+  "name": "3d-printing-website",
   "main": "cloudflare/worker.js",
   "compatibility_date": "2026-10-01",
   // Buffer and process.env, which the api/ functions use, plus Stripe's SDK.
