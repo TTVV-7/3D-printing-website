@@ -3,6 +3,7 @@ import { X, Lock, CreditCard, ArrowRight, Loader2, Heart, Send, CheckCircle2 } f
 import { clsx } from "clsx";
 import { stickers } from "../../site.config.js";
 import { deliveryCost, sizeOf, lineTotal, itemLabel, isColour, itemSizeName } from "./pricing.js";
+import { zoneOf, parcelOf, pieceOf, fits, arrival, dateRange } from "./shipping.js";
 
 // Sends each cart line's print file to api/sticker-upload.js, which stores
 // it in this site's Blob store, then sends the cart to
@@ -42,15 +43,19 @@ function Field({ label, className, ...props }) {
   );
 }
 
-export function Checkout({ items, onRemove, onClose, onSent }) {
+export function Checkout({ items, postal = "", onPostal, onRemove, onClose, onSent }) {
   const [step, setStep] = useState("pay"); // pay -> (Stripe) | preview | sent
   const [family, setFamily] = useState(false); // friends & family: a request, no payment
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const [delivery, setDelivery] = useState(stickers.delivery[0]);
-  const [who, setWho] = useState({ name: "", email: "", line1: "", line2: "", city: "", province: "BC", postal: "" });
+  const [who, setWho] = useState({ name: "", email: "", line1: "", line2: "", city: "", province: "BC", postal });
   const [error, setError] = useState("");
-  const set = (k) => (e) => setWho((w) => ({ ...w, [k]: e.target.value }));
+  const set = (k) => (e) => {
+    setWho((w) => ({ ...w, [k]: e.target.value }));
+    // The cart's delivery estimate follows the address.
+    if (k === "postal") onPostal?.(e.target.value);
+  };
   const mailed = delivery.key !== "pickup";
 
   // Once a request is sent, closing empties the cart too.
@@ -63,6 +68,14 @@ export function Checkout({ items, onRemove, onClose, onSent }) {
 
   const subtotal = items.reduce((sum, it) => sum + lineTotal(it), 0);
   const shipping = deliveryCost(delivery, subtotal);
+  const parcel = parcelOf(items.map(pieceOf));
+  const zone = zoneOf(who.postal);
+
+  // Too big for the delivery picked (say it was picked before more went in):
+  // move to the first that fits.
+  useEffect(() => {
+    if (!fits(delivery, parcel)) setDelivery(stickers.delivery.find((d) => fits(d, parcel)) || stickers.delivery[0]);
+  }, [delivery, parcel.grams, parcel.mm]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Emptied the cart from in here: nothing left to pay for.
   useEffect(() => {
@@ -216,24 +229,32 @@ export function Checkout({ items, onRemove, onClose, onSent }) {
             <div className="mt-3 space-y-2" role="radiogroup" aria-label="Delivery">
               {stickers.delivery.map((d) => {
                 const cost = deliveryCost(d, subtotal);
+                const ok = fits(d, parcel);
                 return (
                   <button
                     key={d.key}
                     type="button"
                     role="radio"
                     aria-checked={delivery.key === d.key}
+                    disabled={!ok}
                     onClick={() => setDelivery(d)}
                     className={clsx(
-                      "flex w-full items-start justify-between gap-3 rounded-xl bg-white p-3 text-left ring-1 transition",
+                      "flex w-full items-start justify-between gap-3 rounded-xl bg-white p-3 text-left ring-1 transition disabled:cursor-not-allowed disabled:opacity-50",
                       delivery.key === d.key ? "ring-2 ring-flame" : "ring-ink/15 hover:ring-ink/40",
                     )}
                   >
                     <span className="text-sm">
                       <span className="block font-semibold">{d.name}</span>
-                      <span className="block text-ink/55">{d.body}</span>
+                      <span className="block text-ink/55">{ok ? d.body : "Too many stickers for an envelope. Pick tracked mail or pickup."}</span>
+                      {ok && (
+                        <span className="mt-0.5 block text-xs font-medium text-flame-600">
+                          {d.days ? "Arrives" : "Ready"} {dateRange(arrival(d, zone))}
+                          {d.days && !zone && " (add your postal code for a closer date)"}
+                        </span>
+                      )}
                     </span>
                     <span className="flex-none text-sm font-semibold">
-                      {cost ? `$${cost.toFixed(2)}` : "Free"}
+                      {ok ? (cost ? `$${cost.toFixed(2)}` : "Free") : "–"}
                     </span>
                   </button>
                 );

@@ -9,6 +9,7 @@ import { DesignControls } from "./DesignControls.jsx";
 
 import { StickerEditor } from "./StickerEditor.jsx";
 import { Checkout } from "./Checkout.jsx";
+import { DeliveryEstimate } from "./DeliveryEstimate.jsx";
 import { priceEach, sizeOf, lineTotal, itemLabel, finishesFor, isColour, itemSizeName } from "./pricing.js";
 import { ColourStudio } from "./ColourStudio.jsx";
 
@@ -162,6 +163,8 @@ export function StickerStudio() {
   const [invert, setInvert] = useState(false);
   const [qty, setQty] = useState(10);
   const [checkout, setCheckout] = useState(false);
+  // For the delivery estimate; checkout starts from it too.
+  const [postal, setPostal] = useState("");
   const [cart, setCart] = useCart();
   const [added, setAdded] = useState(false);
 
@@ -354,6 +357,7 @@ export function StickerStudio() {
           </li>
         ))}
       </ul>
+      <DeliveryEstimate items={cart} postal={postal} onPostal={setPostal} />
       <button type="button" onClick={() => setCheckout(true)} className="btn-primary mt-3 w-full">
         <ShoppingBag size={18} /> Check out · ${cartTotal.toFixed(2)}
       </button>
@@ -865,6 +869,8 @@ export function StickerStudio() {
         <Checkout
           onClose={() => setCheckout(false)}
           items={cart}
+          postal={postal}
+          onPostal={setPostal}
           onRemove={(id) => setCart((c) => c.filter((x) => x.id !== id))}
           onSent={() => {
             setCheckout(false);

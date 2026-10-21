@@ -6,6 +6,7 @@ import {
   priceEach, deliveryCost, finishOf, colourOf, deliveryOf, labelName, sizeOf, onSize,
   priceColourEach, colourFinishOf, colourShapeOf, colourFits,
 } from "../src/stickers/pricing.js";
+import { parcelOf, fits } from "../src/stickers/shipping.js";
 import { stickers } from "../site.config.js";
 import { RING_GROUPS } from "../src/stickers/library.js";
 import { STORE_API } from "./_stripe.js";
@@ -36,11 +37,14 @@ export function readOrder(body, origin) {
   if (!delivery || !list.length || list.length > MAX_ITEMS) return { error: "Unknown option" };
 
   const items = [];
+  // Each line's size and count, to check the order fits its delivery.
+  const pieces = [];
   for (const it of list) {
     if (it?.kind === "colour") {
       const item = readColourItem(it, isFile);
       if (item.error) return item;
       items.push(item);
+      pieces.push({ w: Number(it.w), h: Number(it.h), qty: item.qty, colour: true });
       continue;
     }
     const finish = finishOf(it?.finish);
@@ -52,6 +56,7 @@ export function readOrder(body, origin) {
     const qty = Math.round(clamp(it.qty, 1, MAX_QTY));
     const ink = it.ink || {};
     const label = labelName(finish, colour);
+    pieces.push({ w: stock.w, h: stock.h, qty, colour: false });
     items.push({
       stock,
       qty,
@@ -74,6 +79,7 @@ export function readOrder(body, origin) {
     });
   }
   const mailed = delivery.key !== "pickup";
+  if (!fits(delivery, parcelOf(pieces))) return { error: `Too many stickers for ${delivery.name}` };
 
   // Name, email and (when mailed) the address, typed on the page.
   const c = o.customer || {};

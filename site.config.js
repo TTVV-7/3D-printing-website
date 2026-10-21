@@ -195,11 +195,49 @@ export const stickers = {
     },
   ],
   // Offered at checkout, in CAD. `freeOver` waives it on bigger orders.
+  // `days` is business days in the mail to each `shipping.zones` zone, for the
+  // arrival estimate. `limit` is the most an order can weigh (g) and how thick
+  // its envelope can be (mm) to go that way; bigger orders can't pick it.
   delivery: [
-    { key: "pickup", name: "Pickup in Vancouver", amount: 0, days: [1, 3], body: "Free. You'll get an email when it's ready." },
-    { key: "lettermail", name: "Lettermail, untracked", amount: 2.5, freeOver: 25, days: [3, 8], body: "Flat in an envelope. Free on orders over $25." },
-    { key: "tracked", name: "Tracked mail", amount: 12, days: [2, 5], body: "Canada Post with a tracking number." },
+    { key: "pickup", name: "Pickup in Vancouver", amount: 0, body: "Free. You'll get an email when it's ready." },
+    {
+      key: "lettermail",
+      name: "Lettermail, untracked",
+      amount: 2.5,
+      freeOver: 25,
+      body: "Flat in an envelope. Free on orders over $25.",
+      limit: { grams: 50, mm: 5 },
+      days: { local: [2, 3], bc: [2, 4], prairies: [3, 5], central: [4, 6], atlantic: [4, 7], north: [6, 10] },
+    },
+    {
+      key: "tracked",
+      name: "Tracked mail",
+      amount: 12,
+      body: "Canada Post with a tracking number.",
+      days: { local: [1, 2], bc: [1, 3], prairies: [2, 4], central: [3, 5], atlantic: [3, 6], north: [4, 8] },
+    },
   ],
+  // Delivery estimates (src/stickers/shipping.js), in the cart and at checkout.
+  shipping: {
+    // Business days to print an order before it's posted or ready for pickup.
+    printDays: [1, 2],
+    // Where a postal code is, by how it starts. The first match wins.
+    zones: [
+      { key: "local", name: "Lower Mainland", starts: ["V3", "V4", "V5", "V6", "V7"] },
+      { key: "bc", name: "BC", starts: ["V"] },
+      { key: "prairies", name: "the Prairies", starts: ["T", "S", "R"] },
+      { key: "central", name: "Ontario and Quebec", starts: ["K", "L", "M", "N", "P", "G", "H", "J"] },
+      { key: "atlantic", name: "Atlantic Canada", starts: ["A", "B", "C", "E"] },
+      { key: "north", name: "the North", starts: ["X", "Y"] },
+    ],
+    // Rough weights, to tell when an order outgrows an envelope. Tune them
+    // after weighing a real order. Per square cm of sticker on its backing:
+    label: { gPerSqCm: 0.017, mm: 0.15 }, // thermal label
+    vinyl: { gPerSqCm: 0.025, mm: 0.25 }, // full-colour vinyl
+    // The envelope with a card to keep it flat, and how much sticker lies
+    // flat in it per layer.
+    envelope: { grams: 10, mm: 1.5, sqCm: 300 },
+  },
   // Price per sticker = max(minEach, square inches x perSqIn), then the
   // biggest quantity break that applies.
   pricing: {
