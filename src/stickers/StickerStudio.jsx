@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  Check, CheckCircle2, X, Crosshair, Hand, ImageUp, ImagePlus, Pencil, RotateCcw, ShoppingBag, Minus, Plus, Trash2, Type,
+  Check, CheckCircle2, X, Crosshair, Hand, ImageUp, ImagePlus, Loader2, Pencil, RotateCcw, ShoppingBag, Minus, Plus, Trash2, Type,
+  WandSparkles,
 } from "lucide-react";
 import { clsx } from "clsx";
 import { stickers } from "../../site.config.js";
@@ -12,17 +13,10 @@ import { Checkout } from "./Checkout.jsx";
 import { DeliveryEstimate } from "./DeliveryEstimate.jsx";
 import { priceEach, sizeOf, lineTotal, itemLabel, finishesFor, isColour, itemSizeName } from "./pricing.js";
 import { ColourStudio } from "./ColourStudio.jsx";
+import { FONTS, fontOf } from "./fonts.js";
+import { removeBackground, warmUp } from "./cutout.js";
+import { prepareArt } from "./colour.js";
 
-// Typefaces for text layers; loaded in stickers/index.html.
-const FONTS = [
-  { family: "Bungee", name: "Bungee", weight: 400 },
-  { family: "Space Grotesk", name: "Grotesk", weight: 700 },
-  { family: "Bebas Neue", name: "Bebas", weight: 400 },
-  { family: "Permanent Marker", name: "Marker", weight: 400 },
-  { family: "Pacifico", name: "Script", weight: 400 },
-  { family: "Special Elite", name: "Typewriter", weight: 400 },
-];
-const fontOf = (family) => FONTS.find((f) => f.family === family) || FONTS[0];
 
 // The cart lives in this browser, so it survives a reload or a trip to Stripe
 // and back. Each line holds its print-ready PNG, a few kB.
@@ -245,6 +239,45 @@ export function StickerStudio() {
     setSelected(layer.id);
     setEditing(true);
   }
+
+  // Cuts the subject out of an image layer's photo (cutout.js), trimmed to
+  // it so it fills the label; `orig` keeps the photo to put back.
+  const [cuttingId, setCuttingId] = useState(null);
+  const [cutError, setCutError] = useState("");
+  async function toggleCutout(id) {
+    const layer = layers.find((l) => l.id === id);
+    if (!layer || cuttingId) return;
+    setCutError("");
+    if (layer.orig) {
+      setLayers((ls) => ls.map((l) => (l.id === id ? { ...l, img: l.orig, orig: null } : l)));
+      return;
+    }
+    setCuttingId(id);
+    try {
+      const trimmed = prepareArt(await removeBackground(layer.img), { removeBackdrop: false });
+      if (!trimmed) throw new Error("nothing left");
+      const img = await loadImage(trimmed.toDataURL("image/png"));
+      setLayers((ls) => ls.map((l) => (l.id === id ? { ...l, img, orig: l.img } : l)));
+    } catch (err) {
+      console.warn("background removal:", err);
+      setCutError("The background couldn't be removed. Check your connection and try again.");
+    }
+    setCuttingId(null);
+  }
+  const mainImage = layers.find((l) => l.kind === "image");
+  const cutButton = (layer, className) =>
+    layer && (
+      <button
+        type="button"
+        onClick={() => toggleCutout(layer.id)}
+        onPointerEnter={warmUp}
+        disabled={!!cuttingId}
+        className={clsx("btn-outline-dark text-sm disabled:opacity-60", className)}
+      >
+        {cuttingId === layer.id ? <Loader2 size={15} className="animate-spin" /> : layer.orig ? <RotateCcw size={15} /> : <WandSparkles size={15} />}
+        {cuttingId === layer.id ? "Removing the background…" : layer.orig ? "Put the background back" : "Remove photo background"}
+      </button>
+    );
 
   // Removes a layer and selects the one next to it, so the next Remove works.
   function removeLayer(id) {
@@ -640,6 +673,7 @@ export function StickerStudio() {
                         />
                       </label>
                     </div>
+                    {sel.kind === "image" && cutButton(sel, "h-9 px-3")}
                     <div className="flex flex-wrap gap-2">
                       <button type="button" onClick={() => patchSel({ x: 0, y: 0 })} className="btn-outline-dark h-9 px-3 text-sm">
                         <Crosshair size={15} /> Centre
@@ -697,6 +731,8 @@ export function StickerStudio() {
               />
             </div>
 
+            {cutButton(mainImage, "-mt-3 h-11 w-full")}
+            {cutError && <p className="-mt-3 text-sm text-flame-600">{cutError}</p>}
             <button type="button" onClick={addText} className="btn-outline-dark -mt-3 h-11 w-full text-sm">
               <Type size={16} /> Add text to your sticker
             </button>

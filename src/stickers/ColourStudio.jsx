@@ -1,12 +1,14 @@
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
-import { Check, Crop, Hand, ImageUp, Loader2, Minus, Plus, RotateCcw, ShoppingBag } from "lucide-react";
+import { Check, Crop, Hand, ImageUp, Loader2, Minus, Plus, RotateCcw, ShoppingBag, Trash2, Type } from "lucide-react";
 import { clsx } from "clsx";
 import { stickers } from "../../site.config.js";
 import { COLOUR_SHAPES, colourFits, priceColourEach } from "./pricing.js";
 import {
   BORDERS, inspect, prepareArt, layout, widthRange, renderSticker, printFile,
-  PLACE_START, ZOOM, placeKind, clampPlace, cropArt, cropImage,
+  PLACE_START, ZOOM, placeKind, clampPlace, cropArt, cropImage, addText, TEXT_COLOURS,
 } from "./colour.js";
+import { removeBackground, warmUp } from "./cutout.js";
+import { FONTS, fontOf } from "./fonts.js";
 import { uploadArt } from "./Checkout.jsx";
 import { CropDialog } from "./CropDialog.jsx";
 
@@ -35,11 +37,12 @@ function loadImage(src) {
   });
 }
 
-function Choice({ active, onClick, children, sub }) {
+function Choice({ active, onClick, children, sub, onPointerEnter }) {
   return (
     <button
       type="button"
       onClick={onClick}
+      onPointerEnter={onPointerEnter}
       aria-pressed={active}
       className={clsx(
         "rounded-xl p-3 text-left ring-1 transition",
@@ -196,7 +199,15 @@ export function ColourStudio({ setCart, cartPanel, cartEmpty, openCheckout }) {
   const fileRef = useRef(null);
   const [image, setImage] = useState(null);
   const [fileName, setFileName] = useState("");
-  const [removeBackdrop, setRemoveBackdrop] = useState(false);
+  // What happens to the image's background: "keep" it, clear a "plain"
+  // colour (colour.js), or cut the subject out of a "photo" (cutout.js).
+  const [bgMode, setBgMode] = useState("keep");
+  // The last photo cut-out, and the image it was made from.
+  const [cut, setCut] = useState(null);
+  const [cutting, setCutting] = useState(false);
+  // Words on the sticker (colour.js addText).
+  const [texts, setTexts] = useState([]);
+  const [fontsReady, setFontsReady] = useState(0); // bumps when a typeface arrives
   // The part of the upload to use ({ x, y, w, h } fractions; null = all of
   // it), and whether the crop dialog is open (it opens on every upload).
   const [crop, setCrop] = useState(null);
@@ -212,10 +223,11 @@ export function ColourStudio({ setCart, cartPanel, cartEmpty, openCheckout }) {
   const [added, setAdded] = useState(false);
   const [error, setError] = useState("");
 
-  // Turns background removal on for a design on a plain colour.
+  // Turns background removal on for a design on a plain colour; a photo
+  // keeps its background until the customer asks for the cut-out.
   function look(img) {
     const { transparent, plain } = inspect(img);
-    setRemoveBackdrop(!transparent && plain);
+    setBgMode((m) => (m === "photo" && !transparent ? "photo" : !transparent && plain ? "plain" : "keep"));
   }
 
   function use(img, name) {
@@ -246,7 +258,50 @@ export function ColourStudio({ setCart, cartPanel, cartEmpty, openCheckout }) {
   }
 
   const source = useMemo(() => (image && crop ? cropImage(image, crop) : image), [image, crop]);
-  const art = useMemo(() => (source ? prepareArt(source, { removeBackdrop }) : null), [source, removeBackdrop]);
+  // Order of work: crop (above), then the background, then the text.
+  useEffect(() => {
+    if (bgMode !== "photo" || !source || cut?.source === source) return;
+    let live = true;
+    setCutting(true);
+    setError("");
+    removeBackground(source)
+      .then((canvas) => live && setCut({ source, canvas }))
+      .catch((err) => {
+        console.warn("background removal:", err);
+        if (!live) return;
+        setError("The background remover couldn't load. Check your connection and try again.");
+        setBgMode("keep");
+      })
+      .finally(() => live && setCutting(false));
+    return () => {
+      live = false;
+      setCutting(false);
+    };
+  }, [bgMode, source]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Until the cut-out is ready the sticker shows the whole image.
+  const base = bgMode === "photo" && cut?.source === source ? cut.canvas : source;
+  const cleaned = useMemo(() => (base ? prepareArt(base, { removeBackdrop: bgMode === "plain" }) : null), [base, bgMode]);
+  const art = useMemo(() => cleaned && addText(cleaned, texts), [cleaned, texts, fontsReady]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Draw again once a typeface has downloaded.
+  useEffect(() => {
+    const fams = [...new Set(texts.map((t) => t.font))];
+    if (!fams.length || !document.fonts) return;
+    Promise.all(fams.map((f) => document.fonts.load(`${fontOf(f).weight} 40px "${f}"`)))
+      .then(() => setFontsReady((n) => n + 1))
+      .catch(() => {});
+  }, [texts.map((t) => t.font).join()]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const MAX_TEXTS = 3;
+  function newText() {
+    const font = FONTS[0];
+    const where = ["below", "above", "over"][texts.length % 3];
+    setTexts((ts) => [
+      ...ts,
+      { id: `t${Date.now()}`, text: "Your text", font: font.family, weight: font.weight, colour: "#111111", size: 0.16, where, outline: true },
+    ]);
+  }
+  const patchText = (id, patch) => setTexts((ts) => ts.map((t) => (t.id === id ? { ...t, ...patch } : t)));
   // Where the image sits in the sticker (colour.js); starts afresh when the
   // image or the kind of shape changes.
   const kind = placeKind(shape);
@@ -327,8 +382,13 @@ export function ColourStudio({ setCart, cartPanel, cartEmpty, openCheckout }) {
             <Stage art={stageArt} opts={stageOpts} width={stageWidth} onPan={pan} onZoom={zoomBy} />
           ) : (
             <div className="flex aspect-square items-center justify-center rounded-3xl bg-[#e9efe9] text-sm text-ink/50 ring-1 ring-ink/10 sm:aspect-[4/3]">
-              {image ? "Nothing left to print: try turning off “Remove plain background”." : "Loading…"}
+              {image ? "Nothing left to print: try another background option." : "Loading…"}
             </div>
+          )}
+          {cutting && (
+            <p className="pointer-events-none absolute bottom-4 left-1/2 flex -translate-x-1/2 items-center gap-2 whitespace-nowrap rounded-full bg-ink/80 px-4 py-2 text-sm text-white backdrop-blur">
+              <Loader2 size={15} className="animate-spin" /> Removing the background…
+            </p>
           )}
           {size && (
             <p className="pointer-events-none absolute left-4 top-4 rounded-full bg-ink/75 px-3 py-1 font-mono text-xs text-white backdrop-blur">
@@ -372,18 +432,11 @@ export function ColourStudio({ setCart, cartPanel, cartEmpty, openCheckout }) {
           <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => pick(e.target.files[0])} />
         </div>
         {error && <p className="-mt-3 text-sm text-flame-600">{error}</p>}
-        <div className="-mt-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-          <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" checked={removeBackdrop} onChange={(e) => setRemoveBackdrop(e.target.checked)} className="accent-flame" />
-            Remove plain background
-            <span className="text-ink/45">(e.g. a logo on white)</span>
-          </label>
-          {image && (
-            <button type="button" onClick={() => setCropping(true)} className="btn-outline-dark h-9 px-3 text-sm">
-              <Crop size={14} /> {crop ? "Edit crop" : "Crop image"}
-            </button>
-          )}
-        </div>
+        {image && (
+          <button type="button" onClick={() => setCropping(true)} className="btn-outline-dark -mt-3 h-10 self-start px-4 text-sm">
+            <Crop size={14} /> {crop ? "Edit crop" : "Crop image"}
+          </button>
+        )}
         {cropping && image && (
           <CropDialog
             image={image}
@@ -393,6 +446,137 @@ export function ColourStudio({ setCart, cartPanel, cartEmpty, openCheckout }) {
             onClose={() => setCropping(false)}
           />
         )}
+
+        <div>
+          <Label hint={bgMode === "photo" ? "AI, on your device: your photo isn't uploaded" : null}>Background</Label>
+          <div className="grid grid-cols-3 gap-2">
+            <Choice active={bgMode === "keep"} onClick={() => setBgMode("keep")} sub="Use the whole image">
+              Keep
+            </Choice>
+            <Choice active={bgMode === "plain"} onClick={() => setBgMode("plain")} sub="A logo on white">
+              Plain colour
+            </Choice>
+            <Choice active={bgMode === "photo"} onClick={() => setBgMode("photo")} onPointerEnter={warmUp} sub="Pets, people, things">
+              Photo
+            </Choice>
+          </div>
+          {bgMode === "photo" && !cutting && cut?.source === source && (
+            <p className="mt-2 text-xs text-ink/55">
+              Missed a bit? Crop the image tighter around the subject, or switch to Keep to compare.
+            </p>
+          )}
+        </div>
+
+        <div>
+          <Label hint={texts.length ? null : "optional"}>Text</Label>
+          <div className="space-y-3">
+            {texts.map((t) => (
+              <div key={t.id} className="space-y-3 rounded-2xl bg-white p-3 ring-1 ring-ink/10">
+                <div className="flex gap-2">
+                  <textarea
+                    value={t.text}
+                    onChange={(e) => patchText(t.id, { text: e.target.value })}
+                    rows={t.text.includes("\n") ? 2 : 1}
+                    maxLength={60}
+                    className="field resize-none text-base"
+                    aria-label="Text"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setTexts((ts) => ts.filter((x) => x.id !== t.id))}
+                    aria-label="Remove text"
+                    className="flex-none rounded-xl px-3 text-ink/50 ring-1 ring-ink/15 hover:bg-flame hover:text-white"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {FONTS.map((f) => (
+                    <button
+                      key={f.family}
+                      type="button"
+                      onClick={() => patchText(t.id, { font: f.family, weight: f.weight })}
+                      aria-pressed={t.font === f.family}
+                      className={clsx(
+                        "rounded-lg px-2.5 py-1 text-sm ring-1 transition",
+                        t.font === f.family ? "bg-ink text-white ring-ink" : "bg-white ring-ink/15 hover:ring-ink/40",
+                      )}
+                      style={{ fontFamily: `"${f.family}"`, fontWeight: f.weight }}
+                    >
+                      {f.name}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex flex-wrap items-center gap-1.5" role="radiogroup" aria-label="Text colour">
+                  {TEXT_COLOURS.map(([hex, name]) => (
+                    <button
+                      key={hex}
+                      type="button"
+                      role="radio"
+                      aria-checked={t.colour === hex}
+                      aria-label={name}
+                      title={name}
+                      onClick={() => patchText(t.id, { colour: hex })}
+                      className={clsx(
+                        "h-7 w-7 rounded-full ring-1 ring-ink/20 transition",
+                        t.colour === hex && "ring-2 ring-flame ring-offset-2",
+                      )}
+                      style={{ background: hex }}
+                    />
+                  ))}
+                  <label className="ml-auto flex items-center gap-1.5 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={t.outline}
+                      onChange={(e) => patchText(t.id, { outline: e.target.checked })}
+                      className="accent-flame"
+                    />
+                    Outline
+                  </label>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="grid grid-cols-3 gap-1 rounded-xl bg-ink/5 p-1 text-sm font-semibold" role="radiogroup" aria-label="Where">
+                    {[
+                      ["above", "Above"],
+                      ["over", "On"],
+                      ["below", "Below"],
+                    ].map(([k, name]) => (
+                      <button
+                        key={k}
+                        type="button"
+                        role="radio"
+                        aria-checked={t.where === k}
+                        onClick={() => patchText(t.id, { where: k })}
+                        className={clsx("rounded-lg py-1.5 transition", t.where === k ? "bg-white shadow-sm ring-1 ring-ink/10" : "text-ink/55 hover:text-ink")}
+                      >
+                        {name}
+                      </button>
+                    ))}
+                  </div>
+                  <label className="block text-sm">
+                    <span className="flex justify-between">
+                      Size <span className="text-ink/50">{Math.round(t.size * 100)}</span>
+                    </span>
+                    <input
+                      type="range"
+                      min={0.06}
+                      max={0.4}
+                      step={0.01}
+                      value={t.size}
+                      onChange={(e) => patchText(t.id, { size: +e.target.value })}
+                      className="mt-1 w-full accent-flame"
+                    />
+                  </label>
+                </div>
+              </div>
+            ))}
+            {texts.length < MAX_TEXTS && (
+              <button type="button" onClick={newText} className="btn-outline-dark h-10 w-full text-sm">
+                <Type size={15} /> {texts.length ? "Add more text" : "Add text"}
+              </button>
+            )}
+          </div>
+        </div>
 
         <div>
           <Label>Shape</Label>

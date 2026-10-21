@@ -362,3 +362,77 @@ export function printFile(art, opts, widthMm) {
   }
   return { dataUrl: renderSticker(art, opts, widthMm, 150 / MM_PER_IN).canvas.toDataURL("image/png"), dpi: 150 };
 }
+
+// Text on a full-colour sticker. Each `texts` entry is { text, font, weight,
+// colour, size, where, outline }: `size` is the letter height as a share of
+// the art's width, `where` is "above" or "below" the art (the sticker grows
+// to fit) or "over" it (across its lower part), and `outline` puts a ring of
+// white, or black for light text, round the letters so they read on any art.
+// Returns the art with the text, or the art itself when there's none.
+export const TEXT_COLOURS = [
+  ["#111111", "Black"],
+  ["#ffffff", "White"],
+  ["#0c1a2e", "Navy"],
+  ["#e8492c", "Red"],
+  ["#f7d84a", "Yellow"],
+  ["#2f8f4e", "Green"],
+  ["#2f6fd6", "Blue"],
+  ["#e05aa0", "Pink"],
+];
+const isLight = (hex) => {
+  const n = parseInt(hex.slice(1), 16);
+  return 0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255) > 160;
+};
+
+export function addText(art, texts) {
+  const list = texts.filter((t) => t.text.trim());
+  if (!list.length) return art;
+  const W = art.width, H = art.height;
+  const scratch = canvasOf(1, 1).getContext("2d");
+  // Each text's lines, measured: font size, stroke width, its box.
+  const blocks = list.map((t) => {
+    const px = Math.max(8, t.size * W);
+    const font = `${t.weight} ${px}px "${t.font}"`;
+    scratch.font = font;
+    const lines = t.text.split("\n").map((s) => s.trim()).filter(Boolean);
+    const stroke = t.outline ? px * 0.16 : 0;
+    const lineH = px * 1.12;
+    const w = Math.max(...lines.map((s) => scratch.measureText(s).width)) + 2 * stroke;
+    return { ...t, px, font, lines, stroke, lineH, w, h: lines.length * lineH + 2 * stroke };
+  });
+  // Small enough that the die-cut border joins the text to the art.
+  const gap = 0.025 * W;
+  const above = blocks.filter((b) => b.where === "above");
+  const below = blocks.filter((b) => b.where === "below");
+  const stack = (bs) => bs.reduce((s, b) => s + b.h + gap, 0);
+  const top = stack(above), bottom = stack(below);
+  const width = Math.max(W, ...blocks.map((b) => b.w));
+  const out = canvasOf(width, top + H + bottom);
+  const ctx = out.getContext("2d");
+  ctx.drawImage(art, (width - W) / 2, top);
+
+  const draw = (b, y) => {
+    ctx.font = b.font;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.lineJoin = "round";
+    b.lines.forEach((line, i) => {
+      const ly = y + b.stroke + (i + 0.5) * b.lineH;
+      if (b.stroke) {
+        ctx.lineWidth = b.stroke * 2;
+        ctx.strokeStyle = isLight(b.colour) ? "#111111" : "#ffffff";
+        ctx.strokeText(line, width / 2, ly);
+      }
+      ctx.fillStyle = b.colour;
+      ctx.fillText(line, width / 2, ly);
+    });
+  };
+  let y = 0;
+  for (const b of above) draw(b, y), (y += b.h + gap);
+  y = top + H + gap;
+  for (const b of below) draw(b, y), (y += b.h + gap);
+  // Over the art: centred, stacked up from near its bottom.
+  y = top + H * 0.92;
+  for (const b of blocks.filter((x) => x.where === "over").reverse()) draw(b, (y -= b.h));
+  return out;
+}
