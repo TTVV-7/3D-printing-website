@@ -9,6 +9,19 @@ import { site } from "./site.config.js";
 const API_ORIGIN = "https://thomasverigin.ca";
 const API_PREFIX = "/3Dprintingstore";
 
+// `npm run build:cf` sets CF_BUILD for the Cloudflare deployment: the browser
+// gets Cloudflare stand-ins for Vercel's Blob upload client and analytics
+// (see cloudflare/client/). The Vercel build is unaffected.
+const cloudflare = Boolean(process.env.CF_BUILD);
+const cfClient = (file) => fileURLToPath(new URL(`./cloudflare/client/${file}`, import.meta.url));
+const cloudflareAliases = cloudflare
+  ? [
+      { find: /^@vercel\/blob\/client$/, replacement: cfClient("blob-upload.js") },
+      { find: /^@vercel\/analytics(\/react)?$/, replacement: cfClient("analytics.js") },
+      { find: /^@vercel\/speed-insights\/react$/, replacement: cfClient("analytics.js") },
+    ]
+  : [];
+
 const url = site.url.replace(/\/$/, "");
 const sameAs = Object.values(site.social).filter(Boolean);
 
@@ -85,6 +98,7 @@ function seo() {
 
 export default defineConfig({
   plugins: [react(), seo()],
+  resolve: { alias: cloudflareAliases },
   build: {
     rollupOptions: {
       input: {

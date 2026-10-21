@@ -16,6 +16,7 @@ import { ColourStudio } from "./ColourStudio.jsx";
 import { FONTS, fontOf } from "./fonts.js";
 import { removeBackground, warmUp } from "./cutout.js";
 import { prepareArt } from "./colour.js";
+import { AiSticker, STICKER_AI } from "./AiSticker.jsx";
 
 
 // The cart lives in this browser, so it survives a reload or a trip to Stripe
@@ -731,6 +732,11 @@ export function StickerStudio() {
               />
             </div>
 
+            {STICKER_AI && (
+              <div className="-mt-3">
+                <AiSticker maker="thermal" onImage={(file) => pick(file)} />
+              </div>
+            )}
             {cutButton(mainImage, "-mt-3 h-11 w-full")}
             {cutError && <p className="-mt-3 text-sm text-flame-600">{cutError}</p>}
             <button type="button" onClick={addText} className="btn-outline-dark -mt-3 h-11 w-full text-sm">
