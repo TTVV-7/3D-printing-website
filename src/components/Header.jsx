@@ -9,6 +9,7 @@ const NAV = [
   { href: "#work", label: "Work" },
   { href: "#materials", label: "Materials" },
   { href: "/stickers/", label: "Stickers" },
+  { href: "/bike/", label: "Bike" },
 ];
 
 // On other pages (home="/") the section links point back at the home page.

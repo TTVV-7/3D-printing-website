@@ -90,6 +90,7 @@ function seo() {
           `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n` +
           `  <url><loc>${url}/</loc><changefreq>weekly</changefreq><priority>1.0</priority></url>\n` +
           `  <url><loc>${url}/stickers/</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>\n` +
+          `  <url><loc>${url}/bike/</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>\n` +
           `</urlset>\n`,
       });
     },
@@ -104,6 +105,7 @@ export default defineConfig({
       input: {
         main: fileURLToPath(new URL("./index.html", import.meta.url)),
         stickers: fileURLToPath(new URL("./stickers/index.html", import.meta.url)),
+        bike: fileURLToPath(new URL("./bike/index.html", import.meta.url)),
       },
     },
   },

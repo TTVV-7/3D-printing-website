@@ -17,6 +17,7 @@ import { FONTS, fontOf } from "./fonts.js";
 import { removeBackground, warmUp } from "./cutout.js";
 import { prepareArt } from "./colour.js";
 import { AiSticker, STICKER_AI } from "./AiSticker.jsx";
+import { presetOf } from "./presets.js";
 
 
 // The cart lives in this browser, so it survives a reload or a trip to Stripe
@@ -163,7 +164,15 @@ export function StickerStudio() {
   const [cart, setCart] = useCart();
   const [added, setAdded] = useState(false);
 
+  // A ready-made start (/stickers/?preset=trail, presets.js), or the sample
+  // image.
   useEffect(() => {
+    const preset = presetOf(new URLSearchParams(location.search).get("preset"));
+    if (preset) {
+      setD((cur) => ({ ...cur, ...preset.design }));
+      setLayers(preset.layers.map((l) => ({ ...l, id: newId() })));
+      return;
+    }
     loadImage("/stickers/sample.png")
       .then((img) => setLayers((ls) => (ls.length ? ls : [imageLayer(img)])))
       .catch(() => {});
