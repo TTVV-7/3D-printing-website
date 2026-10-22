@@ -12,16 +12,19 @@
 // The Worker fetches a shown model from GitHub the first time someone opens
 // it and keeps it in the weave-models R2 bucket (cloudflare/model-file.js).
 // Regenerated lists can be pasted over this one; keep your `show` choices.
-// The tree magnets point at their printable 3MF halves: the GLBs are ~50 MB.
+// A `file` starting with "/" is served by this site from public/: the tree
+// magnets show full-colour copies of their 47 MB GLBs, cut down to under 1 MB
+// (gltf-transform weld, simplify --ratio 0.06, resize 1024, webp, meshopt);
+// `printFile` is the part that's actually printed.
 export const MODELS_REPO = "TTVV-7/Weave-Trial";
 
 export const models = [
-  {id: "pnw-tree-magnets-bigleaf-maple", name: "Bigleaf maple", collection: "PNW tree magnets", file: "pnw-tree-magnets/stl/bigleaf-maple-half.3mf", preview: "pnw-tree-magnets/bigleaf-maple.png", mb: 2.4, show: true},
-  {id: "pnw-tree-magnets-douglas-fir", name: "Douglas fir", collection: "PNW tree magnets", file: "pnw-tree-magnets/stl/douglas-fir-half.3mf", preview: "pnw-tree-magnets/douglas-fir.png", mb: 2.5, show: true},
-  {id: "pnw-tree-magnets-pacific-madrone", name: "Pacific madrone", collection: "PNW tree magnets", file: "pnw-tree-magnets/stl/pacific-madrone-half.3mf", preview: "pnw-tree-magnets/pacific-madrone.png", mb: 3.3, show: true},
-  {id: "pnw-tree-magnets-sitka-spruce", name: "Sitka spruce", collection: "PNW tree magnets", file: "pnw-tree-magnets/stl/sitka-spruce-half.3mf", preview: "pnw-tree-magnets/sitka-spruce.png", mb: 3.0, show: true},
-  {id: "pnw-tree-magnets-western-hemlock", name: "Western hemlock", collection: "PNW tree magnets", file: "pnw-tree-magnets/stl/western-hemlock-half.3mf", preview: "pnw-tree-magnets/western-hemlock.png", mb: 3.9, show: true},
-  {id: "pnw-tree-magnets-western-red-cedar", name: "Western red cedar", collection: "PNW tree magnets", file: "pnw-tree-magnets/stl/western-red-cedar-half.3mf", preview: "pnw-tree-magnets/western-red-cedar.png", mb: 2.7, show: true},
+  {id: "pnw-tree-magnets-bigleaf-maple", name: "Bigleaf maple", collection: "PNW tree magnets", file: "/models/trees/bigleaf-maple.glb", printFile: "pnw-tree-magnets/stl/bigleaf-maple-half.3mf", preview: "pnw-tree-magnets/bigleaf-maple.png", mb: 0.9, show: true},
+  {id: "pnw-tree-magnets-douglas-fir", name: "Douglas fir", collection: "PNW tree magnets", file: "/models/trees/douglas-fir.glb", printFile: "pnw-tree-magnets/stl/douglas-fir-half.3mf", preview: "pnw-tree-magnets/douglas-fir.png", mb: 0.8, show: true},
+  {id: "pnw-tree-magnets-pacific-madrone", name: "Pacific madrone", collection: "PNW tree magnets", file: "/models/trees/pacific-madrone.glb", printFile: "pnw-tree-magnets/stl/pacific-madrone-half.3mf", preview: "pnw-tree-magnets/pacific-madrone.png", mb: 0.9, show: true},
+  {id: "pnw-tree-magnets-sitka-spruce", name: "Sitka spruce", collection: "PNW tree magnets", file: "/models/trees/sitka-spruce.glb", printFile: "pnw-tree-magnets/stl/sitka-spruce-half.3mf", preview: "pnw-tree-magnets/sitka-spruce.png", mb: 0.8, show: true},
+  {id: "pnw-tree-magnets-western-hemlock", name: "Western hemlock", collection: "PNW tree magnets", file: "/models/trees/western-hemlock.glb", printFile: "pnw-tree-magnets/stl/western-hemlock-half.3mf", preview: "pnw-tree-magnets/western-hemlock.png", mb: 0.7, show: true},
+  {id: "pnw-tree-magnets-western-red-cedar", name: "Western red cedar", collection: "PNW tree magnets", file: "/models/trees/western-red-cedar.glb", printFile: "pnw-tree-magnets/stl/western-red-cedar-half.3mf", preview: "pnw-tree-magnets/western-red-cedar.png", mb: 0.8, show: true},
   {id: "phonecases-iphone-15-pro-hybrid-assembly", name: "Hybrid assembly", collection: "iPhone 15 Pro cases", file: "phonecases/iphone-15-pro/hybrid_assembly.3mf", preview: "phonecases/iphone-15-pro/hybrid_assembly_preview.png", mb: 0.2, show: false},
   {id: "phonecases-iphone-15-pro-hybrid-petg-plate", name: "Hybrid petg plate", collection: "iPhone 15 Pro cases", file: "phonecases/iphone-15-pro/hybrid_petg_plate.stl", preview: null, mb: 0.1, show: false},
   {id: "phonecases-iphone-15-pro-hybrid-petg-plate-gradient", name: "Hybrid petg plate gradient", collection: "iPhone 15 Pro cases", file: "phonecases/iphone-15-pro/hybrid_petg_plate_gradient.3mf", preview: "phonecases/iphone-15-pro/hybrid_petg_plate_gradient_preview.png", mb: 0.2, show: false},

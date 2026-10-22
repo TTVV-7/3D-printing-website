@@ -19,7 +19,9 @@ const extOf = (p) => p.slice(p.lastIndexOf(".") + 1).toLowerCase();
 // On Cloudflare the Worker serves (and keeps) the files; elsewhere they come
 // straight from GitHub.
 const fileUrl = (p) =>
-  import.meta.env.VITE_MODELS_API === "1"
+  p.startsWith("/")
+    ? p
+    : import.meta.env.VITE_MODELS_API === "1"
     ? `/api/model-file?p=${encodeURIComponent(p)}`
     : `https://raw.githubusercontent.com/${MODELS_REPO}/HEAD/${p.split("/").map(encodeURIComponent).join("/")}`;
 

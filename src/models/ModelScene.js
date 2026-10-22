@@ -8,6 +8,7 @@ import {
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+import { MeshoptDecoder } from "three/examples/jsm/libs/meshopt_decoder.module.js";
 import { ThreeMFLoader } from "three/examples/jsm/loaders/3MFLoader.js";
 import { STLLoader } from "three/examples/jsm/loaders/STLLoader.js";
 
@@ -15,7 +16,11 @@ import { STLLoader } from "three/examples/jsm/loaders/STLLoader.js";
 const PLASTIC = new MeshStandardMaterial({ color: 0xff5a1f, roughness: 0.55, metalness: 0.05 });
 
 async function load(url, ext) {
-  if (ext === "glb") return (await new GLTFLoader().loadAsync(url)).scene;
+  if (ext === "glb") {
+    // Web copies are Meshopt-compressed (see catalog.js).
+    const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
+    return (await loader.loadAsync(url)).scene;
+  }
   if (ext === "3mf") {
     const group = await new ThreeMFLoader().loadAsync(url);
     // 3MF is Z-up; the viewer is Y-up.
@@ -85,9 +90,10 @@ export async function mountModel(canvas, { url, ext, reducedMotion }) {
   controls.addEventListener("start", () => (controls.autoRotate = false));
 
   // Its size in mm, for the card (models are in mm; Y-up after the turn).
+  // Display copies scaled to fit a unit box have no real size to show.
   const dims = box.getSize(new Vector3());
   return {
-    sizeMm: [dims.x, dims.z, dims.y].map((d) => Math.round(d)),
+    sizeMm: Math.max(dims.x, dims.y, dims.z) < 5 ? null : [dims.x, dims.z, dims.y].map((d) => Math.round(d)),
     dispose() {
       cancelAnimationFrame(raf);
       ro.disconnect();
