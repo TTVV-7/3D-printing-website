@@ -3,7 +3,7 @@ import { X, Lock, CreditCard, ArrowRight, Loader2, Heart, Send, CheckCircle2 } f
 import { clsx } from "clsx";
 import { track } from "@vercel/analytics";
 import { stickers } from "../../site.config.js";
-import { turnstileHeaders, useTurnstile } from "../lib/turnstile.js";
+import { NOT_VERIFIED, turnstileHeaders, useTurnstile } from "../lib/turnstile.js";
 import { deliveryCost, sizeOf, lineTotal, itemLabel, isColour, itemSizeName } from "./pricing.js";
 import { zoneOf, parcelOf, pieceOf, fits, arrival, dateRange } from "./shipping.js";
 
@@ -91,7 +91,6 @@ export function Checkout({ items, postal = "", onPostal, onRemove, onClose, onSe
     if (!EMAIL.test(who.email.trim())) return "Add an email address so you get the receipt.";
     if (mailed && (!who.line1.trim() || !who.city.trim())) return "Add the street address and city.";
     if (mailed && !POSTAL.test(who.postal.trim())) return "That postal code doesn't look right (e.g. V5K 0A1).";
-    if (family && turnstile.needed && !turnstile.token) return "One moment, checking you're not a bot… try again in a second.";
     return "";
   }
 
@@ -101,6 +100,10 @@ export function Checkout({ items, postal = "", onPostal, onRemove, onClose, onSe
     setError(p);
     if (p) return;
     setBusy(true);
+    if (family && turnstile.needed && !(await turnstile.wait())) {
+      setBusy(false);
+      return setError(NOT_VERIFIED);
+    }
     try {
       // The black-on-white print file (thermal) or the full-colour one; carts
       // saved before it existed send the preview. Colour files may already be

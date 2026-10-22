@@ -4,7 +4,7 @@ import { clsx } from "clsx";
 import { track } from "@vercel/analytics";
 import { FileDrop } from "../components/FileDrop.jsx";
 import { printRequests as api } from "../lib/api.js";
-import { turnstileHeaders, useTurnstile } from "../lib/turnstile.js";
+import { NOT_VERIFIED, turnstileHeaders, useTurnstile } from "../lib/turnstile.js";
 import { site } from "../../site.config.js";
 
 // Club, team and shop orders from the /bike page: a logo, what it's for, how
@@ -57,8 +57,11 @@ export function ClubForm() {
     setError(null);
     if (!files.length) return setError("Add your logo, so I can quote from it.");
     if (!form.allowed) return setError("Please confirm the logo is yours to use.");
-    if (turnstile.needed && !turnstile.token) return setError("One moment, checking you're not a bot… try again in a second.");
     setBusy(true);
+    if (turnstile.needed && !(await turnstile.wait())) {
+      setBusy(false);
+      return setError(NOT_VERIFIED);
+    }
     const id = `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
 
     const uploaded = [];

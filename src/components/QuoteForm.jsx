@@ -6,7 +6,7 @@ import { InstantEstimate, useInstantEstimate } from "./InstantEstimate.jsx";
 import { QuoteGolem } from "./QuoteGolem.jsx";
 import { track } from "@vercel/analytics";
 import { printRequests as api } from "../lib/api.js";
-import { turnstileHeaders, useTurnstile } from "../lib/turnstile.js";
+import { NOT_VERIFIED, turnstileHeaders, useTurnstile } from "../lib/turnstile.js";
 import { site, estimate as estimateConfig } from "../../site.config.js";
 
 const IMAGE_EXTENSIONS = [".jpg", ".jpeg", ".png", ".heic"];
@@ -142,8 +142,11 @@ export function QuoteForm({
   async function handleSubmit(e) {
     e.preventDefault();
     setError(null);
-    if (turnstile.needed && !turnstile.token) return setError("One moment, checking you're not a bot… try again in a second.");
     setSubmitting(true);
+    if (turnstile.needed && !(await turnstile.wait())) {
+      setSubmitting(false);
+      return setError(NOT_VERIFIED);
+    }
 
     const id = `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
 

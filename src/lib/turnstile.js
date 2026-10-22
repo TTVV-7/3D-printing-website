@@ -10,8 +10,26 @@ import { useEffect, useRef, useState } from "react";
 // X-Turnstile header (turnstileHeaders()) on each request it makes.
 export const TURNSTILE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY;
 
-// The latest token from any widget on the page, for turnstileHeaders().
+// The latest token from any widget on the page, for turnstileHeaders(), and
+// anyone waiting for one (waitForToken).
 let current = "";
+let waiting = [];
+
+// The token, waiting up to `ms` for the check to finish; "" if it didn't (the
+// visitor needs to tick the box, which shows itself when that's the case).
+export function waitForToken(ms = 6000) {
+  if (current || !TURNSTILE_KEY) return Promise.resolve(current);
+  return new Promise((resolve) => {
+    const done = (t) => {
+      clearTimeout(timer);
+      waiting = waiting.filter((w) => w !== done);
+      resolve(t);
+    };
+    const timer = setTimeout(() => done(""), ms);
+    waiting.push(done);
+  });
+}
+export const NOT_VERIFIED = "Please tick \u201cVerify you are human\u201d just above the button, then send again.";
 
 export const turnstileHeaders = () => (current ? { "X-Turnstile": current } : {});
 
@@ -22,6 +40,7 @@ export function useTurnstile() {
   const setToken = (t) => {
     current = t;
     setTokenState(t);
+    if (t) waiting.forEach((w) => w(t));
   };
 
   useEffect(() => {
@@ -60,5 +79,5 @@ export function useTurnstile() {
     setToken("");
     if (widget.current !== null) window.turnstile?.reset(widget.current);
   };
-  return { box, token, reset, needed: Boolean(TURNSTILE_KEY) };
+  return { box, token, reset, needed: Boolean(TURNSTILE_KEY), wait: waitForToken };
 }

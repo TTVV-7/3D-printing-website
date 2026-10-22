@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { track } from "@vercel/analytics";
-import { useTurnstile } from "../lib/turnstile.js";
+import { NOT_VERIFIED, useTurnstile } from "../lib/turnstile.js";
 import { clsx } from "clsx";
 import { Check, ImageUp, Loader2, RefreshCw, Sparkles, WandSparkles } from "lucide-react";
 
@@ -79,8 +79,12 @@ export function AiSticker({ maker, onImage }) {
     setResult(null);
     if (mode === "create" && prompt.trim().length < 3) return setError("Describe your sticker in a few words.");
     if (mode === "stickerize" && !photo) return setError("Choose a photo first.");
-    if (turnstile.needed && !turnstile.token) return setError("One moment, checking you're not a bot…");
     setBusy(true);
+    const pass = turnstile.needed ? await turnstile.wait() : "";
+    if (turnstile.needed && !pass) {
+      setBusy(false);
+      return setError(NOT_VERIFIED.replace("just above the button", "below"));
+    }
     try {
       const res = await fetch("/api/sticker-ai", {
         method: "POST",
@@ -91,7 +95,7 @@ export function AiSticker({ maker, onImage }) {
           style,
           prompt: mode === "create" ? prompt : undefined,
           image: mode === "stickerize" ? photo.dataUrl : undefined,
-          turnstile: turnstile.token || undefined,
+          turnstile: pass || undefined,
         }),
       });
       const data = await res.json().catch(() => ({}));
