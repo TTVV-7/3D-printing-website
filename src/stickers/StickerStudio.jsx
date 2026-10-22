@@ -17,7 +17,7 @@ import { FONTS, fontOf } from "./fonts.js";
 import { removeBackground, warmUp } from "./cutout.js";
 import { prepareArt } from "./colour.js";
 import { AiSticker, STICKER_AI } from "./AiSticker.jsx";
-import { presetOf } from "./presets.js";
+import { PRESETS, presetOf } from "./presets.js";
 
 
 // The cart lives in this browser, so it survives a reload or a trip to Stripe
@@ -112,23 +112,29 @@ function Label({ children, hint }) {
   );
 }
 
-// The two makers on this page: thermal labels (one ink, preset label sizes,
-// the quickest and cheapest) and full-colour stickers cut to any shape on
-// the Cricut (ColourStudio.jsx). #colour in the address opens the second.
+// The tabs on this page: thermal labels (one ink, preset label sizes, the
+// quickest and cheapest), full-colour stickers cut to any shape on the Cricut
+// (ColourStudio.jsx), and bike stickers: the thermal maker with ready-made
+// bike templates (presets.js) to start from. #colour or #bike in the address
+// opens those tabs.
 const MODES = [
   { key: "thermal", name: "Thermal labels", sub: "Black ink on die-cut labels · cheapest" },
   { key: "colour", name: "Full colour, custom cut", sub: "Any image, any shape, cut to fit", soon: !stickers.colour.available },
+  { key: "bike", name: "Bike", sub: "Frame names, trail stickers, ID" },
 ];
 
 export function StickerStudio() {
   const [maker, setMakerState] = useState("thermal");
   useEffect(() => {
     if (location.hash === "#colour") setMakerState("colour");
+    if (location.hash === "#bike" || new URLSearchParams(location.search).has("preset")) setMakerState("bike");
   }, []);
   const setMaker = (m) => {
     setMakerState(m);
-    history.replaceState(null, "", m === "colour" ? "#colour" : location.pathname + location.search);
+    history.replaceState(null, "", m === "thermal" ? location.pathname + location.search : `#${m}`);
   };
+  // Thermal labels and Bike share the thermal maker.
+  const thermal = maker !== "colour";
   const canvasRef = useRef(null);
   const flatRef = useRef(null);
   const fileRef = useRef(null);
@@ -168,15 +174,19 @@ export function StickerStudio() {
   // image.
   useEffect(() => {
     const preset = presetOf(new URLSearchParams(location.search).get("preset"));
-    if (preset) {
-      setD((cur) => ({ ...cur, ...preset.design }));
-      setLayers(preset.layers.map((l) => ({ ...l, id: newId() })));
-      return;
-    }
+    if (preset) return applyPreset(preset);
     loadImage("/stickers/sample.png")
       .then((img) => setLayers((ls) => (ls.length ? ls : [imageLayer(img)])))
       .catch(() => {});
   }, []);
+
+  // A bike template replaces the design (label, background, ring and layers).
+  function applyPreset(preset) {
+    setD((cur) => ({ ...cur, ...preset.design }));
+    setLayers(preset.layers.map((l) => ({ ...l, id: newId() })));
+    setSelected(null);
+    setFileName("");
+  }
 
   const stock = sizeOf(d.sizeKey);
   const size = useMemo(() => ({ w: stock.w, h: stock.h }), [stock]);
@@ -202,12 +212,12 @@ export function StickerStudio() {
   useEffect(() => {
     // While editing, the 3D view is hidden: catch it up when editing ends.
     // On the full-colour maker it's hidden too, and paused.
-    if (!ready || !view || editing || maker !== "thermal") return;
+    if (!ready || !view || editing || !thermal) return;
     stage.current.update({ art: view, w: size.w, h: size.h, crop, finish, paper });
     stage.current.onCardClick(() => setRealCard((r) => !r));
     stage.current.onStickerClick(() => setEditing(true));
     stage.current.start();
-  }, [ready, view, size, crop, finish, paper, stage, editing, maker]);
+  }, [ready, view, size, crop, finish, paper, stage, editing, thermal]);
 
   useEffect(() => {
     if (ready) stage.current.cardLook(realCard);
@@ -424,13 +434,15 @@ export function StickerStudio() {
           <p className="eyebrow">Stickers</p>
           <h1 className="mt-3 text-4xl font-bold sm:text-5xl">Your image, as a sticker.</h1>
           <p className="mt-4 text-ink/65 sm:text-lg">
-            {maker === "thermal"
+            {maker === "bike"
+              ? "Stickers for your bike: start from a template, make it yours, and see it to scale. Printed in crisp black on die-cut labels."
+              : maker === "thermal"
               ? "Thermal printed in crisp black on die-cut labels. Drop in an image or type some text, pick a label and a border, and see it to scale."
               : "Printed in full colour on vinyl and cut to any shape: around your design, or as a circle or square. Pick a size and see it to scale."}
           </p>
         </div>
 
-        <div className="mt-8 grid max-w-2xl grid-cols-2 gap-2 rounded-2xl bg-white p-1.5 ring-1 ring-ink/10" role="tablist">
+        <div className="mt-8 grid max-w-3xl grid-cols-1 gap-2 rounded-2xl sm:grid-cols-3 bg-white p-1.5 ring-1 ring-ink/10" role="tablist">
           {MODES.map((m) => (
             <button
               key={m.key}
@@ -469,7 +481,36 @@ export function StickerStudio() {
 
         {/* Thermal maker: kept mounted (hidden) on the colour tab so its 3D
             stage survives the switch. */}
-        <div className={clsx("mt-10 grid gap-6 lg:grid-cols-[1.4fr_1fr] lg:gap-10", maker !== "thermal" && "hidden")}>
+        {maker === "bike" && (
+          <div className="mt-8">
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <p className="text-sm font-semibold">Start from a template</p>
+              <a href="/bike/#clubs" className="text-sm font-medium text-ink/60 underline decoration-flame underline-offset-4 hover:text-flame">
+                Ordering for a club or team?
+              </a>
+            </div>
+            <div className="mt-3 grid gap-3 sm:grid-cols-3">
+              {Object.entries(PRESETS).map(([key, p]) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => applyPreset(p)}
+                  className="flex items-center gap-3 rounded-2xl bg-white p-3 text-left ring-1 ring-ink/10 transition hover:ring-ink/40"
+                >
+                  <span className="flex h-14 w-16 flex-none items-center justify-center rounded-xl bg-[#e9efe9] p-1.5">
+                    <img src={`/bike/${key}.png`} alt="" className="max-h-full max-w-full" />
+                  </span>
+                  <span className="min-w-0 text-sm">
+                    <span className="block font-semibold">{p.name}</span>
+                    <span className="block text-xs text-ink/55">{p.blurb}</span>
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className={clsx("grid gap-6 lg:grid-cols-[1.4fr_1fr] lg:gap-10", maker === "bike" ? "mt-6" : "mt-10", !thermal && "hidden")}>
           {/* Stage: stays in view while the options scroll past */}
           <div className="flex min-w-0 flex-col gap-4 lg:sticky lg:top-20 lg:self-start">
             <div className="relative aspect-square overflow-hidden rounded-3xl bg-ink ring-1 ring-ink/10 sm:aspect-[4/3]">
@@ -901,7 +942,7 @@ export function StickerStudio() {
               </button>
             </div>
 
-            {maker === "thermal" && cartPanel}
+            {thermal && cartPanel}
             {!cart.length && (
               <button
                 type="button"

@@ -10,7 +10,7 @@ const TEMPLATES = [
   {
     key: "frame-name",
     title: "Frame name decal",
-    body: "Your name, or your bike's, for the top tube. A 4\" × 2\" label in any of six fonts.",
+    body: "Your name, or your bike's, for the top tube. A 50 × 30 mm label in any of six fonts.",
     img: "/bike/frame-name.png",
   },
   {
@@ -52,7 +52,7 @@ export function BikePage() {
             plates, mounts and the small parts that break on the trail.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
-            <a href="#templates" className="btn-primary">
+            <a href="/stickers/#bike" className="btn-primary">
               <Bike size={18} /> Design a bike sticker
             </a>
             <a href="#clubs" className="btn-outline-light">
@@ -67,8 +67,8 @@ export function BikePage() {
           <p className="eyebrow">Start from a template</p>
           <h2 className="mt-3 text-3xl font-bold sm:text-4xl">Pick one, make it yours.</h2>
           <p className="mt-3 max-w-2xl text-ink/65">
-            Each opens in the sticker maker ready to edit: change the words, the font, the label or the border, and see
-            it to scale before you order.
+            Each opens in the sticker maker's Bike tab, ready to edit: change the words, the font, the label or the
+            border, and see it to scale before you order.
           </p>
           <ul className="mt-8 grid gap-5 md:grid-cols-3">
             {TEMPLATES.map((t) => (
