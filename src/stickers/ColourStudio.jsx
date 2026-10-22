@@ -5,7 +5,7 @@ import { stickers } from "../../site.config.js";
 import { COLOUR_SHAPES, colourFits, priceColourEach } from "./pricing.js";
 import {
   BORDERS, inspect, prepareArt, layout, widthRange, renderSticker, printFile,
-  PLACE_START, ZOOM, placeKind, clampPlace, cropArt, cropImage, addText, TEXT_COLOURS,
+  PLACE_START, ZOOM, placeKind, clampPlace, cropArt, cropImage, addText, TEXT_COLOURS, backdropColour,
 } from "./colour.js";
 import { removeBackground, warmUp } from "./cutout.js";
 import { FONTS, fontOf } from "./fonts.js";
@@ -65,6 +65,53 @@ function Label({ children, hint }) {
   );
 }
 
+// A credit card for scale, drawn at (x, y) top-left in canvas px. `t` runs
+// 0..1 as it pops into place: dropping in from a little above, with a
+// bounce, like the thermal maker's 3D card.
+function drawCard(ctx, x, y, pxPerMm, dpr, t) {
+  if (t <= 0) return;
+  const w = CARD.w * pxPerMm, h = CARD.h * pxPerMm, r = 3.2 * pxPerMm;
+  const back = 1.70158, u = t - 1;
+  const pop = 1 + (back + 1) * u ** 3 + back * u ** 2; // ease out, overshooting a touch
+  const scale = 0.75 + 0.25 * pop;
+  ctx.save();
+  ctx.globalAlpha = Math.min(1, t * 2);
+  ctx.translate(x + w / 2, y + h / 2 - (1 - pop) * 18 * dpr);
+  ctx.scale(scale, scale);
+  ctx.translate(-w / 2, -h / 2);
+  // Card, with a soft shadow on the mat.
+  ctx.shadowColor = "rgba(12,26,46,0.22)";
+  ctx.shadowBlur = 12 * dpr;
+  ctx.shadowOffsetY = 4 * dpr;
+  const g = ctx.createLinearGradient(0, 0, w, h);
+  g.addColorStop(0, "rgba(244,247,250,0.92)");
+  g.addColorStop(1, "rgba(214,224,233,0.92)");
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  ctx.roundRect(0, 0, w, h, r);
+  ctx.fill();
+  ctx.shadowColor = "transparent";
+  ctx.strokeStyle = "rgba(12,26,46,0.18)";
+  ctx.lineWidth = 1 * dpr;
+  ctx.stroke();
+  // Chip, and the wording.
+  const chip = ctx.createLinearGradient(0, 0, 11 * pxPerMm, 9 * pxPerMm);
+  chip.addColorStop(0, "#e2c46b");
+  chip.addColorStop(1, "#b8963e");
+  ctx.fillStyle = chip;
+  ctx.beginPath();
+  ctx.roundRect(8 * pxPerMm, 17 * pxPerMm, 11 * pxPerMm, 8.5 * pxPerMm, 1.4 * pxPerMm);
+  ctx.fill();
+  ctx.fillStyle = "rgba(12,26,46,0.55)";
+  ctx.textAlign = "center";
+  ctx.font = `700 ${Math.max(9 * dpr, 6.5 * pxPerMm)}px "Space Grotesk", ui-sans-serif, system-ui, sans-serif`;
+  ctx.fillText("FOR SCALE", w / 2, h * 0.58);
+  ctx.fillStyle = "rgba(12,26,46,0.4)";
+  ctx.font = `${Math.max(7 * dpr, 3 * pxPerMm)}px ui-sans-serif, system-ui, sans-serif`;
+  ctx.fillText("Credit card · 85.6 × 54 mm", w / 2, h * 0.78);
+  ctx.restore();
+}
+
 // The sticker to scale on a cutting mat (1 cm grid), beside a credit card.
 // The thin dark edge is the cut line.
 // Dragging on it reports how far the pointer moved in sticker millimetres
@@ -95,6 +142,8 @@ function Stage({ art, opts, width, onPan, onZoom }) {
     return () => ro.disconnect();
   }, []);
 
+  // When the card first popped into place (it does once, on first showing).
+  const popAt = useRef(null);
   useEffect(() => {
     const c = canvasRef.current;
     if (!c || !box.w || !art) return;
@@ -108,37 +157,12 @@ function Stage({ art, opts, width, onPan, onZoom }) {
     const sceneH = Math.max(l.h, CARD.h);
     const pxPerMm = Math.min((c.width * 0.86) / sceneW, (c.height * 0.8) / sceneH);
     scaleRef.current = pxPerMm / dpr;
-
-    // Mat and grid.
-    ctx.fillStyle = "#e9efe9";
-    ctx.fillRect(0, 0, c.width, c.height);
-    ctx.strokeStyle = "rgba(12,26,46,0.08)";
-    ctx.lineWidth = 1;
-    const step = 10 * pxPerMm;
     const ox = (c.width - sceneW * pxPerMm) / 2;
     const oy = (c.height - sceneH * pxPerMm) / 2;
-    for (let x = ox % step; x < c.width; x += step) ctx.strokeRect(Math.round(x) + 0.5, -1, 0, c.height + 2);
-    for (let y = oy % step; y < c.height; y += step) ctx.strokeRect(-1, Math.round(y) + 0.5, c.width + 2, 0);
 
-    // Credit card outline.
-    const cx = ox + (l.w + gap) * pxPerMm;
-    const cy = oy + (sceneH - CARD.h) * pxPerMm / 2;
-    ctx.setLineDash([6 * dpr, 5 * dpr]);
-    ctx.strokeStyle = "rgba(12,26,46,0.35)";
-    ctx.lineWidth = 1.5 * dpr;
-    ctx.beginPath();
-    ctx.roundRect(cx, cy, CARD.w * pxPerMm, CARD.h * pxPerMm, 3.2 * pxPerMm);
-    ctx.stroke();
-    ctx.setLineDash([]);
-    ctx.fillStyle = "rgba(12,26,46,0.45)";
-    ctx.font = `${12 * dpr}px ui-sans-serif, system-ui, sans-serif`;
-    ctx.textAlign = "center";
-    ctx.fillText("credit card", cx + (CARD.w * pxPerMm) / 2, cy + (CARD.h * pxPerMm) / 2 + 4 * dpr);
-
-    // The sticker, its cut line and a soft shadow.
-    const { canvas: st } = renderSticker(art, opts, width, Math.min(12, pxPerMm));
-    const sw = l.w * pxPerMm, sh = l.h * pxPerMm;
-    const sx = ox, sy = oy + (sceneH - l.h) * pxPerMm / 2;
+    // The sticker at the screen's own resolution (not stretched up, which
+    // blurred it), its cut-line silhouette, and where they go.
+    const { canvas: st } = renderSticker(art, opts, width, Math.min(30, pxPerMm));
     const edge = document.createElement("canvas");
     edge.width = st.width;
     edge.height = st.height;
@@ -147,15 +171,49 @@ function Stage({ art, opts, width, onPan, onZoom }) {
     ectx.globalCompositeOperation = "source-in";
     ectx.fillStyle = "rgba(12,26,46,0.55)";
     ectx.fillRect(0, 0, edge.width, edge.height);
-    ctx.save();
-    ctx.shadowColor = "rgba(12,26,46,0.28)";
-    ctx.shadowBlur = 14 * dpr;
-    ctx.shadowOffsetY = 5 * dpr;
-    ctx.drawImage(edge, sx, sy, sw, sh);
-    ctx.restore();
-    const e = 1.1 * dpr;
-    for (const [dx, dy] of [[e, 0], [-e, 0], [0, e], [0, -e]]) ctx.drawImage(edge, sx + dx, sy + dy, sw, sh);
-    ctx.drawImage(st, sx, sy, sw, sh);
+    const sw = l.w * pxPerMm, sh = l.h * pxPerMm;
+    const sx = ox, sy = oy + (sceneH - l.h) * pxPerMm / 2;
+
+    // Mat, grid, the card (`t` 0..1 as it pops in), then the sticker on top.
+    const paint = (t) => {
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = "#e9efe9";
+      ctx.fillRect(0, 0, c.width, c.height);
+      ctx.strokeStyle = "rgba(12,26,46,0.08)";
+      ctx.lineWidth = 1;
+      const step = 10 * pxPerMm;
+      for (let x = ox % step; x < c.width; x += step) ctx.strokeRect(Math.round(x) + 0.5, -1, 0, c.height + 2);
+      for (let y = oy % step; y < c.height; y += step) ctx.strokeRect(-1, Math.round(y) + 0.5, c.width + 2, 0);
+
+      drawCard(ctx, ox + (l.w + gap) * pxPerMm, oy + (sceneH - CARD.h) * pxPerMm / 2, pxPerMm, dpr, t);
+
+      ctx.save();
+      ctx.shadowColor = "rgba(12,26,46,0.28)";
+      ctx.shadowBlur = 14 * dpr;
+      ctx.shadowOffsetY = 5 * dpr;
+      ctx.drawImage(edge, sx, sy, sw, sh);
+      ctx.restore();
+      const e = 1.1 * dpr;
+      for (const [dx, dy] of [[e, 0], [-e, 0], [0, e], [0, -e]]) ctx.drawImage(edge, sx + dx, sy + dy, sw, sh);
+      ctx.imageSmoothingQuality = "high";
+      ctx.drawImage(st, sx, sy, sw, sh);
+    };
+
+    const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (still) {
+      paint(1);
+      return;
+    }
+    popAt.current ??= performance.now();
+    let raf = 0;
+    const tick = (now) => {
+      const t = Math.min(1, (now - popAt.current) / 550);
+      paint(t);
+      if (t < 1) raf = requestAnimationFrame(tick);
+    };
+    tick(performance.now());
+    return () => cancelAnimationFrame(raf);
   }, [art, opts, width, box]);
 
   return (
@@ -244,6 +302,9 @@ export function ColourStudio({ setCart, cartPanel, cartEmpty, openCheckout }) {
     setCropping(false);
     // Cropping can leave a plain background where the whole image had a busy one.
     look(rect ? cropImage(image, rect) : image);
+    // An outline around a design on a plain colour (Auto-crop's): clear the
+    // bit of background left inside it, so the die-cut hugs the design.
+    if (rect?.path && backdropColour(image)) setBgMode("plain");
   }
 
   useEffect(() => {
@@ -281,7 +342,11 @@ export function ColourStudio({ setCart, cartPanel, cartEmpty, openCheckout }) {
   }, [bgMode, source]); // eslint-disable-line react-hooks/exhaustive-deps
   // Until the cut-out is ready the sticker shows the whole image.
   const base = bgMode === "photo" && cut?.source === source ? cut.canvas : source;
-  const cleaned = useMemo(() => (base ? prepareArt(base, { removeBackdrop: bgMode === "plain" }) : null), [base, bgMode]);
+  const backdrop = useMemo(() => image && backdropColour(image), [image]);
+  const cleaned = useMemo(
+    () => (base ? prepareArt(base, { removeBackdrop: bgMode === "plain", backdrop }) : null),
+    [base, bgMode, backdrop],
+  );
   const art = useMemo(() => cleaned && addText(cleaned, texts), [cleaned, texts, fontsReady]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Draw again once a typeface has downloaded.

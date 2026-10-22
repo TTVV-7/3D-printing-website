@@ -456,14 +456,16 @@ export function StickerStudio() {
           ))}
         </div>
 
-        {maker === "colour" && (
+        {/* Both makers stay mounted (the other one hidden), so switching tabs
+            keeps each design as it was. */}
+        <div className={clsx(maker !== "colour" && "hidden")}>
           <ColourStudio
             setCart={setCart}
-            cartPanel={cartPanel}
+            cartPanel={maker === "colour" && cartPanel}
             cartEmpty={!cart.length}
             openCheckout={() => setCheckout(true)}
           />
-        )}
+        </div>
 
         {/* Thermal maker: kept mounted (hidden) on the colour tab so its 3D
             stage survives the switch. */}
