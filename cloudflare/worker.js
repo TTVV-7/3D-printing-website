@@ -15,6 +15,7 @@ import { toNode } from "./node-adapter.js";
 import quoteUpload from "./quote-upload.js";
 import stickerAi from "./sticker-ai.js";
 import priceChat from "./price-chat.js";
+import modelFile from "./model-file.js";
 import quoteConfirm from "../api/quote-confirm.js";
 import stickerCheckout from "../api/sticker-checkout.js";
 import stickerConfirm from "../api/sticker-confirm.js";
@@ -42,6 +43,7 @@ const routes = {
   "quote-upload": quoteUpload,
   "sticker-ai": stickerAi,
   "price-chat": priceChat,
+  "model-file": modelFile,
   "quote-confirm": toNode(quoteConfirm),
   "sticker-checkout": toNode(stickerCheckout),
   "sticker-confirm": toNode(stickerConfirm),
@@ -63,7 +65,7 @@ function proxyToStore(request, url) {
 }
 
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const url = new URL(request.url);
     if (!url.pathname.startsWith("/api/")) return env.ASSETS.fetch(request);
 
@@ -81,7 +83,7 @@ export default {
       return Response.json({ error: "Payments are not set up yet" }, { status: 503 });
     }
     const route = routes[name];
-    if (route) return route(request, env);
+    if (route) return route(request, env, ctx);
     return proxyToStore(request, url);
   },
 };
