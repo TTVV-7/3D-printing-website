@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowRight, Box, Loader2, Play, RotateCcw, X } from "lucide-react";
 import { clsx } from "clsx";
+import { track } from "@vercel/analytics";
 import { models, MODELS_REPO } from "./catalog.js";
 import { ShortPlayer } from "../components/ShortPlayer.jsx";
 
@@ -24,6 +25,7 @@ const fileUrl = (p) =>
 
 // Fills in the quote form with the model and takes them there.
 function requestPrint(m, sizeMm) {
+  track("Get this printed", { model: m.id });
   const details = `I'd like this printed: ${m.name} (${m.collection}) from the 3D models page${sizeMm ? `, about ${sizeMm.join(" × ")} mm` : ""}. How many / any changes: `;
   try {
     sessionStorage.setItem("quote-prefill", JSON.stringify({ details }));
@@ -125,6 +127,7 @@ export function ModelsPage() {
   // Keep the address in step with the open model, and follow back/forward.
   function setOpen(m) {
     setOpenState(m);
+    if (m) track("Model opened", { model: m.id });
     if (location.pathname !== pathOf(m)) history.pushState(null, "", pathOf(m));
   }
   useEffect(() => {

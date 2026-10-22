@@ -4,6 +4,7 @@
 //   /api/<name> for a file in api/   -> that file, run through node-adapter.js
 //   /api/quote-upload                -> cloudflare/quote-upload.js (R2 upload)
 //   /api/sticker-ai                  -> cloudflare/sticker-ai.js (AI sticker art)
+//   /api/event, /api/stats           -> cloudflare/events.js (site analytics)
 //   any other /api/...               -> the store backend on thomasverigin.ca,
 //                                       as vercel.json's catch-all rewrite does
 //   everything else                  -> the built site in dist/ (static assets;
@@ -16,6 +17,7 @@ import quoteUpload from "./quote-upload.js";
 import stickerAi from "./sticker-ai.js";
 import priceChat from "./price-chat.js";
 import modelFile from "./model-file.js";
+import { event, stats } from "./events.js";
 import quoteConfirm from "../api/quote-confirm.js";
 import stickerCheckout from "../api/sticker-checkout.js";
 import stickerConfirm from "../api/sticker-confirm.js";
@@ -44,6 +46,8 @@ const routes = {
   "sticker-ai": stickerAi,
   "price-chat": priceChat,
   "model-file": modelFile,
+  event,
+  stats,
   "quote-confirm": toNode(quoteConfirm),
   "sticker-checkout": toNode(stickerCheckout),
   "sticker-confirm": toNode(stickerConfirm),
@@ -82,7 +86,7 @@ export default {
       console.error("payments: no live Stripe key (STRIPE_PRODUCTION) on the production domain");
       return Response.json({ error: "Payments are not set up yet" }, { status: 503 });
     }
-    const route = routes[name];
+    const route = Object.hasOwn(routes, name) ? routes[name] : null;
     if (route) return route(request, env, ctx);
     return proxyToStore(request, url);
   },

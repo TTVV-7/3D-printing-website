@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ArrowRight, Loader2, MessageCircle, Send, X } from "lucide-react";
 import { clsx } from "clsx";
+import { track } from "@vercel/analytics";
 
 // "Ask about a price": a chat bubble, bottom right, on every page. Answers
 // come from /api/price-chat (cloudflare/price-chat.js), which knows the
@@ -21,6 +22,7 @@ const STORE = "price-chat";
 
 function EstimateCard({ e }) {
   function toQuote() {
+    track("Price estimate to quote", { material: e.material, quantity: e.quantity });
     const details = `${e.name}: about ${e.sizeMm.join(" × ")} mm, ${e.build === "thin" ? "thin-walled" : e.build}, ${e.quantity} ${e.quantity > 1 ? "copies" : "copy"}. Price helper estimate $${e.low}–$${e.high}.`;
     try {
       sessionStorage.setItem("quote-prefill", JSON.stringify({ details, material: e.material, quantity: String(e.quantity) }));
@@ -100,6 +102,7 @@ export function PriceChat() {
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data.reply) throw new Error(data.error || "The price helper couldn't answer just now.");
       setMessages((m) => [...m, { role: "assistant", content: data.reply, estimate: data.estimate || undefined }]);
+      track("Price chat", { turn: next.filter((m) => m.role === "user").length, estimate: Boolean(data.estimate) });
     } catch (err) {
       setError(err.message);
     }

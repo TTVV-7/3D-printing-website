@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Play, Youtube } from "lucide-react";
+import { track } from "@vercel/analytics";
 import { CHANNEL, shorts, shortThumb } from "../shorts.js";
 import { ShortPlayer } from "./ShortPlayer.jsx";
 
@@ -17,7 +18,7 @@ export function Shorts() {
             <h2 className="mt-3 text-3xl font-bold sm:text-4xl">Watch it print.</h2>
             <p className="mt-3 text-white/65">Timelapses and new builds, posted on YouTube most weeks.</p>
           </div>
-          <a href={`${CHANNEL}?sub_confirmation=1`} target="_blank" rel="noopener noreferrer" className="btn-primary self-start sm:self-auto">
+          <a href={`${CHANNEL}?sub_confirmation=1`} onClick={() => track("Subscribe clicked", { from: "home" })} target="_blank" rel="noopener noreferrer" className="btn-primary self-start sm:self-auto">
             <Youtube size={18} /> Subscribe on YouTube
           </a>
         </div>

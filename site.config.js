@@ -35,6 +35,12 @@ export const site = {
   // no-JavaScript fallback. Leave empty to rely on the form.
   email: "thomas.verigin@gmail.com",
 
+  // Cloudflare Web Analytics site token (public; the Cloudflare build loads
+  // it). Page views are under Cloudflare dashboard > Web Analytics.
+  analytics: {
+    cloudflareToken: "bf666f6154e6459c8d97db547e622db5",
+  },
+
   // Social profiles: shown in the footer and linked from search results
   // (schema.org sameAs). Empty entries are hidden.
   social: {

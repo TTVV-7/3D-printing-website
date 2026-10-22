@@ -1,6 +1,7 @@
 import { site } from "../../site.config.js";
 import { Logo } from "./Logo.jsx";
 import { reopenConsent } from "../lib/consent.js";
+import { cookieless } from "./ConsentAnalytics.jsx";
 
 const LABELS = {
   instagram: "Instagram",
@@ -45,9 +46,11 @@ export function Footer({ home = "" }) {
           <p>
             © {new Date().getFullYear()} {site.name}. Printed in Vancouver.
           </p>
-          <button type="button" onClick={reopenConsent} className="hover:text-white">
-            Cookie settings
-          </button>
+          {!cookieless && (
+            <button type="button" onClick={reopenConsent} className="hover:text-white">
+              Cookie settings
+            </button>
+          )}
         </div>
       </div>
     </footer>

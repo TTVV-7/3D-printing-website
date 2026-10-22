@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { ExternalLink, X } from "lucide-react";
+import { track } from "@vercel/analytics";
 import { CHANNEL, shortUrl } from "../shorts.js";
 
 // Plays one YouTube Short in a pop-up, so people stay on the site. The video
@@ -7,6 +8,10 @@ import { CHANNEL, shortUrl } from "../shorts.js";
 export function ShortPlayer({ id, title, onClose }) {
   const close = useRef(onClose);
   close.current = onClose;
+
+  useEffect(() => {
+    track("Video played", { video: id });
+  }, [id]);
 
   useEffect(() => {
     const onKey = (e) => e.key === "Escape" && close.current();
@@ -36,7 +41,7 @@ export function ShortPlayer({ id, title, onClose }) {
           <a href={shortUrl(id)} target="_blank" rel="noopener noreferrer" className="btn-outline-light h-10 flex-1 px-3 text-sm">
             Watch on YouTube <ExternalLink size={14} />
           </a>
-          <a href={`${CHANNEL}?sub_confirmation=1`} target="_blank" rel="noopener noreferrer" className="btn-primary h-10 flex-1 px-3 text-sm">
+          <a href={`${CHANNEL}?sub_confirmation=1`} onClick={() => track("Subscribe clicked", { from: "player" })} target="_blank" rel="noopener noreferrer" className="btn-primary h-10 flex-1 px-3 text-sm">
             Subscribe
           </a>
         </div>

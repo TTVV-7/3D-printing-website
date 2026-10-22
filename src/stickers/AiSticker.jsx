@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { track } from "@vercel/analytics";
 import { clsx } from "clsx";
 import { Check, ImageUp, Loader2, RefreshCw, Sparkles, WandSparkles } from "lucide-react";
 
@@ -136,6 +137,7 @@ export function AiSticker({ maker, onImage }) {
       if (typeof data.left === "number") setLeft(data.left);
       if (!res.ok) throw new Error(data.error || "Something went wrong. Try again.");
       setResult(data.image);
+      track("AI sticker", { mode, maker, style });
     } catch (err) {
       setError(err.message);
     } finally {

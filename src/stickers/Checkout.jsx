@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { X, Lock, CreditCard, ArrowRight, Loader2, Heart, Send, CheckCircle2 } from "lucide-react";
 import { clsx } from "clsx";
+import { track } from "@vercel/analytics";
 import { stickers } from "../../site.config.js";
 import { deliveryCost, sizeOf, lineTotal, itemLabel, isColour, itemSizeName } from "./pricing.js";
 import { zoneOf, parcelOf, pieceOf, fits, arrival, dateRange } from "./shipping.js";
@@ -143,13 +144,20 @@ export function Checkout({ items, postal = "", onPostal, onRemove, onClose, onSe
           delivery: delivery.key,
         }),
       });
+      const summary = { stickers: items.reduce((n, it) => n + it.qty, 0), lines: items.length, colour: items.some(isColour), delivery: delivery.key };
       if (family) {
         setBusy(false);
-        if (r.ok) return setStep("sent");
+        if (r.ok) {
+          track("Sticker request", summary);
+          return setStep("sent");
+        }
         return setError("That didn't send. Try again, or email me the design.");
       }
       const { url } = r.ok ? await r.json() : {};
-      if (url) return window.location.assign(url);
+      if (url) {
+        track("Sticker checkout", summary);
+        return window.location.assign(url);
+      }
     } catch {
       // Fall through to the not-set-up message.
     }
