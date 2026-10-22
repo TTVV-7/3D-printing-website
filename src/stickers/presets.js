@@ -3,6 +3,8 @@
 // label and its background, and puts in text to change; anything can still
 // be changed after. Text sizes follow thermal.js: `size` is the cap height
 // as a share of the label's width, x and y are from its centre.
+import { SAMPLE_ROUTE } from "./route.js";
+
 const text = (t) => ({ kind: "text", x: 0, y: 0, scale: 1, rot: 0, style: "solid", weight: 400, ...t });
 
 export const PRESETS = {
@@ -14,9 +16,12 @@ export const PRESETS = {
   },
   trail: {
     name: "Trail sticker",
-    blurb: "Your trail over topo lines",
+    blurb: "Your route over topo lines: draw it or load a GPX",
     design: { sizeKey: "round-2in", pattern: "topo", patternSeed: 12, ring: "pine" },
-    layers: [text({ text: "YOUR\nTRAIL", font: "Bebas Neue", size: 0.17, style: "cutout" })],
+    layers: [
+      { kind: "route", ...SAMPLE_ROUTE, width: 1.2, dash: false, ends: true, x: 0, y: -0.04, scale: 0.72, rot: 0 },
+      text({ text: "YOUR TRAIL", font: "Bebas Neue", size: 0.1, y: 0.25, style: "cutout" }),
+    ],
   },
   ice: {
     name: "Emergency ID",

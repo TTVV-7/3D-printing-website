@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Check, CheckCircle2, X, Crosshair, Hand, ImageUp, ImagePlus, Loader2, Pencil, RotateCcw, ShoppingBag, Minus, Plus, Trash2, Type,
-  WandSparkles,
+  WandSparkles, Bike, Route,
 } from "lucide-react";
 import { clsx } from "clsx";
 import { stickers } from "../../site.config.js";
@@ -18,6 +18,8 @@ import { removeBackground, warmUp } from "./cutout.js";
 import { prepareArt } from "./colour.js";
 import { AiSticker, STICKER_AI } from "./AiSticker.jsx";
 import { PRESETS, presetOf } from "./presets.js";
+import { BIKES } from "./bikes.js";
+import { RouteDialog } from "./RouteDialog.jsx";
 import { saveDesigns } from "../account/client.js";
 
 
@@ -154,6 +156,12 @@ export function StickerStudio() {
   const [finishKey, setFinishKey] = useState(stickers.finishes[0].key);
   const [colourKeys, setColourKeys] = useState({}); // last colour picked per finish
   const [realCard, setRealCard] = useState(false);
+  // Shown on a bike (BikeScene.js) instead of beside a card: the Bike tab
+  // starts there; anyone can switch.
+  const [onBike, setOnBike] = useState(null); // null = follow the tab
+  const [bikeType, setBikeType] = useState("road");
+  const [bikePlace, setBikePlace] = useState("top");
+  const showBike = onBike ?? maker === "bike";
   // Label size, background design and edge ring (DesignControls).
   const [d, setD] = useState({ sizeKey: "round-2in", pattern: "none", patternSeed: 7, ring: "none" });
   // Only the label colours sold in this size; a pick that isn't falls back
@@ -227,6 +235,10 @@ export function StickerStudio() {
     if (ready) stage.current.cardLook(realCard);
   }, [ready, realCard, stage]);
 
+  useEffect(() => {
+    if (ready) stage.current.setBike(showBike ? bikeType : null, bikePlace);
+  }, [ready, showBike, bikeType, bikePlace, stage]);
+
   // The flat, dot-for-dot print preview.
   useEffect(() => {
     const c = flatRef.current;
@@ -251,6 +263,19 @@ export function StickerStudio() {
       setSelected(layer.id);
       setFileName(file.name);
     });
+  }
+
+  // A route (route.js): drawn or from a GPX, new or replacing one.
+  const [routeFor, setRouteFor] = useState(null); // null, "new" or a layer id
+  function placeRoute(r) {
+    if (routeFor && routeFor !== "new") {
+      setLayers((ls) => ls.map((l) => (l.id === routeFor ? { ...l, ...r } : l)));
+    } else {
+      const layer = { id: newId(), kind: "route", ...r, x: 0, y: 0, scale: 0.85, rot: 0 };
+      setLayers((ls) => [...ls, layer]);
+      setSelected(layer.id);
+    }
+    setRouteFor(null);
   }
 
   // Each new text lands somewhere new, so they don't stack up unseen.
@@ -607,7 +632,7 @@ export function StickerStudio() {
                 ) : (
                   <>
                     <Hand size={14} /> Click the sticker to edit · drag to turn
-                    <span className="hidden sm:inline"> · grid is 1 cm</span>
+                    <span className="hidden sm:inline">{showBike ? " · scroll to zoom out" : " · grid is 1 cm"}</span>
                   </>
                 )}
               </p>
@@ -616,6 +641,7 @@ export function StickerStudio() {
               <span className="flex items-center gap-2">
                 <span className="h-3 w-3 rounded-sm ring-1 ring-ink/20" style={{ background: paper }} /> Your sticker
               </span>
+              {!showBike && (
               <button
                 type="button"
                 onClick={() => setRealCard((r) => !r)}
@@ -633,7 +659,49 @@ export function StickerStudio() {
                   {realCard ? "show as outline" : "show as a real card"}
                 </span>
               </button>
+              )}
+              <button type="button" onClick={() => setOnBike(!showBike)} className="flex items-center gap-1.5 rounded-full py-0.5 hover:text-ink">
+                <Bike size={15} className="text-flame" />
+                <span className="text-flame underline-offset-2 hover:underline">{showBike ? "Show beside a credit card" : "Show it on a bike"}</span>
+              </button>
             </p>
+            {showBike && (
+              <div className="-mt-1 space-y-2 rounded-2xl bg-white p-3 ring-1 ring-ink/10">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="mr-1 text-xs font-semibold uppercase tracking-wider text-ink/50">Bike</span>
+                  {Object.entries(BIKES).map(([k, b]) => (
+                    <button
+                      key={k}
+                      type="button"
+                      onClick={() => setBikeType(k)}
+                      aria-pressed={bikeType === k}
+                      className={clsx("rounded-full px-3 py-1 text-sm ring-1 transition", bikeType === k ? "bg-ink text-white ring-ink" : "bg-white ring-ink/15 hover:ring-ink/40")}
+                    >
+                      {b.name}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="mr-1 text-xs font-semibold uppercase tracking-wider text-ink/50">On the</span>
+                  {[
+                    ["top", "Top tube"],
+                    ["down", "Down tube"],
+                    ["seat", "Seat tube"],
+                  ].map(([k, name]) => (
+                    <button
+                      key={k}
+                      type="button"
+                      onClick={() => setBikePlace(k)}
+                      aria-pressed={bikePlace === k}
+                      className={clsx("rounded-full px-3 py-1 text-sm ring-1 transition", bikePlace === k ? "bg-ink text-white ring-ink" : "bg-white ring-ink/15 hover:ring-ink/40")}
+                    >
+                      {name}
+                    </button>
+                  ))}
+                  <span className="text-xs text-ink/50">· scroll out to see the whole bike</span>
+                </div>
+              </div>
+            )}
 
             <div className="flex items-center gap-4 rounded-2xl bg-white p-4 ring-1 ring-ink/10">
               <div
@@ -668,7 +736,7 @@ export function StickerStudio() {
                       )}
                     >
                       <button type="button" onClick={() => setSelected(l.id)} className="truncate py-2 pl-3 pr-1.5">
-                        {l.kind === "image" ? "Image" : `“${l.text.split("\n")[0] || "Text"}”`}
+                        {l.kind === "image" ? "Image" : l.kind === "route" ? "Route" : `“${l.text.split("\n")[0] || "Text"}”`}
                       </button>
                       <button
                         type="button"
@@ -685,6 +753,9 @@ export function StickerStudio() {
                   </button>
                   <button type="button" onClick={() => editFileRef.current?.click()} className="btn-outline-dark h-9 px-3 text-sm">
                     <ImagePlus size={15} /> Add image
+                  </button>
+                  <button type="button" onClick={() => setRouteFor("new")} className="btn-outline-dark h-9 px-3 text-sm">
+                    <Route size={15} /> Add route
                   </button>
                   <input
                     ref={editFileRef}
@@ -758,6 +829,11 @@ export function StickerStudio() {
                       </label>
                     </div>
                     {sel.kind === "image" && cutButton(sel, "h-9 px-3")}
+                    {sel.kind === "route" && (
+                      <button type="button" onClick={() => setRouteFor(sel.id)} className="btn-outline-dark h-9 px-3 text-sm">
+                        <Route size={15} /> Change the route
+                      </button>
+                    )}
                     <div className="flex flex-wrap gap-2">
                       <button type="button" onClick={() => patchSel({ x: 0, y: 0 })} className="btn-outline-dark h-9 px-3 text-sm">
                         <Crosshair size={15} /> Centre
@@ -824,6 +900,16 @@ export function StickerStudio() {
             {cutError && <p className="-mt-3 text-sm text-flame-600">{cutError}</p>}
             <button type="button" onClick={addText} className="btn-outline-dark -mt-3 h-11 w-full text-sm">
               <Type size={16} /> Add text to your sticker
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const r = layers.find((l) => l.kind === "route");
+                setRouteFor(r ? r.id : "new");
+              }}
+              className="btn-outline-dark -mt-3 h-11 w-full text-sm"
+            >
+              <Route size={16} /> {layers.some((l) => l.kind === "route") ? "Change the route: draw it or load a GPX" : "Add a route: draw it or load a GPX"}
             </button>
 
             <div>
@@ -995,6 +1081,12 @@ export function StickerStudio() {
           </div>
         </div>
       </div>
+
+      {routeFor && (
+
+        <RouteDialog route={routeFor === "new" ? null : layers.find((l) => l.id === routeFor)} onDone={placeRoute} onClose={() => setRouteFor(null)} />
+
+      )}
 
       {checkout && (
         <Checkout

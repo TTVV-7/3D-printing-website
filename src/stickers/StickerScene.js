@@ -1,14 +1,16 @@
 // three.js stage for the sticker page: the sticker lying on a cutting mat
 // with a 1 cm grid and a credit card beside it, so the size reads at a
-// glance. Everything is in millimetres.
+// glance; or, with setBike(), wrapped round a tube of a bike (BikeScene.js)
+// at its real size. Everything is in millimetres.
 import {
   WebGLRenderer, Scene, PerspectiveCamera, PMREMGenerator, NeutralToneMapping, SRGBColorSpace,
   DirectionalLight, Shape, ExtrudeGeometry, Mesh, MeshPhysicalMaterial, MeshStandardMaterial,
-  PlaneGeometry, CanvasTexture, Group, Raycaster, Vector2,
+  PlaneGeometry, CanvasTexture, Group, Raycaster, Vector2, Vector3, BufferGeometry, Float32BufferAttribute,
 } from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import { outline as cutOutline } from "./thermal.js";
+import { buildBike, bendAroundTube } from "./BikeScene.js";
 
 const CARD = { w: 85.6, h: 53.98, t: 0.76 };
 const STICKER_T = 0.35; // a label and its backing, a touch thick so the edge shows
@@ -166,6 +168,54 @@ function realCardTexture() {
   return c;
 }
 
+// Splits a flat geometry's triangles until no edge is longer than `max` mm,
+// so bending it round a tube gives a smooth curve, not facets.
+function subdivide(geometry, max) {
+  let g = geometry.index ? geometry.toNonIndexed() : geometry;
+  for (let pass = 0; pass < 6; pass++) {
+    const pos = g.attributes.position, uv = g.attributes.uv;
+    const out = [], outUv = [], groups = [];
+    let split = false;
+    const P = (i) => new Vector3().fromBufferAttribute(pos, i);
+    const U = (i) => new Vector2().fromBufferAttribute(uv, i);
+    const tri = (a, b, c, ua, ub, uc) => {
+      out.push(a.x, a.y, a.z, b.x, b.y, b.z, c.x, c.y, c.z);
+      outUv.push(ua.x, ua.y, ub.x, ub.y, uc.x, uc.y);
+    };
+    const groupOf = (i) => g.groups.find((gr) => i >= gr.start && i < gr.start + gr.count)?.materialIndex ?? 0;
+    let start = 0, mi = groupOf(0);
+    for (let i = 0; i < pos.count; i += 3) {
+      const m = groupOf(i);
+      if (m !== mi) {
+        groups.push({ start, count: out.length / 3 - start, materialIndex: mi });
+        start = out.length / 3;
+        mi = m;
+      }
+      const v = [P(i), P(i + 1), P(i + 2)], u = [U(i), U(i + 1), U(i + 2)];
+      const lens = [v[0].distanceTo(v[1]), v[1].distanceTo(v[2]), v[2].distanceTo(v[0])];
+      const k = lens.indexOf(Math.max(...lens));
+      if (lens[k] <= max) {
+        tri(...v, ...u);
+        continue;
+      }
+      split = true;
+      const a = k, b = (k + 1) % 3, c = (k + 2) % 3;
+      const mv = v[a].clone().lerp(v[b], 0.5), mu = u[a].clone().lerp(u[b], 0.5);
+      tri(v[a], mv, v[c], u[a], mu, u[c]);
+      tri(mv, v[b], v[c], mu, u[b], u[c]);
+    }
+    groups.push({ start, count: out.length / 3 - start, materialIndex: mi });
+    const next = new BufferGeometry();
+    next.setAttribute("position", new Float32BufferAttribute(out, 3));
+    next.setAttribute("uv", new Float32BufferAttribute(outUv, 2));
+    groups.forEach((gr) => next.addGroup(gr.start, gr.count, gr.materialIndex));
+    g.dispose();
+    g = next;
+    if (!split) break;
+  }
+  return g;
+}
+
 // The extruded caps carry UVs in millimetres around the centre; map the
 // sticker's canvas onto [-w/2, w/2] × [-h/2, h/2].
 function fitTexture(tex, w, h) {
@@ -241,7 +291,7 @@ export async function mountStickers(canvas, { reducedMotion }) {
     if (!down || Math.hypot(e.clientX - down.x, e.clientY - down.y) > 5) return;
     const r = canvas.getBoundingClientRect();
     ray.setFromCamera(new Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1), camera);
-    if (ray.intersectObject(card).length) onCardClick();
+    if (card.visible && ray.intersectObject(card).length) onCardClick();
     else if (ray.intersectObject(group).length) onStickerClick();
   };
   const onMove = (e) => {
@@ -261,8 +311,12 @@ export async function mountStickers(canvas, { reducedMotion }) {
   const edgeMat = new MeshStandardMaterial({ color: 0xf2f0ea, roughness: 0.8 });
 
   let size = { w: 60, h: 60 };
+  // On a bike: { type, place, built } or null for the mat and card.
+  let bike = null;
+  let last = null;
 
   function frame() {
+    if (bike) return frameBike();
     const { clientWidth: cw, clientHeight: ch } = canvas;
     const span = size.w + GAP + CARD.w;
     const deep = Math.max(size.h, CARD.h);
@@ -281,7 +335,37 @@ export async function mountStickers(canvas, { reducedMotion }) {
     camera.updateProjectionMatrix();
   }
 
+  // Close on the sticker, with enough frame round it to read the size; zoom
+  // out to see the whole bike.
+  function frameBike() {
+    const { clientWidth: cw, clientHeight: ch } = canvas;
+    const tan = Math.tan((camera.fov * Math.PI) / 360);
+    const show = Math.max(size.w, size.h) * 4 + 260;
+    const dist = Math.max(show / 2 / (tan * (cw / ch || 1)), show / 2 / tan);
+    const at = group.position.clone();
+    controls.target.copy(at);
+    camera.position.copy(at).add(new Vector3(0.35, 0.18, 1).normalize().multiplyScalar(dist));
+    controls.minDistance = Math.max(40, dist * 0.3);
+    controls.maxDistance = 3500;
+    controls.autoRotate = false;
+    camera.near = 5;
+    camera.far = 20000;
+    camera.updateProjectionMatrix();
+  }
+
   function layout() {
+    if (bike) {
+      const t = bike.built.tubes[bike.place] || bike.built.tubes.top;
+      let ang = Math.atan2(t.to.y - t.from.y, t.to.x - t.from.x);
+      // Keep text the right way up on tubes that lean back.
+      if (ang > Math.PI / 2) ang -= Math.PI;
+      if (ang < -Math.PI / 2) ang += Math.PI;
+      group.position.copy(t.from).lerp(t.to, 0.5);
+      group.rotation.set(0, 0, ang);
+      return;
+    }
+    group.position.set(0, 0, 0);
+    group.rotation.set(0, 0, 0);
     const span = size.w + GAP + CARD.w;
     const left = -span / 2;
     group.position.set(left + size.w / 2, 0, 0);
@@ -327,10 +411,40 @@ export async function mountStickers(canvas, { reducedMotion }) {
       Object.assign(topMat, FINISH[finish]);
       topMat.needsUpdate = true;
       edgeMat.color.set(paper);
-      sticker = slab(w, h, STICKER_T, stickerShape(w, h, crop, cropSeed), topMat, edgeMat);
+      if (bike) {
+        const t = bike.built.tubes[bike.place] || bike.built.tubes.top;
+        const geo = new ExtrudeGeometry(stickerShape(w, h, crop, cropSeed), { depth: STICKER_T, bevelEnabled: false, curveSegments: 48 });
+        // Enough rows across the sticker for it to curve smoothly.
+        sticker = new Mesh(bendAroundTube(subdivide(geo, t.r / 6), t.r), [topMat, edgeMat]);
+      } else {
+        sticker = slab(w, h, STICKER_T, stickerShape(w, h, crop, cropSeed), topMat, edgeMat);
+      }
+      last = { art, w, h, crop, cropSeed, finish, paper };
       group.add(sticker);
       layout();
       if (resized) frame();
+    },
+    // Shows the sticker on a bike of `type` (BikeScene.js BIKES) on its
+    // `place` tube ("top", "down", "seat"), or back on the mat with null.
+    setBike(type, place = "top") {
+      if (bike?.built && bike.type !== type) {
+        scene.remove(bike.built.group);
+        bike.built.group.traverse((o) => o.geometry?.dispose());
+      }
+      if (!type) {
+        bike = null;
+        mat.visible = card.visible = true;
+        controls.target.set(0, 0, 0);
+        camera.position.set(0, 0.85, 0.75);
+      } else {
+        const built = bike?.type === type ? bike.built : buildBike(type);
+        if (bike?.type !== type) scene.add(built.group);
+        bike = { type, place, built };
+        mat.visible = card.visible = false;
+      }
+      if (last) this.update(last);
+      else layout();
+      frame();
     },
     cardLook,
     onCardClick(fn) {
@@ -348,6 +462,7 @@ export async function mountStickers(canvas, { reducedMotion }) {
       raf = 0;
     },
     resetView() {
+      if (bike) return frameBike();
       camera.position.set(0, 0.85, 0.75);
       controls.autoRotate = !reducedMotion;
       frame();

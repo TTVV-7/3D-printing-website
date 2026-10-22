@@ -4,7 +4,7 @@
 //
 // A design, drawn bottom to top:
 //   pattern, patternSeed   a generated background (library.js), or "none"
-//   layers                 images and text, in order (below)
+//   layers                 images, text and routes (route.js), in order (below)
 //   ring                   an edge ring with its white frame, or "none"
 //   crop, cropSeed         the cut shape (library.js), or "none" for the label
 // Layer positions and sizes are fractions of the sticker's width, so a design
@@ -15,6 +15,7 @@
 //     letters) or "cutout" (white letters, outlined)
 // x, y are from the centre (y down); rot is in radians.
 import { maskPath, drawDesign, designAlphaMask, drawEdgeRing, ringInner } from "./library.js";
+import { drawRoute } from "./route.js";
 
 // 203 dpi, the usual thermal head: 8 dots per millimetre.
 export const DOTS_PER_MM = 8;
@@ -61,8 +62,8 @@ let measurer = null;
 // A layer's unscaled, unrotated size in mm on a sticker { w, h, shape }.
 export function layerBase(layer, sticker) {
   const { w, h } = sticker;
-  if (layer.kind === "image") {
-    const aspect = layer.img.naturalWidth / layer.img.naturalHeight;
+  if (layer.kind === "image" || layer.kind === "route") {
+    const aspect = layer.kind === "route" ? layer.aspect : layer.img.naturalWidth / layer.img.naturalHeight;
     const d = innerCircle(sticker);
     if (d) {
       // The longer side spans the circle: artwork's corners are usually
@@ -185,7 +186,15 @@ export function renderThermal(design, { w, h, mode, threshold, invert, paper }) 
     };
     ctx.save();
     pg.save();
-    if (layer.kind === "image") {
+    if (layer.kind === "route") {
+      // Crisp black like text, with a white edge over a pattern.
+      const s = (layer.aspect >= 1 ? lw : lh) * D;
+      place(ctx);
+      drawRoute(ctx, layer, s, D, hasPattern);
+      place(pg);
+      pg.globalCompositeOperation = "destination-out";
+      drawRoute(pg, { ...layer, width: layer.width + 1.4 }, s, D, false);
+    } else if (layer.kind === "image") {
       const src = smoothScaled(layer.img, lw * D, lh * D);
       place(ctx);
       // Multiply: an image's white shows the design under it, like paper.
