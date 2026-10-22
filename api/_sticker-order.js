@@ -244,6 +244,8 @@ export async function fileOrder({ id, title, heading, notes, delivery, shipTo, p
     });
   const saved = await post("print-requests");
   if (!saved.ok) throw new Error(`print-requests ${saved.status}`);
+  // On Cloudflare, also into the customer's account (cloudflare/accounts.js).
+  await globalThis.__PRINTYOURS_RECORD?.(entry);
   const mailed = await post("notify-request");
   if (!mailed.ok) throw new Error(`notify-request ${mailed.status}`);
 }

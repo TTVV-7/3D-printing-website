@@ -113,6 +113,7 @@ export default defineConfig({
         stickers: fileURLToPath(new URL("./stickers/index.html", import.meta.url)),
         bike: fileURLToPath(new URL("./bike/index.html", import.meta.url)),
         models: fileURLToPath(new URL("./models/index.html", import.meta.url)),
+        account: fileURLToPath(new URL("./account/index.html", import.meta.url)),
       },
     },
   },

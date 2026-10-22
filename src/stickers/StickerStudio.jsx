@@ -18,6 +18,7 @@ import { removeBackground, warmUp } from "./cutout.js";
 import { prepareArt } from "./colour.js";
 import { AiSticker, STICKER_AI } from "./AiSticker.jsx";
 import { PRESETS, presetOf } from "./presets.js";
+import { saveDesigns } from "../account/client.js";
 
 
 // The cart lives in this browser, so it survives a reload or a trip to Stripe
@@ -38,6 +39,9 @@ function useCart() {
   const save = (next) =>
     setCart((cur) => {
       const value = typeof next === "function" ? next(cur) : next;
+      // Signed-in customers keep what they make (src/account/client.js).
+      const added = value.filter((it) => !cur.some((c) => c.id === it.id));
+      if (added.length) saveDesigns(added);
       try {
         localStorage.setItem("sticker-cart", JSON.stringify(value));
       } catch {

@@ -57,6 +57,15 @@ function Submitted({ entry, onReset }) {
         a quote and a realistic turnaround.
       </p>
       <p className="mt-3 font-mono text-xs text-ink/40">Ref {entry.id.slice(0, 8).toUpperCase()}</p>
+      {import.meta.env.VITE_ACCOUNTS === "1" && (
+        <p className="mt-3 text-sm text-ink/60">
+          Follow it in{" "}
+          <a href="/account/" className="font-medium text-ink underline decoration-flame underline-offset-4 hover:text-flame">
+            your account
+          </a>
+          , signing in with this email.
+        </p>
+      )}
       <button type="button" className="btn-outline-dark mt-6" onClick={onReset}>
         Send another request
       </button>

@@ -5,6 +5,7 @@
 //   /api/quote-upload                -> cloudflare/quote-upload.js (R2 upload)
 //   /api/sticker-ai                  -> cloudflare/sticker-ai.js (AI sticker art)
 //   /api/event, /api/stats           -> cloudflare/events.js (site analytics)
+//   /api/auth/*, /api/account/*      -> cloudflare/accounts.js (customer accounts)
 //   any other /api/...               -> the store backend on thomasverigin.ca,
 //                                       as vercel.json's catch-all rewrite does
 //   everything else                  -> the built site in dist/ (static assets;
@@ -19,6 +20,7 @@ import priceChat from "./price-chat.js";
 import modelFile from "./model-file.js";
 import { event, stats } from "./events.js";
 import { passesTurnstile } from "./turnstile.js";
+import { accountRoutes, recordOrder } from "./accounts.js";
 import quoteConfirm from "../api/quote-confirm.js";
 import stickerCheckout from "../api/sticker-checkout.js";
 import stickerConfirm from "../api/sticker-confirm.js";
@@ -44,7 +46,7 @@ const LIVE_KEY = /^(sk|rk)_live_/;
 
 // Routes that store files, file requests or send email without a payment:
 // they need a Turnstile pass (X-Turnstile header) once TURNSTILE_SECRET is set.
-const GUARDED = new Set(["quote-upload", "print-requests", "notify-request", "quote-confirm", "sticker-request"]);
+const GUARDED = new Set(["quote-upload", "print-requests", "notify-request", "quote-confirm", "sticker-request", "auth/email"]);
 
 const routes = {
   "quote-upload": quoteUpload,
@@ -53,6 +55,7 @@ const routes = {
   "model-file": modelFile,
   event,
   stats,
+  ...accountRoutes,
   "quote-confirm": toNode(quoteConfirm),
   "sticker-checkout": toNode(stickerCheckout),
   "sticker-confirm": toNode(stickerConfirm),
@@ -61,16 +64,32 @@ const routes = {
   "sticker-upload": toNode(stickerUpload),
 };
 
-function proxyToStore(request, url) {
+function proxyToStore(request, url, body) {
   const headers = new Headers(request.headers);
   headers.delete("host");
+  headers.delete("cookie");
   const hasBody = !["GET", "HEAD"].includes(request.method);
   return fetch(`${STORE_API}${url.pathname.slice("/api".length)}${url.search}`, {
     method: request.method,
     headers,
-    body: hasBody ? request.body : undefined,
+    body: hasBody ? (body ?? request.body) : undefined,
     redirect: "manual",
   });
+}
+
+// A quote request on its way to the store backend: once it's saved there,
+// it's also recorded for the customer's account (cloudflare/accounts.js).
+async function quoteRequest(request, env, url) {
+  const text = await request.text();
+  const res = await proxyToStore(request, url, text);
+  if (res.ok) {
+    try {
+      await recordOrder(env, JSON.parse(text));
+    } catch {
+      // Not JSON: the store backend will have said so.
+    }
+  }
+  return res;
 }
 
 export default {
@@ -80,6 +99,8 @@ export default {
 
     // What the api/ files read through process.env and @vercel/blob.
     globalThis.__PRINTYOURS_R2 = env.UPLOADS;
+    // Sticker orders filed by api/_sticker-order.js go into accounts too.
+    globalThis.__PRINTYOURS_RECORD = (entry) => recordOrder(env, entry);
     const production = PRODUCTION_HOSTS.has(url.hostname);
     process.env.VERCEL_ENV = production ? "production" : "preview";
     for (const [name, alias] of Object.entries(SECRET_ALIASES)) {
@@ -96,6 +117,7 @@ export default {
     }
     const route = Object.hasOwn(routes, name) ? routes[name] : null;
     if (route) return route(request, env, ctx);
+    if (name === "print-requests" && request.method === "POST") return quoteRequest(request, env, url);
     return proxyToStore(request, url);
   },
 };
