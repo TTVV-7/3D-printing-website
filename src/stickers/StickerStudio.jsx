@@ -9,7 +9,7 @@ import { renderThermal, printFile, previewArt, DOTS_PER_MM } from "./thermal.js"
 import { DesignControls } from "./DesignControls.jsx";
 
 import { StickerEditor } from "./StickerEditor.jsx";
-import { Checkout } from "./Checkout.jsx";
+import { Checkout, uploadArt } from "./Checkout.jsx";
 import { DeliveryEstimate } from "./DeliveryEstimate.jsx";
 import { priceEach, sizeOf, lineTotal, itemLabel, finishesFor, isColour, itemSizeName } from "./pricing.js";
 import { ColourStudio } from "./ColourStudio.jsx";
@@ -372,8 +372,35 @@ export function StickerStudio() {
     ink: { mode, threshold, invert },
     fileName,
   });
-  function addToCart() {
-    setCart((c) => [...c, cartItem()].slice(-MAX_CART));
+  // The image on the sticker, as the customer gave it (cut out, if they
+  // removed its background), uploaded alongside the print file so it can be
+  // printed from the in-shop app at full quality. Not for the sample image.
+  async function uploadOriginal() {
+    const layer = layers.find((l) => l.kind === "image");
+    if (!layer || !fileName) return "";
+    let side = 2400;
+    for (let tries = 0; tries < 5; tries++, side = Math.round(side * 0.75)) {
+      const iw = layer.img.naturalWidth || layer.img.width, ih = layer.img.naturalHeight || layer.img.height;
+      const k = Math.min(1, side / Math.max(iw, ih));
+      const c = document.createElement("canvas");
+      c.width = Math.round(iw * k);
+      c.height = Math.round(ih * k);
+      const g = c.getContext("2d");
+      g.imageSmoothingQuality = "high";
+      g.drawImage(layer.img, 0, 0, c.width, c.height);
+      const png = c.toDataURL("image/png");
+      // Under api/sticker-upload.js's 3 MB limit.
+      if (png.length * 0.75 < 2.9 * 1024 * 1024) return uploadArt(png, `${sizeOf(d.sizeKey).code}-original`);
+    }
+    return "";
+  }
+  const [adding, setAdding] = useState(false);
+  async function addToCart() {
+    const item = cartItem();
+    setAdding(true);
+    const sourceUrl = await uploadOriginal();
+    setAdding(false);
+    setCart((c) => [...c, sourceUrl ? { ...item, sourceUrl } : item].slice(-MAX_CART));
     setAdded(true);
   }
   // Something changed since it went in: the button offers to add it again.
@@ -935,10 +962,16 @@ export function StickerStudio() {
               <button
                 type="button"
                 onClick={addToCart}
-                disabled={added}
+                disabled={added || adding}
                 className={clsx("btn mt-4 w-full", added ? "bg-white/10 text-white/70" : "bg-white text-ink hover:bg-paper")}
               >
-                {added ? <><Check size={18} /> In your cart. Design another?</> : <><Plus size={18} /> Add to cart</>}
+                {added ? (
+                  <><Check size={18} /> In your cart. Design another?</>
+                ) : adding ? (
+                  <><Loader2 size={18} className="animate-spin" /> Adding…</>
+                ) : (
+                  <><Plus size={18} /> Add to cart</>
+                )}
               </button>
             </div>
 

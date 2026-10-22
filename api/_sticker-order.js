@@ -75,7 +75,15 @@ export function readOrder(body, origin) {
         `ink: ${ink.mode === "dither" ? "dotted" : "solid"}, darkness ${clamp(ink.threshold, 0, 255)}${ink.invert ? ", inverted" : ""}`,
         `file: ${short(it.file, 60) || "(sample)"}`,
         `print file: ${isFile(it.art) ? it.art : "(not uploaded)"}`,
-      ].join(" | ").slice(0, 500),
+        // The customer's image itself, before it was turned into print dots,
+        // so it can be printed straight from the app like a design of your own.
+        ...(isFile(it.source) ? [`original image: ${it.source}`] : []),
+      ]
+        // Over Stripe's 500 characters, the uploaded file's name goes first,
+        // so the links stay whole.
+        .filter((part, _, all) => all.join(" | ").length <= 500 || !part.startsWith("file: "))
+        .join(" | ")
+        .slice(0, 500),
     });
   }
   const mailed = delivery.key !== "pickup";
@@ -142,6 +150,7 @@ function readColourItem(it, isFile) {
 }
 
 const imageOf = (note) => note.match(/print file: (https:\S+)/)?.[1];
+const originalOf = (note) => note.match(/original image: (https:\S+)/)?.[1];
 const qtyOf = (note) => Number(note.match(/^(\d+) x/)?.[1]) || 0;
 // The label roll, as the Sticker Printer app names it ("matte-pink"), from
 // the label name in a note ("Pink matte").
@@ -151,8 +160,7 @@ const LABEL_KEYS = Object.fromEntries(
 // Opens the design in the in-shop Sticker Printer app (TTVV-7/Stickers,
 // running on this computer at port 8420) on the right label, roll colour and
 // copies.
-const appLink = (note) => {
-  const file = imageOf(note);
+const appLink = (note, file = imageOf(note)) => {
   const code = note.match(/printer size (w\d+h\d+)/)?.[1];
   if (!file || !code) return null;
   const label = LABEL_KEYS[note.split(" | ")[1]];
@@ -183,6 +191,9 @@ export async function fileOrder({ id, title, heading, notes, delivery, shipTo, p
       ``,
       `${i + 1}. ${note.split(" | ").join("\n   ")}`,
       ...(appLink(note) ? [`   open in Sticker Printer: ${appLink(note)}`] : []),
+      ...(originalOf(note) && appLink(note, originalOf(note))
+        ? [`   open the original in Sticker Printer: ${appLink(note, originalOf(note))}`]
+        : []),
     ]),
     ``,
     `Delivery: ${delivery?.name || "-"}`,
@@ -209,7 +220,10 @@ export async function fileOrder({ id, title, heading, notes, delivery, shipTo, p
     deadline: null,
     budget,
     files: notes
-      .map((note, i) => imageOf(note) && { name: `sticker-${i + 1}.png`, size: 0, url: imageOf(note) })
+      .flatMap((note, i) => [
+        imageOf(note) && { name: `sticker-${i + 1}.png`, size: 0, url: imageOf(note) },
+        originalOf(note) && { name: `sticker-${i + 1}-original.png`, size: 0, url: originalOf(note) },
+      ])
       .filter(Boolean),
     title: `${title}: ${count} stickers, ${notes.length} design${notes.length > 1 ? "s" : ""}`,
     stlName: null,

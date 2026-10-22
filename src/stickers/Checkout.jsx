@@ -125,6 +125,7 @@ export function Checkout({ items, postal = "", onPostal, onRemove, onClose, onSe
             file: it.fileName,
             art: arts[i],
             preview: previews[i],
+            source: it.sourceUrl,
           })),
           customer: {
             name: who.name.trim(),

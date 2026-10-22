@@ -121,6 +121,34 @@ function textLines(ctx, layer, size, draw) {
   lines.forEach((t, i) => draw(t, (i - (lines.length - 1) / 2) * size * 1.15));
 }
 
+// Big uploads shrunk straight to print size in one step alias: edges come out
+// ragged and thin lines drop out once the dots are thresholded. This halves
+// them a step at a time with high-quality smoothing first, as the in-shop
+// Sticker Printer app does, and keeps the result for the next redraw.
+const shrunk = new WeakMap();
+function smoothScaled(img, width, height) {
+  const tw = Math.max(1, Math.round(width)), th = Math.max(1, Math.round(height));
+  let cw = img.naturalWidth || img.width, ch = img.naturalHeight || img.height;
+  if (cw <= tw * 2 && ch <= th * 2) return img;
+  const key = `${tw}x${th}`;
+  const hit = shrunk.get(img);
+  if (hit?.key === key) return hit.canvas;
+  let cur = img;
+  while (cw > tw * 2 || ch > th * 2) {
+    cw = Math.max(tw, Math.round(cw / 2));
+    ch = Math.max(th, Math.round(ch / 2));
+    const c = document.createElement("canvas");
+    c.width = cw;
+    c.height = ch;
+    const g = c.getContext("2d");
+    g.imageSmoothingQuality = "high";
+    g.drawImage(cur, 0, 0, cw, ch);
+    cur = c;
+  }
+  shrunk.set(img, { key, canvas: cur });
+  return cur;
+}
+
 // Returns a canvas the size of the sticker in print dots. Inside the shape is
 // paper and ink; outside it is transparent.
 export function renderThermal(design, { w, h, mode, threshold, invert, paper }) {
@@ -158,12 +186,15 @@ export function renderThermal(design, { w, h, mode, threshold, invert, paper }) 
     ctx.save();
     pg.save();
     if (layer.kind === "image") {
+      const src = smoothScaled(layer.img, lw * D, lh * D);
       place(ctx);
       // Multiply: an image's white shows the design under it, like paper.
       ctx.globalCompositeOperation = "multiply";
-      ctx.drawImage(layer.img, (-lw / 2) * D, (-lh / 2) * D, lw * D, lh * D);
+      ctx.imageSmoothingQuality = "high";
+      ctx.drawImage(src, (-lw / 2) * D, (-lh / 2) * D, lw * D, lh * D);
       place(pg);
-      pg.drawImage(layer.img, (-lw / 2) * D, (-lh / 2) * D, lw * D, lh * D);
+      pg.imageSmoothingQuality = "high";
+      pg.drawImage(src, (-lw / 2) * D, (-lh / 2) * D, lw * D, lh * D);
     } else {
       // Text over a photo is crisp, not dotted.
       place(pg);
