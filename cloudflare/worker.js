@@ -14,6 +14,7 @@
 import { toNode } from "./node-adapter.js";
 import quoteUpload from "./quote-upload.js";
 import stickerAi from "./sticker-ai.js";
+import priceChat from "./price-chat.js";
 import quoteConfirm from "../api/quote-confirm.js";
 import stickerCheckout from "../api/sticker-checkout.js";
 import stickerConfirm from "../api/sticker-confirm.js";
@@ -40,6 +41,7 @@ const LIVE_KEY = /^(sk|rk)_live_/;
 const routes = {
   "quote-upload": quoteUpload,
   "sticker-ai": stickerAi,
+  "price-chat": priceChat,
   "quote-confirm": toNode(quoteConfirm),
   "sticker-checkout": toNode(stickerCheckout),
   "sticker-confirm": toNode(stickerConfirm),

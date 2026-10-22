@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Loader2, CheckCircle2, AlertCircle, ArrowRight, ChevronDown } from "lucide-react";
 import { clsx } from "clsx";
 import { FileDrop } from "./FileDrop.jsx";
@@ -94,6 +94,24 @@ export function QuoteForm({
   titlePrefix = "",
 }) {
   const [form, setForm] = useState(EMPTY);
+
+  // An estimate sent over from the price chat (PriceChat.jsx), on arrival or
+  // while already on the page.
+  useEffect(() => {
+    const take = () => {
+      try {
+        const p = JSON.parse(sessionStorage.getItem("quote-prefill"));
+        if (!p) return;
+        sessionStorage.removeItem("quote-prefill");
+        setForm((f) => ({ ...f, details: p.details || f.details, material: p.material || f.material, quantity: p.quantity || f.quantity }));
+      } catch {
+        // Nothing to fill in.
+      }
+    };
+    take();
+    window.addEventListener("quote:prefill", take);
+    return () => window.removeEventListener("quote:prefill", take);
+  }, []);
   const [files, setFiles] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   const [progress, setProgress] = useState(null);

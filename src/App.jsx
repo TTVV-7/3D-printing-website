@@ -9,6 +9,7 @@ import { Quote } from "./components/Quote.jsx";
 import { Footer } from "./components/Footer.jsx";
 import { CookieBanner } from "./components/CookieBanner.jsx";
 import { ConsentAnalytics } from "./components/ConsentAnalytics.jsx";
+import { PriceChat } from "./components/PriceChat.jsx";
 
 export function App() {
   return (
@@ -26,6 +27,7 @@ export function App() {
       <Footer />
       <CookieBanner />
       <ConsentAnalytics />
+      <PriceChat />
     </>
   );
 }
