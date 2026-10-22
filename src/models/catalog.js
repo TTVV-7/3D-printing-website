@@ -5,6 +5,9 @@
 //   file     path in the repo (GLB, 3MF or STL); `preview` an image beside it
 //   name     what the card says; edit freely
 //   mb       file size, for reference: big files take a while to open
+//   video    its YouTube Short: {id, date} (date it went up, YYYY-MM-DD)
+//
+// Each shown model also gets its own page, /models/<id>/ (scripts/model-pages.js).
 //
 // The Worker fetches a shown model from GitHub the first time someone opens
 // it and keeps it in the weave-models R2 bucket (cloudflare/model-file.js).
@@ -39,7 +42,7 @@ export const models = [
   {id: "reviewstand-example-review-stand-assembled", name: "Review stand", collection: "Review stand", file: "reviewstand/example/review_stand_assembled.3mf", preview: "reviewstand/example/review_stand_assembled_preview.png", mb: 0.2, show: true},
   {id: "reviewstand-example-review-stand-base", name: "Review stand base", collection: "Review stand", file: "reviewstand/example/review_stand_base.3mf", preview: "reviewstand/example/review_stand_base_preview.png", mb: 0.0, show: false},
   {id: "reviewstand-example-review-stand-sign", name: "Review stand sign", collection: "Review stand", file: "reviewstand/example/review_stand_sign.3mf", preview: "reviewstand/example/review_stand_sign_preview.png", mb: 0.2, show: false},
-  {id: "keyholders-bucket", name: "Bucket", collection: "Key holders", file: "keyholders/bucket.3mf", preview: "keyholders/bucket.png", mb: 0.0, show: true},
+  {id: "keyholders-bucket", name: "Excavator bucket", collection: "Key holders", file: "keyholders/bucket.3mf", preview: "keyholders/bucket.png", mb: 0.0, show: true, video: {id: "nSBOuU-zwmc", date: "2026-10-11"}},
   {id: "keyholders-forks", name: "Forks", collection: "Key holders", file: "keyholders/forks.3mf", preview: "keyholders/forks.png", mb: 0.0, show: true},
   {id: "penholder-genie-pen-holder", name: "Genie pen holder", collection: "Pen holders", file: "penholder/genie_pen_holder.3mf", preview: "penholder/genie_preview.png", mb: 0.1, show: true},
   {id: "penholder-telehandler-pen-holder", name: "Telehandler pen holder", collection: "Pen holders", file: "penholder/telehandler_pen_holder.3mf", preview: null, mb: 0.1, show: false},

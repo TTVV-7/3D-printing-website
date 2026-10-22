@@ -4,6 +4,7 @@ import { Services } from "./components/Services.jsx";
 import { Designer } from "./components/Designer.jsx";
 import { Materials } from "./components/Materials.jsx";
 import { Work } from "./components/Work.jsx";
+import { Shorts } from "./components/Shorts.jsx";
 import { Reviews } from "./components/Reviews.jsx";
 import { Quote } from "./components/Quote.jsx";
 import { Footer } from "./components/Footer.jsx";
@@ -21,6 +22,7 @@ export function App() {
         <Designer />
         <Services />
         <Work />
+        <Shorts />
         <Materials />
         <Reviews />
       </main>

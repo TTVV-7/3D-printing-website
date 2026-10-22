@@ -6,6 +6,7 @@ const LABELS = {
   instagram: "Instagram",
   tiktok: "TikTok",
   youtube: "YouTube",
+  linkedin: "LinkedIn",
   facebook: "Facebook",
   makerworld: "MakerWorld",
 };

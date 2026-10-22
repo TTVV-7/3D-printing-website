@@ -1,13 +1,18 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowRight, Box, Loader2, RotateCcw, X } from "lucide-react";
+import { ArrowRight, Box, Loader2, Play, RotateCcw, X } from "lucide-react";
 import { clsx } from "clsx";
 import { models, MODELS_REPO } from "./catalog.js";
+import { ShortPlayer } from "../components/ShortPlayer.jsx";
 
 // The /models page: models from the Weave-Trial repo marked `show: true` in
 // catalog.js, each with a picture, a 3D view (ModelScene.js) and a button
-// that turns it into a quote request.
+// that turns it into a quote request. Opening a model moves the address to
+// /models/<id>/, its own page (scripts/model-pages.js), so it can be shared
+// and found in search; landing on that address opens the model.
 
 const SHOWN = models.filter((m) => m.show);
+const pathOf = (m) => (m ? `/models/${m.id}/` : "/models/");
+const fromPath = () => SHOWN.find((m) => location.pathname.replace(/\/+$/, "") === `/models/${m.id}`) || null;
 const extOf = (p) => p.slice(p.lastIndexOf(".") + 1).toLowerCase();
 
 // On Cloudflare the Worker serves (and keeps) the files; elsewhere they come
@@ -31,6 +36,7 @@ function requestPrint(m, sizeMm) {
 function Viewer({ model, onClose }) {
   const canvasRef = useRef(null);
   const [state, setState] = useState({ loading: true });
+  const [watching, setWatching] = useState(false);
   const close = useRef(onClose);
   close.current = onClose;
 
@@ -48,7 +54,7 @@ function Viewer({ model, onClose }) {
         console.warn("3D view:", err);
         if (!cancelled) setState({ error: true });
       });
-    const onKey = (e) => e.key === "Escape" && close.current();
+    const onKey = (e) => e.key === "Escape" && !document.querySelector("[data-short-player]") && close.current();
     window.addEventListener("keydown", onKey);
     return () => {
       cancelled = true;
@@ -93,11 +99,19 @@ function Viewer({ model, onClose }) {
             <p className="text-lg font-semibold">{model.name}</p>
             {state.sizeMm && <p className="text-sm text-ink/55">About {state.sizeMm.join(" × ")} mm</p>}
           </div>
-          <button type="button" onClick={() => requestPrint(model, state.sizeMm)} className="btn-primary">
-            Get this printed <ArrowRight size={16} />
-          </button>
+          <div className="flex flex-wrap gap-2">
+            {model.video && (
+              <button type="button" onClick={() => setWatching(true)} className="btn-outline-dark">
+                <Play size={16} fill="currentColor" /> Watch it print
+              </button>
+            )}
+            <button type="button" onClick={() => requestPrint(model, state.sizeMm)} className="btn-primary">
+              Get this printed <ArrowRight size={16} />
+            </button>
+          </div>
         </div>
       </div>
+      {watching && <ShortPlayer id={model.video.id} title={model.name} onClose={() => setWatching(false)} />}
     </div>
   );
 }
@@ -105,8 +119,19 @@ function Viewer({ model, onClose }) {
 export function ModelsPage() {
   const collections = useMemo(() => [...new Set(SHOWN.map((m) => m.collection))], []);
   const [filter, setFilter] = useState("All");
-  const [open, setOpen] = useState(null);
+  const [open, setOpenState] = useState(fromPath);
   const list = filter === "All" ? SHOWN : SHOWN.filter((m) => m.collection === filter);
+
+  // Keep the address in step with the open model, and follow back/forward.
+  function setOpen(m) {
+    setOpenState(m);
+    if (location.pathname !== pathOf(m)) history.pushState(null, "", pathOf(m));
+  }
+  useEffect(() => {
+    const onPop = () => setOpenState(fromPath());
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
 
   return (
     <>
@@ -147,16 +172,25 @@ export function ModelsPage() {
             <ul className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
               {list.map((m) => (
                 <li key={m.id}>
-                  <button
-                    type="button"
-                    onClick={() => setOpen(m)}
+                  <a
+                    href={pathOf(m)}
+                    onClick={(e) => {
+                      if (e.metaKey || e.ctrlKey || e.shiftKey || e.button) return;
+                      e.preventDefault();
+                      setOpen(m);
+                    }}
                     className="group flex h-full w-full flex-col overflow-hidden rounded-3xl bg-white text-left ring-1 ring-ink/10 transition hover:-translate-y-0.5 hover:shadow-xl hover:shadow-ink/5"
                   >
-                    <span className="flex aspect-[4/3] items-center justify-center bg-gradient-to-b from-[#eef2ee] to-[#dfe6df] p-4">
+                    <span className="relative flex aspect-[4/3] items-center justify-center bg-gradient-to-b from-[#eef2ee] to-[#dfe6df] p-4">
                       {m.preview ? (
                         <img src={fileUrl(m.preview)} alt="" loading="lazy" className="max-h-full max-w-full object-contain transition duration-500 group-hover:scale-105" />
                       ) : (
                         <Box size={48} className="text-ink/25" />
+                      )}
+                      {m.video && (
+                        <span className="absolute left-3 top-3 flex items-center gap-1 rounded-full bg-ink/80 px-2.5 py-1 text-xs font-medium text-white">
+                          <Play size={10} fill="currentColor" /> Video
+                        </span>
                       )}
                     </span>
                     <span className="flex flex-1 items-end justify-between gap-3 p-5">
@@ -166,7 +200,7 @@ export function ModelsPage() {
                       </span>
                       <span className="flex-none text-sm font-semibold text-ink/60 group-hover:text-flame">View in 3D</span>
                     </span>
-                  </button>
+                  </a>
                 </li>
               ))}
             </ul>

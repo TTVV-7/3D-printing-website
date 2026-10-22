@@ -2,6 +2,7 @@ import { fileURLToPath } from "node:url";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { site } from "./site.config.js";
+import { models } from "./src/models/catalog.js";
 
 // Quote requests, uploads and portfolio data are served by the existing store
 // backend (filament-shopping). In production vercel.json proxies /api there;
@@ -92,6 +93,10 @@ function seo() {
           `  <url><loc>${url}/stickers/</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>\n` +
           `  <url><loc>${url}/bike/</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>\n` +
           `  <url><loc>${url}/models/</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>\n` +
+          models
+            .filter((m) => m.show)
+            .map((m) => `  <url><loc>${url}/models/${m.id}/</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>\n`)
+            .join("") +
           `</urlset>\n`,
       });
     },

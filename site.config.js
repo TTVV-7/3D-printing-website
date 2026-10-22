@@ -40,7 +40,8 @@ export const site = {
   social: {
     instagram: "",
     tiktok: "",
-    youtube: "https://www.youtube.com/watch?v=pHTwqG2WMGA",
+    youtube: "https://www.youtube.com/@tom-sp1sx",
+    linkedin: "",
     facebook: "",
     makerworld: "",
   },
