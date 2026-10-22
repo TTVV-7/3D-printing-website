@@ -28,6 +28,15 @@ const STORE_API = "https://thomasverigin.ca/3Dprintingstore/api";
 // and workers.dev URLs can never take real money, as on Vercel.
 const PRODUCTION_HOSTS = new Set(["printyours.ca", "www.printyours.ca"]);
 
+// The secrets as they're named in the Cloudflare dashboard, for the names the
+// api/ files read. The api/ names win when both are set.
+const SECRET_ALIASES = { RESEND_API_KEY: "ReSend", STRIPE_PRODUCTION: "Stripe_Claude" };
+
+// On the real domain these routes take payments; without a live Stripe key
+// they'd quietly fall back to the test key, so they're turned off instead.
+const PAYMENT_ROUTES = new Set(["sticker-checkout", "sticker-confirm"]);
+const LIVE_KEY = /^(sk|rk)_live_/;
+
 const routes = {
   "quote-upload": quoteUpload,
   "sticker-ai": stickerAi,
@@ -58,9 +67,18 @@ export default {
 
     // What the api/ files read through process.env and @vercel/blob.
     globalThis.__PRINTYOURS_R2 = env.UPLOADS;
-    process.env.VERCEL_ENV = PRODUCTION_HOSTS.has(url.hostname) ? "production" : "preview";
+    const production = PRODUCTION_HOSTS.has(url.hostname);
+    process.env.VERCEL_ENV = production ? "production" : "preview";
+    for (const [name, alias] of Object.entries(SECRET_ALIASES)) {
+      if (!process.env[name] && env[alias]) process.env[name] = env[alias];
+    }
 
-    const route = routes[url.pathname.slice("/api/".length)];
+    const name = url.pathname.slice("/api/".length);
+    if (production && PAYMENT_ROUTES.has(name) && !LIVE_KEY.test(process.env.STRIPE_SECRET_KEY || process.env.STRIPE_PRODUCTION || "")) {
+      console.error("payments: no live Stripe key (STRIPE_PRODUCTION) on the production domain");
+      return Response.json({ error: "Payments are not set up yet" }, { status: 503 });
+    }
+    const route = routes[name];
     if (route) return route(request, env);
     return proxyToStore(request, url);
   },
