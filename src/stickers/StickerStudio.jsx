@@ -14,6 +14,7 @@ import { DeliveryEstimate } from "./DeliveryEstimate.jsx";
 import { priceEach, sizeOf, lineTotal, itemLabel, finishesFor, isColour, itemSizeName } from "./pricing.js";
 import { ColourStudio } from "./ColourStudio.jsx";
 import { FONTS, fontOf } from "./fonts.js";
+import { FontPicker } from "./FontPicker.jsx";
 import { removeBackground, warmUp } from "./cutout.js";
 import { prepareArt } from "./colour.js";
 import { AiSticker, STICKER_AI } from "./AiSticker.jsx";
@@ -780,23 +781,7 @@ export function StickerStudio() {
                           className="field resize-none text-base"
                           aria-label="Text"
                         />
-                        <div className="flex flex-wrap gap-2">
-                          {FONTS.map((f) => (
-                            <button
-                              key={f.family}
-                              type="button"
-                              onClick={() => patchSel({ font: f.family, weight: f.weight })}
-                              aria-pressed={sel.font === f.family}
-                              className={clsx(
-                                "rounded-lg px-3 py-1.5 text-base ring-1 transition",
-                                sel.font === f.family ? "bg-ink text-white ring-ink" : "bg-white ring-ink/15 hover:ring-ink/40",
-                              )}
-                              style={{ fontFamily: `"${f.family}"`, fontWeight: f.weight }}
-                            >
-                              {f.name}
-                            </button>
-                          ))}
-                        </div>
+                        <FontPicker value={sel.font} onPick={(f) => patchSel({ font: f.family, weight: f.weight })} />
                       </>
                     )}
                     <div className="grid gap-3 sm:grid-cols-2">

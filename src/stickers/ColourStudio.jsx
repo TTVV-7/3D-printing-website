@@ -9,6 +9,7 @@ import {
 } from "./colour.js";
 import { removeBackground, warmUp } from "./cutout.js";
 import { FONTS, fontOf } from "./fonts.js";
+import { FontPicker } from "./FontPicker.jsx";
 import { uploadArt } from "./Checkout.jsx";
 import { CropDialog } from "./CropDialog.jsx";
 import { AiSticker, STICKER_AI } from "./AiSticker.jsx";
@@ -568,23 +569,7 @@ export function ColourStudio({ setCart, cartPanel, cartEmpty, openCheckout }) {
                     <Trash2 size={16} />
                   </button>
                 </div>
-                <div className="flex flex-wrap gap-1.5">
-                  {FONTS.map((f) => (
-                    <button
-                      key={f.family}
-                      type="button"
-                      onClick={() => patchText(t.id, { font: f.family, weight: f.weight })}
-                      aria-pressed={t.font === f.family}
-                      className={clsx(
-                        "rounded-lg px-2.5 py-1 text-sm ring-1 transition",
-                        t.font === f.family ? "bg-ink text-white ring-ink" : "bg-white ring-ink/15 hover:ring-ink/40",
-                      )}
-                      style={{ fontFamily: `"${f.family}"`, fontWeight: f.weight }}
-                    >
-                      {f.name}
-                    </button>
-                  ))}
-                </div>
+                <FontPicker value={t.font} onPick={(f) => patchText(t.id, { font: f.family, weight: f.weight })} small />
                 <div className="flex flex-wrap items-center gap-1.5" role="radiogroup" aria-label="Text colour">
                   {TEXT_COLOURS.map(([hex, name]) => (
                     <button
