@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { track } from "@vercel/analytics";
+import { useTurnstile } from "../lib/turnstile.js";
 import { clsx } from "clsx";
 import { Check, ImageUp, Loader2, RefreshCw, Sparkles, WandSparkles } from "lucide-react";
 
@@ -11,7 +12,6 @@ import { Check, ImageUp, Loader2, RefreshCw, Sparkles, WandSparkles } from "luci
 // where /api/sticker-ai exists (cloudflare/sticker-ai.js). The Vercel build
 // never shows it.
 export const STICKER_AI = import.meta.env.VITE_STICKER_AI === "1";
-const TURNSTILE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY;
 
 const STYLES = [
   { key: "cartoon", label: "Cartoon" },
@@ -46,45 +46,6 @@ function shrinkPhoto(file, max = 508) {
     };
     img.src = url;
   });
-}
-
-// Cloudflare Turnstile, only when a site key is configured.
-function useTurnstile() {
-  const box = useRef(null);
-  const widget = useRef(null);
-  const [token, setToken] = useState("");
-
-  useEffect(() => {
-    if (!TURNSTILE_KEY) return;
-    const render = () => {
-      if (!box.current || widget.current !== null || !window.turnstile) return;
-      widget.current = window.turnstile.render(box.current, {
-        sitekey: TURNSTILE_KEY,
-        size: "flexible",
-        callback: setToken,
-        "expired-callback": () => setToken(""),
-      });
-    };
-    if (window.turnstile) render();
-    else if (!document.querySelector("script[data-turnstile]")) {
-      const s = document.createElement("script");
-      s.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
-      s.async = true;
-      s.dataset.turnstile = "1";
-      s.onload = render;
-      document.head.appendChild(s);
-    } else {
-      const t = setInterval(() => window.turnstile && (clearInterval(t), render()), 200);
-      return () => clearInterval(t);
-    }
-  }, []);
-
-  // Each token works once, so get a fresh one after every request.
-  const reset = () => {
-    setToken("");
-    if (widget.current !== null) window.turnstile?.reset(widget.current);
-  };
-  return { box, token, reset, needed: Boolean(TURNSTILE_KEY) };
 }
 
 export function AiSticker({ maker, onImage }) {

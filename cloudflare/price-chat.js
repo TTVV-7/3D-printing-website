@@ -1,6 +1,6 @@
 // POST /api/price-chat (Cloudflare only): the "Ask about a price" chat.
 //
-//   { messages: [{ role: "user" | "assistant", content }], turnstile? }
+//   { messages: [{ role: "user" | "assistant", content }] }
 //   -> { reply, estimate?, left }
 //
 // A Workers AI model talks to the customer, knowing the services, materials,
@@ -12,8 +12,8 @@
 //
 // Limits, counted in the AI_LIMITS KV namespace like the sticker maker's:
 // CHAT_PER_VISITOR messages per visitor (by IP) per UTC day, default 30, and
-// CHAT_PER_DAY across the site, default 400. A Turnstile check when
-// TURNSTILE_SECRET is set.
+// CHAT_PER_DAY across the site, default 400. No Turnstile check: the chat
+// sends no email and stores nothing, and those limits cap what a bot can use.
 import { site, pricing, estimate as cfg, stickers } from "../site.config.js";
 import { partEstimate } from "../src/lib/estimateMath.js";
 import { priceEach, priceColourEach, deliveryCost } from "../src/stickers/pricing.js";
@@ -112,18 +112,6 @@ async function bump(kv, key) {
   await kv.put(key, String(n), { expirationTtl: 2 * 24 * 60 * 60 });
   return n;
 }
-async function passesTurnstile(env, token, request) {
-  if (!env.TURNSTILE_SECRET) return true;
-  if (!token) return false;
-  const body = new FormData();
-  body.append("secret", env.TURNSTILE_SECRET);
-  body.append("response", token);
-  const ip = request.headers.get("cf-connecting-ip");
-  if (ip) body.append("remoteip", ip);
-  const res = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", { method: "POST", body });
-  return Boolean((await res.json().catch(() => ({}))).success);
-}
-
 export default async function priceChat(request, env) {
   if (request.method !== "POST") return json({ error: "POST only" }, 405);
   if (!env.AI || !env.AI_LIMITS) return json({ error: "The price helper isn't switched on here" }, 503);
@@ -135,9 +123,6 @@ export default async function priceChat(request, env) {
     .map((m) => ({ role: m.role, content: m.content.slice(0, MAX_CHARS) }));
   if (!messages.length || messages[messages.length - 1].role !== "user") return json({ error: "Ask a question" }, 400);
 
-  if (!(await passesTurnstile(env, body.turnstile, request))) {
-    return json({ error: "Couldn't confirm you're not a bot. Refresh the page and try again." }, 403);
-  }
   const perVisitor = Number(env.CHAT_PER_VISITOR || 30);
   const perDay = Number(env.CHAT_PER_DAY || 400);
   const day = today();

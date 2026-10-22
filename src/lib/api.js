@@ -1,8 +1,11 @@
 // /api is proxied to the existing store backend (see vercel.json), so requests
-// land in the same database and admin panel as before.
+// land in the same database and admin panel as before. On Cloudflare the
+// Worker checks the Turnstile token first (cloudflare/turnstile.js).
+import { turnstileHeaders } from "./turnstile.js";
+
 async function req(url, options = {}) {
   const res = await fetch(url, {
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...turnstileHeaders() },
     ...options,
   });
   const data = await res.json().catch(() => ({}));
@@ -17,7 +20,7 @@ export const printRequests = {
   notify: (entry) =>
     fetch("/api/notify-request", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...turnstileHeaders() },
       body: JSON.stringify(entry),
     }).catch(() => {}),
 };

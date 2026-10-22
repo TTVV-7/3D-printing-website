@@ -18,6 +18,7 @@
 // Prompts naming well-known characters, brands or adult content are turned
 // away up front. That's a first filter, not a guarantee: every order is still
 // looked at before it's printed.
+import { passesTurnstile } from "./turnstile.js";
 
 const MODEL = "@cf/black-forest-labs/flux-2-klein-4b";
 const MAX_PROMPT = 200;
@@ -79,19 +80,6 @@ async function bump(kv, key, by) {
   // Two days so a count never vanishes before its UTC day is over.
   await kv.put(key, String(n), { expirationTtl: 2 * 24 * 60 * 60 });
   return n;
-}
-
-async function passesTurnstile(env, token, request) {
-  if (!env.TURNSTILE_SECRET) return true;
-  if (!token) return false;
-  const body = new FormData();
-  body.append("secret", env.TURNSTILE_SECRET);
-  body.append("response", token);
-  const ip = request.headers.get("cf-connecting-ip");
-  if (ip) body.append("remoteip", ip);
-  const res = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", { method: "POST", body });
-  const out = await res.json().catch(() => ({}));
-  return Boolean(out.success);
 }
 
 function dataUrlToBlob(dataUrl) {

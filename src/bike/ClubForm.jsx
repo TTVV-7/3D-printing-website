@@ -4,6 +4,7 @@ import { clsx } from "clsx";
 import { track } from "@vercel/analytics";
 import { FileDrop } from "../components/FileDrop.jsx";
 import { printRequests as api } from "../lib/api.js";
+import { turnstileHeaders, useTurnstile } from "../lib/turnstile.js";
 import { site } from "../../site.config.js";
 
 // Club, team and shop orders from the /bike page: a logo, what it's for, how
@@ -49,11 +50,14 @@ export function ClubForm() {
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.type === "checkbox" ? e.target.checked : e.target.value }));
   const label = (list, key) => list.find(([k]) => k === key)?.[1];
 
+  const turnstile = useTurnstile();
+
   async function submit(e) {
     e.preventDefault();
     setError(null);
     if (!files.length) return setError("Add your logo, so I can quote from it.");
     if (!form.allowed) return setError("Please confirm the logo is yours to use.");
+    if (turnstile.needed && !turnstile.token) return setError("One moment, checking you're not a bot… try again in a second.");
     setBusy(true);
     const id = `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
 
@@ -117,7 +121,7 @@ export function ClubForm() {
       api.notify(entry);
       fetch("/api/quote-confirm", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...turnstileHeaders() },
         keepalive: true,
         body: JSON.stringify(entry),
       }).catch(() => {});
@@ -125,6 +129,7 @@ export function ClubForm() {
       setSent(entry);
       setForm(EMPTY);
       setFiles([]);
+      turnstile.reset();
     } catch (err) {
       setError(err.message || "Something went wrong. Please try again.");
     } finally {
@@ -220,6 +225,7 @@ export function ClubForm() {
         </p>
       )}
 
+      {turnstile.needed && <div ref={turnstile.box} />}
       <button type="submit" disabled={busy} className="btn-primary w-full disabled:opacity-70">
         {busy ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
         {progress || (busy ? "Sending…" : "Get a proof and price")}

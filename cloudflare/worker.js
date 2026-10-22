@@ -18,6 +18,7 @@ import stickerAi from "./sticker-ai.js";
 import priceChat from "./price-chat.js";
 import modelFile from "./model-file.js";
 import { event, stats } from "./events.js";
+import { passesTurnstile } from "./turnstile.js";
 import quoteConfirm from "../api/quote-confirm.js";
 import stickerCheckout from "../api/sticker-checkout.js";
 import stickerConfirm from "../api/sticker-confirm.js";
@@ -40,6 +41,10 @@ const SECRET_ALIASES = { RESEND_API_KEY: "ReSend", STRIPE_PRODUCTION: "Stripe_Cl
 // they'd quietly fall back to the test key, so they're turned off instead.
 const PAYMENT_ROUTES = new Set(["sticker-checkout", "sticker-confirm"]);
 const LIVE_KEY = /^(sk|rk)_live_/;
+
+// Routes that store files, file requests or send email without a payment:
+// they need a Turnstile pass (X-Turnstile header) once TURNSTILE_SECRET is set.
+const GUARDED = new Set(["quote-upload", "print-requests", "notify-request", "quote-confirm", "sticker-request"]);
 
 const routes = {
   "quote-upload": quoteUpload,
@@ -85,6 +90,9 @@ export default {
     if (production && PAYMENT_ROUTES.has(name) && !LIVE_KEY.test(process.env.STRIPE_SECRET_KEY || process.env.STRIPE_PRODUCTION || "")) {
       console.error("payments: no live Stripe key (STRIPE_PRODUCTION) on the production domain");
       return Response.json({ error: "Payments are not set up yet" }, { status: 503 });
+    }
+    if (GUARDED.has(name) && request.method !== "GET" && !(await passesTurnstile(env, request.headers.get("x-turnstile"), request))) {
+      return Response.json({ error: "Couldn't confirm you're not a bot. Refresh the page and try again." }, { status: 403 });
     }
     const route = Object.hasOwn(routes, name) ? routes[name] : null;
     if (route) return route(request, env, ctx);

@@ -3,6 +3,7 @@ import { X, Lock, CreditCard, ArrowRight, Loader2, Heart, Send, CheckCircle2 } f
 import { clsx } from "clsx";
 import { track } from "@vercel/analytics";
 import { stickers } from "../../site.config.js";
+import { turnstileHeaders, useTurnstile } from "../lib/turnstile.js";
 import { deliveryCost, sizeOf, lineTotal, itemLabel, isColour, itemSizeName } from "./pricing.js";
 import { zoneOf, parcelOf, pieceOf, fits, arrival, dateRange } from "./shipping.js";
 
@@ -47,6 +48,8 @@ function Field({ label, className, ...props }) {
 export function Checkout({ items, postal = "", onPostal, onRemove, onClose, onSent }) {
   const [step, setStep] = useState("pay"); // pay -> (Stripe) | preview | sent
   const [family, setFamily] = useState(false); // friends & family: a request, no payment
+  // Requests send email without a payment, so they need the bot check.
+  const turnstile = useTurnstile();
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const [delivery, setDelivery] = useState(stickers.delivery[0]);
@@ -88,6 +91,7 @@ export function Checkout({ items, postal = "", onPostal, onRemove, onClose, onSe
     if (!EMAIL.test(who.email.trim())) return "Add an email address so you get the receipt.";
     if (mailed && (!who.line1.trim() || !who.city.trim())) return "Add the street address and city.";
     if (mailed && !POSTAL.test(who.postal.trim())) return "That postal code doesn't look right (e.g. V5K 0A1).";
+    if (family && turnstile.needed && !turnstile.token) return "One moment, checking you're not a bot… try again in a second.";
     return "";
   }
 
@@ -112,7 +116,7 @@ export function Checkout({ items, postal = "", onPostal, onRemove, onClose, onSe
       const previews = await Promise.all(items.map((it, i) => uploadArt(it.art, `${i + 1}-preview`)));
       const r = await fetch(family ? "/api/sticker-request" : "/api/sticker-checkout", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...turnstileHeaders() },
         body: JSON.stringify({
           ...(family && { message: message.trim() }),
           items: items.map((it, i) => ({
@@ -320,6 +324,7 @@ export function Checkout({ items, postal = "", onPostal, onRemove, onClose, onSe
               </div>
             </dl>
             {error && <p className="mt-4 rounded-xl bg-flame-100 px-3 py-2 text-sm text-flame-600">{error}</p>}
+            {turnstile.needed && <div ref={turnstile.box} className="mt-4" />}
             {family ? (
               <button type="submit" disabled={busy} className="btn-primary mt-6 w-full disabled:opacity-70">
                 {busy ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />} Send request

@@ -6,6 +6,7 @@ import { InstantEstimate, useInstantEstimate } from "./InstantEstimate.jsx";
 import { QuoteGolem } from "./QuoteGolem.jsx";
 import { track } from "@vercel/analytics";
 import { printRequests as api } from "../lib/api.js";
+import { turnstileHeaders, useTurnstile } from "../lib/turnstile.js";
 import { site, estimate as estimateConfig } from "../../site.config.js";
 
 const IMAGE_EXTENSIONS = [".jpg", ".jpeg", ".png", ".heic"];
@@ -117,6 +118,7 @@ export function QuoteForm({
   const [progress, setProgress] = useState(null);
   const [submitted, setSubmitted] = useState(null);
   const [error, setError] = useState(null);
+  const turnstile = useTurnstile();
   // Phones get the four fields that matter; the rest opens on request.
   // Wider screens always show everything.
   const [more, setMore] = useState(false);
@@ -140,6 +142,7 @@ export function QuoteForm({
   async function handleSubmit(e) {
     e.preventDefault();
     setError(null);
+    if (turnstile.needed && !turnstile.token) return setError("One moment, checking you're not a bot… try again in a second.");
     setSubmitting(true);
 
     const id = `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
@@ -260,7 +263,7 @@ export function QuoteForm({
       // The customer's confirmation email (api/quote-confirm.js).
       fetch("/api/quote-confirm", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...turnstileHeaders() },
         keepalive: true,
         body: JSON.stringify(entry),
       }).catch(() => {});
@@ -276,6 +279,7 @@ export function QuoteForm({
       setSubmitted(entry);
       setForm(EMPTY);
       setFiles([]);
+      turnstile.reset();
     } catch (err) {
       setError(err.message || "Something went wrong. Please try again.");
     } finally {
@@ -365,6 +369,8 @@ export function QuoteForm({
           </span>
         </p>
       )}
+
+      {turnstile.needed && <div ref={turnstile.box} />}
 
       {/* With the golem, leave room above the button for him to stand. */}
       <div className={clsx("relative", golem && "pt-14")}>

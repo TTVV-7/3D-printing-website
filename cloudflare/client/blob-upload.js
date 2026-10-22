@@ -3,11 +3,13 @@
 // exactly as on Vercel; here the file is sent to the Worker's
 // /api/quote-upload route, which stores it in R2 and answers with the stored
 // path, the same { pathname } the real client returns.
+import { turnstileHeaders } from "../../src/lib/turnstile.js";
+
 export async function uploadPresigned(pathname, file, options = {}) {
   const endpoint = options.handleUploadUrl || "/api/quote-upload";
   const res = await fetch(`${endpoint}?p=${encodeURIComponent(pathname)}`, {
     method: "PUT",
-    headers: { "Content-Type": file.type || "application/octet-stream" },
+    headers: { "Content-Type": file.type || "application/octet-stream", ...turnstileHeaders() },
     body: file,
   });
   const data = await res.json().catch(() => ({}));
