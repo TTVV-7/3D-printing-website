@@ -13,6 +13,7 @@ import { Checkout, uploadArt } from "./Checkout.jsx";
 import { DeliveryEstimate } from "./DeliveryEstimate.jsx";
 import { priceEach, sizeOf, lineTotal, itemLabel, finishesFor, isColour, itemSizeName } from "./pricing.js";
 import { ColourStudio } from "./ColourStudio.jsx";
+import { BikeStudio } from "./BikeStudio.jsx";
 import { FONTS, fontOf } from "./fonts.js";
 import { FontPicker } from "./FontPicker.jsx";
 import { removeBackground, warmUp } from "./cutout.js";
@@ -122,8 +123,9 @@ function Label({ children, hint }) {
 // The tabs on this page: thermal labels (one ink, preset label sizes, the
 // quickest and cheapest), full-colour stickers cut to any shape on the Cricut
 // (ColourStudio.jsx), and bike stickers: the thermal maker with ready-made
-// bike templates (presets.js) to start from. #colour or #bike in the address
-// opens those tabs.
+// bike templates (presets.js) to start from, or full-colour bike stickers
+// (BikeStudio.jsx, coming soon). #colour, #bike or #bike-colour in the
+// address opens those.
 const MODES = [
   { key: "thermal", name: "Thermal labels", sub: "Black ink on die-cut labels · cheapest" },
   { key: "colour", name: "Full colour, custom cut", sub: "Any image, any shape, cut to fit", soon: !stickers.colour.available },
@@ -135,13 +137,24 @@ export function StickerStudio() {
   useEffect(() => {
     if (location.hash === "#colour") setMakerState("colour");
     if (location.hash === "#bike" || new URLSearchParams(location.search).has("preset")) setMakerState("bike");
+    if (location.hash === "#bike-colour") {
+      setMakerState("bike");
+      setBikeKind("colour");
+    }
   }, []);
   const setMaker = (m) => {
     setMakerState(m);
     history.replaceState(null, "", m === "thermal" ? location.pathname + location.search : `#${m}`);
   };
+  // The Bike tab's two kinds: black thermal templates, or full colour.
+  const [bikeKind, setBikeKindState] = useState("thermal");
+  const setBikeKind = (k) => {
+    setBikeKindState(k);
+    history.replaceState(null, "", k === "colour" ? "#bike-colour" : "#bike");
+  };
+  const bikeColour = maker === "bike" && bikeKind === "colour";
   // Thermal labels and Bike share the thermal maker.
-  const thermal = maker !== "colour";
+  const thermal = maker !== "colour" && !bikeColour;
   const canvasRef = useRef(null);
   const flatRef = useRef(null);
   const fileRef = useRef(null);
@@ -219,8 +232,8 @@ export function StickerStudio() {
   const view = useMemo(() => art && previewArt(art, paper), [art, paper]);
 
   useEffect(() => {
-    if (ready && maker === "colour") stage.current.stop();
-  }, [ready, maker, stage]);
+    if (ready && !thermal) stage.current.stop();
+  }, [ready, thermal, stage]);
 
   useEffect(() => {
     // While editing, the 3D view is hidden: catch it up when editing ends.
@@ -491,7 +504,9 @@ export function StickerStudio() {
           <p className="eyebrow">Stickers</p>
           <h1 className="mt-3 text-4xl font-bold sm:text-5xl">Your image, as a sticker.</h1>
           <p className="mt-4 text-ink/65 sm:text-lg">
-            {maker === "bike"
+            {bikeColour
+              ? "Your name and flag for the top tube, or a favourite ride's route for the down tube. Printed in full colour and shown on a real-size bike."
+              : maker === "bike"
               ? "Stickers for your bike: start from a template, make it yours, and see it to scale. Printed in crisp black on die-cut labels."
               : maker === "thermal"
               ? "Thermal printed in crisp black on die-cut labels. Drop in an image or type some text, pick a label and a border, and see it to scale."
@@ -539,7 +554,34 @@ export function StickerStudio() {
         {/* Thermal maker: kept mounted (hidden) on the colour tab so its 3D
             stage survives the switch. */}
         {maker === "bike" && (
-          <div className="mt-8">
+          <div className="mt-6 inline-flex flex-wrap gap-1 rounded-2xl bg-white p-1 ring-1 ring-ink/10" role="radiogroup" aria-label="Kind of bike sticker">
+            {[
+              ["thermal", "Black, from a template"],
+              ["colour", "Full colour: name + flag, route"],
+            ].map(([k, name]) => (
+              <button
+                key={k}
+                type="button"
+                role="radio"
+                aria-checked={bikeKind === k}
+                onClick={() => setBikeKind(k)}
+                className={clsx("flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition", bikeKind === k ? "bg-ink text-white" : "hover:bg-paper")}
+              >
+                {name}
+                {k === "colour" && !stickers.bikeColour.available && (
+                  <span className={clsx("rounded-full px-2 py-0.5 text-[10px] uppercase tracking-wider", bikeKind === k ? "bg-flame text-white" : "bg-flame/10 text-flame")}>
+                    Coming soon
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {bikeColour && <BikeStudio />}
+
+        {maker === "bike" && !bikeColour && (
+          <div className="mt-6">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <p className="text-sm font-semibold">Start from a template</p>
               <a href="/bike/#clubs" className="text-sm font-medium text-ink/60 underline decoration-flame underline-offset-4 hover:text-flame">
@@ -894,7 +936,7 @@ export function StickerStudio() {
               }}
               className="btn-outline-dark -mt-3 h-11 w-full text-sm"
             >
-              <Route size={16} /> {layers.some((l) => l.kind === "route") ? "Change the route: draw it or load a GPX" : "Add a route: draw it or load a GPX"}
+              <Route size={16} /> {layers.some((l) => l.kind === "route") ? "Change the route" : "Add a route: draw, GPX or addresses"}
             </button>
 
             <div>

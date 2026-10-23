@@ -289,4 +289,11 @@ export const stickers = {
       ],
     },
   },
+  // Full-colour bike stickers on the Bike tab: a name with a flag, or a
+  // ride's route from addresses, shown on a real bike model. Printed and cut
+  // like the full-colour stickers. false: "Coming soon", design and preview
+  // only, no ordering.
+  bikeColour: {
+    available: false,
+  },
 };

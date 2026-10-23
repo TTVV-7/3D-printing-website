@@ -65,6 +65,12 @@ export function readGpx(text) {
   let nodes = [...doc.getElementsByTagName("trkpt")];
   if (nodes.length < 2) nodes = [...doc.getElementsByTagName("rtept")];
   const ll = nodes.map((n) => [Number(n.getAttribute("lon")), Number(n.getAttribute("lat"))]).filter(([x, y]) => Number.isFinite(x) && Number.isFinite(y));
+  return fromLonLat(ll);
+}
+
+// A route from [lon, lat] points (a GPX track, or a route found between
+// addresses, places.js); null if there's no line.
+export function fromLonLat(ll) {
   if (ll.length < 2) return null;
   const lat0 = (ll.reduce((s, p) => s + p[1], 0) / ll.length) * (Math.PI / 180);
   // East is right, north is up (so y, which runs down, is minus latitude).
