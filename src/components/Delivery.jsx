@@ -146,7 +146,7 @@ export function Delivery({ form, setForm, delivery, hasModel }) {
               })}
               <p className="text-xs text-ink/50">
                 {delivery.basis === "model" ? `Packed from your model, about ${Math.round(delivery.grams)} g. ` : ""}
-                A guide price: your quote confirms it.{!delivery.zone && " Add your postal code for your price and dates."}
+                A guide price: your quote confirms it.{!delivery.zone && " Add your postal code for your delivery dates."}
               </p>
             </div>
           )}

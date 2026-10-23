@@ -1,6 +1,6 @@
 // Shipping for quote requests: what the finished parts come to as a package,
 // and what each way of sending it costs and how long it takes. A guide on
-// the form, never binding. Rates in site.config.js (quoteShipping); zones and
+// the form, never binding. Prices in site.config.js (quoteShipping); zones and
 // days in the mail are the stickers' (src/stickers/shipping.js).
 import { estimate as estimateConfig, quoteShipping as cfg, stickers } from "../../site.config.js";
 import { zoneOf } from "../stickers/shipping.js";
@@ -34,11 +34,10 @@ export function packageOf(items, grams) {
         ? `too heavy for an envelope (about ${Math.round(flat.grams)} g)`
         : "too big for an envelope";
 
-  // Box: the parts' own boxes, with some slack for packing, at least as big
-  // as the biggest part.
+  // Box: the biggest part with padding round it, and room for all the
+  // parts' own boxes with some slack for packing (mm³).
   const volume = parts.reduce((s, p) => s + p.d[0] * p.d[1] * p.d[2] * p.qty, 0) * 1.4;
-  const high = Math.max(thin, volume / (long * mid));
-  const box = { mm: [long + 2 * pad, mid + 2 * pad, high + 2 * pad], grams: grams + cfg.packing.boxGrams };
+  const box = { mm: [long + 2 * pad, mid + 2 * pad, thin + 2 * pad], volume, grams: grams + cfg.packing.boxGrams };
   return { flat, box };
 }
 
@@ -55,10 +54,14 @@ function transit(daysLike, zone) {
   return [Math.min(...spans.map((s) => s[0])), Math.max(...spans.map((s) => s[1]))];
 }
 
-function parcelPrice(box, zone) {
-  const kg = Math.max(box.grams / 1000, (box.mm[0] * box.mm[1] * box.mm[2]) / 1000 / cfg.parcel.dimDivisor);
-  const at = (z) => cfg.parcel.base[z] + Math.max(0, Math.ceil(kg) - 1) * cfg.parcel.perKg[z];
-  return { kg, price: zone ? at(zone.key) : Math.min(...Object.keys(cfg.parcel.base).map(at)) };
+// The smallest flat rate box the packed parts fit in: the biggest part any
+// way round, and all of them by volume.
+function boxFor(box) {
+  const need = [...box.mm].sort((a, b) => b - a);
+  return cfg.boxes.sizes.find((b) => {
+    const has = [...b.mm].sort((x, y) => y - x);
+    return need.every((v, i) => v <= has[i]) && box.volume <= has[0] * has[1] * has[2];
+  });
 }
 
 // The ways to send a package to `postal` (blank: prices "from", days for
@@ -78,16 +81,21 @@ export function shippingOptions(pkg, postal) {
     ok: pkg.flat.fits && Boolean(rate),
     why: pkg.flat.why,
   });
-  const { kg, price } = parcelPrice(pkg.box, zone);
+  const fit = boxFor(pkg.box);
+  const heavy = pkg.box.grams > cfg.boxes.maxGrams;
   out.push({
     key: "parcel",
-    name: "Tracked parcel",
+    name: fit && !heavy ? `Tracked, flat rate box (${fit.name})` : "Tracked, flat rate box",
     tracked: true,
-    price,
-    from: !zone,
-    days: transit(cfg.parcel.daysLike, zone),
-    ok: kg <= cfg.parcel.maxKg,
-    why: kg > cfg.parcel.maxKg ? "too heavy to post: I'll arrange delivery with you" : "",
+    price: fit ? fit.price : null,
+    from: false,
+    days: transit(cfg.boxes.daysLike, zone),
+    ok: Boolean(fit) && !heavy,
+    why: heavy
+      ? "too heavy for a flat rate box: I'll quote shipping with your order"
+      : fit
+        ? ""
+        : "too big for a flat rate box: I'll quote shipping with your order",
   });
   return { zone, options: out };
 }

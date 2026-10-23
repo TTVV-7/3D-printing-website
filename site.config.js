@@ -142,29 +142,32 @@ export const estimate = {
 
 // Shipping on quote requests (src/lib/quoteShipping.js): a guide price and
 // time on the form, from the model's size or the customer's rough one. Never
-// binding; the real price goes in the quote. DRAFT rates -- check them
-// against Canada Post (canadapost.ca, "Find a rate") and tune. Zones and
-// days in the mail are the stickers' (stickers.shipping, stickers.delivery).
+// binding; the real price goes in the quote. Prices are Canada Post's
+// consumer prices (canadapost.ca/prices, effective September 7, 2026), before
+// tax. Zones and days in the mail are the stickers' (stickers.shipping,
+// stickers.delivery).
 export const quoteShipping = {
   // Around the parts in their envelope or box (mm each side), and what the
   // packaging weighs (g).
   packing: { padMm: 10, envelopeGrams: 25, boxGrams: 180 },
   // Untracked, flat in a padded envelope (Oversized Lettermail): the most it
-  // can measure (mm, packed) and weigh (g), and the price up to each weight.
+  // can measure (mm, packed) and weigh (g), and the stamp price up to each weight.
   envelope: {
     maxMm: [380, 270, 20],
     maxGrams: 500,
-    rates: [[100, 3.5], [200, 5.75], [300, 7.75], [400, 8.75], [500, 9.5]],
+    rates: [[100, 2.61], [200, 4.29], [300, 5.98], [400, 6.85], [500, 7.36]],
     daysLike: "lettermail",
   },
-  // Tracked parcel: billed on the actual weight or the size weight (cm³ /
-  // divisor, in kg), whichever is more. Price = base + perKg for each kg
-  // past the first, by zone.
-  parcel: {
-    dimDivisor: 5000,
-    base: { local: 13, bc: 15, prairies: 19, central: 22, atlantic: 25, north: 35 },
-    perKg: { local: 1.5, bc: 2, prairies: 3, central: 4, atlantic: 5, north: 8 },
-    maxKg: 30,
+  // Tracked: Canada Post flat rate boxes, one price anywhere in Canada, up to
+  // 5 kg. The parts go in the smallest box they fit (inside size, mm).
+  boxes: {
+    sizes: [
+      { key: "xs", name: "extra small", mm: [241, 165, 89], price: 18.99 },
+      { key: "s", name: "small", mm: [350, 260, 50], price: 21.99 },
+      { key: "m", name: "medium", mm: [390, 260, 120], price: 24.99 },
+      { key: "l", name: "large", mm: [400, 300, 190], price: 32.99 },
+    ],
+    maxGrams: 5000,
     daysLike: "tracked",
   },
   // Without a model: how solid a print is, roughly, to guess its weight from
