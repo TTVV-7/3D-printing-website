@@ -3,6 +3,7 @@ import { Loader2, CheckCircle2, AlertCircle, ArrowRight, ChevronDown } from "luc
 import { clsx } from "clsx";
 import { FileDrop } from "./FileDrop.jsx";
 import { InstantEstimate, useInstantEstimate } from "./InstantEstimate.jsx";
+import { DELIVERY_EMPTY, Delivery, deliveryEntry, useDelivery } from "./Delivery.jsx";
 import { QuoteGolem } from "./QuoteGolem.jsx";
 import { track } from "@vercel/analytics";
 import { printRequests as api } from "../lib/api.js";
@@ -31,6 +32,7 @@ const QUALITIES = [
 const EMPTY = {
   name: "", email: "", details: "", url: "",
   material: "", quality: "", quantity: "1", deadline: "",
+  ...DELIVERY_EMPTY,
 };
 
 function Field({ label, required, hint, children }) {
@@ -133,6 +135,7 @@ export function QuoteForm({
   const [more, setMore] = useState(false);
 
   const estimate = useInstantEstimate(files, form);
+  const delivery = useDelivery(form, estimate);
 
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
 
@@ -151,6 +154,9 @@ export function QuoteForm({
   async function handleSubmit(e) {
     e.preventDefault();
     setError(null);
+    if (delivery.method === "ship" && !delivery.zone) {
+      return setError("Add your postal code (like V5K 0A1) so I can work out shipping.");
+    }
     setSubmitting(true);
     if (turnstile.needed && !(await turnstile.wait())) {
       setSubmitting(false);
@@ -239,7 +245,9 @@ export function QuoteForm({
       mode: form.url.trim() ? "url" : "description",
       name: form.name.trim(),
       email: form.email.trim(),
-      details: form.details.trim(),
+      // How it gets to them, in the details too, so it shows wherever the
+      // request does (the store backend keeps only the fields it knows).
+      details: `${form.details.trim()}\n\nDelivery: ${delivery.summary}`,
       url: form.url.trim() || null,
       material: form.material || null,
       quality: form.quality || null,
@@ -266,6 +274,7 @@ export function QuoteForm({
               uploaded.some((f) => (f.estimate ? f.estimate.error : !IMAGE_EXTENSIONS.some((x) => f.name.toLowerCase().endsWith(x)))),
           }
         : null,
+      shipping: deliveryEntry(delivery),
       submittedAt: new Date().toISOString(),
     };
 
@@ -337,6 +346,8 @@ export function QuoteForm({
       >
         {printOptions}
       </InstantEstimate>
+
+      <Delivery form={form} setForm={setForm} delivery={delivery} hasModel={estimate.parts.some((p) => p.status === "ok" && !p.checks.unreliable)} />
 
       <button
         type="button"
