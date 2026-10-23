@@ -33,14 +33,27 @@ export const site = {
 
   // Public contact email: shown in the footer, beside the quote form and in the
   // no-JavaScript fallback. Leave empty to rely on the form.
-  email: "thomas.verigin@gmail.com",
+  // Forwards to Gmail through Cloudflare Email Routing (as does
+  // orders@printyours.ca, the address order emails come from).
+  email: "hello@printyours.ca",
+
+  // Who gets the admin tab on /account/ (signed in with Google). The
+  // ADMIN_EMAILS Worker variable overrides it.
+  admins: ["thomas.verigin@gmail.com"],
+
+  // Cloudflare Web Analytics site token (public; the Cloudflare build loads
+  // it). Page views are under Cloudflare dashboard > Web Analytics.
+  analytics: {
+    cloudflareToken: "bf666f6154e6459c8d97db547e622db5",
+  },
 
   // Social profiles: shown in the footer and linked from search results
   // (schema.org sameAs). Empty entries are hidden.
   social: {
     instagram: "",
     tiktok: "",
-    youtube: "https://www.youtube.com/watch?v=pHTwqG2WMGA",
+    youtube: "https://www.youtube.com/@tom-sp1sx",
+    linkedin: "",
     facebook: "",
     makerworld: "",
   },
@@ -127,6 +140,57 @@ export const estimate = {
   maxSizeMm: 256,
 };
 
+// Shipping on quote requests (src/lib/quoteShipping.js): a guide price and
+// time on the form, from the model's size or the customer's rough one. Never
+// binding; the real price goes in the quote. Prices are Canada Post's
+// consumer prices (canadapost.ca/prices, effective September 7, 2026), before
+// tax. Zones and days in the mail are the stickers' (stickers.shipping,
+// stickers.delivery).
+export const quoteShipping = {
+  // Around the parts in their envelope or box (mm each side), and what the
+  // packaging weighs (g).
+  packing: { padMm: 10, envelopeGrams: 25, boxGrams: 180 },
+  // Untracked, flat in a padded envelope (Oversized Lettermail): the most it
+  // can measure (mm, packed) and weigh (g), and the stamp price up to each weight.
+  envelope: {
+    maxMm: [380, 270, 20],
+    maxGrams: 500,
+    rates: [[100, 2.61], [200, 4.29], [300, 5.98], [400, 6.85], [500, 7.36]],
+    daysLike: "lettermail",
+  },
+  // Tracked, cheapest for small boxes: Regular Parcel. Billed on the actual
+  // weight or the size weight (cm³ / divisor, in kg), whichever is more.
+  // Its price depends on a rate code for the two postal codes, which Canada
+  // Post doesn't publish, so the form shows the lowest and highest price
+  // across all rate codes for each weight: [up to g, low $, high $]. `days`
+  // is a rough guide to business days in the mail, by stickers.shipping zone.
+  regular: {
+    divisor: 6000,
+    rates: [
+      [500, 11.24, 16.23], [750, 11.49, 17.12], [1000, 12.41, 18.92],
+      [1500, 12.5, 19.75], [2000, 12.62, 19.89], [2500, 12.81, 21.01],
+      [3000, 12.99, 21.42], [3500, 13.25, 22.23], [4000, 13.43, 22.99],
+      [4500, 13.61, 23.74], [5000, 13.98, 24.73],
+    ],
+    days: { local: [2, 3], bc: [2, 4], prairies: [3, 6], central: [5, 8], atlantic: [6, 9], north: [8, 12] },
+  },
+  // Tracked: Canada Post flat rate boxes, one price anywhere in Canada, up to
+  // 5 kg. The parts go in the smallest box they fit (inside size, mm).
+  boxes: {
+    sizes: [
+      { key: "xs", name: "extra small", mm: [241, 165, 89], price: 18.99 },
+      { key: "s", name: "small", mm: [350, 260, 50], price: 21.99 },
+      { key: "m", name: "medium", mm: [390, 260, 120], price: 24.99 },
+      { key: "l", name: "large", mm: [400, 300, 190], price: 32.99 },
+    ],
+    maxGrams: 5000,
+    daysLike: "tracked",
+  },
+  // Without a model: how solid a print is, roughly, to guess its weight from
+  // its size (walls and infill, by volume of its bounding box).
+  solidGuess: 0.25,
+};
+
 // Customer reviews. The section stays hidden until there's at least one
 // review or one link. Copy reviews word-for-word from where they were left
 // and only post ones you have permission to share -- first name + initial is plenty.
@@ -195,11 +259,49 @@ export const stickers = {
     },
   ],
   // Offered at checkout, in CAD. `freeOver` waives it on bigger orders.
+  // `days` is business days in the mail to each `shipping.zones` zone, for the
+  // arrival estimate. `limit` is the most an order can weigh (g) and how thick
+  // its envelope can be (mm) to go that way; bigger orders can't pick it.
   delivery: [
-    { key: "pickup", name: "Pickup in Vancouver", amount: 0, days: [1, 3], body: "Free. You'll get an email when it's ready." },
-    { key: "lettermail", name: "Lettermail, untracked", amount: 2.5, freeOver: 25, days: [3, 8], body: "Flat in an envelope. Free on orders over $25." },
-    { key: "tracked", name: "Tracked mail", amount: 12, days: [2, 5], body: "Canada Post with a tracking number." },
+    { key: "pickup", name: "Pickup in Vancouver", amount: 0, body: "Free. You'll get an email when it's ready." },
+    {
+      key: "lettermail",
+      name: "Lettermail, untracked",
+      amount: 2.5,
+      freeOver: 25,
+      body: "Flat in an envelope. Free on orders over $25.",
+      limit: { grams: 50, mm: 5 },
+      days: { local: [2, 3], bc: [2, 4], prairies: [3, 5], central: [4, 6], atlantic: [4, 7], north: [6, 10] },
+    },
+    {
+      key: "tracked",
+      name: "Tracked mail",
+      amount: 12,
+      body: "Canada Post with a tracking number.",
+      days: { local: [1, 2], bc: [1, 3], prairies: [2, 4], central: [3, 5], atlantic: [3, 6], north: [4, 8] },
+    },
   ],
+  // Delivery estimates (src/stickers/shipping.js), in the cart and at checkout.
+  shipping: {
+    // Business days to print an order before it's posted or ready for pickup.
+    printDays: [1, 2],
+    // Where a postal code is, by how it starts. The first match wins.
+    zones: [
+      { key: "local", name: "Lower Mainland", starts: ["V3", "V4", "V5", "V6", "V7"] },
+      { key: "bc", name: "BC", starts: ["V"] },
+      { key: "prairies", name: "the Prairies", starts: ["T", "S", "R"] },
+      { key: "central", name: "Ontario and Quebec", starts: ["K", "L", "M", "N", "P", "G", "H", "J"] },
+      { key: "atlantic", name: "Atlantic Canada", starts: ["A", "B", "C", "E"] },
+      { key: "north", name: "the North", starts: ["X", "Y"] },
+    ],
+    // Rough weights, to tell when an order outgrows an envelope. Tune them
+    // after weighing a real order. Per square cm of sticker on its backing:
+    label: { gPerSqCm: 0.017, mm: 0.15 }, // thermal label
+    vinyl: { gPerSqCm: 0.025, mm: 0.25 }, // full-colour vinyl
+    // The envelope with a card to keep it flat, and how much sticker lies
+    // flat in it per layer.
+    envelope: { grams: 10, mm: 1.5, sqCm: 300 },
+  },
   // Price per sticker = max(minEach, square inches x perSqIn), then the
   // biggest quantity break that applies.
   pricing: {
@@ -238,10 +340,11 @@ export const stickers = {
       ],
     },
   },
-  // Bike stickers: a name with a flag, or a ride's route, shown on a bike.
-  // Printed and cut like the full-colour stickers. false: the tab shows
-  // "Coming soon" and lets people design and preview, with no ordering.
-  bike: {
+  // Full-colour bike stickers on the Bike tab: a name with a flag, or a
+  // ride's route from addresses, shown on a real bike model. Printed and cut
+  // like the full-colour stickers. false: "Coming soon", design and preview
+  // only, no ordering.
+  bikeColour: {
     available: false,
   },
 };

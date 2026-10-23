@@ -1,55 +1,12 @@
-// The bikes the bike stickers are shown on (BikeScene.js). The models are
-// built by scripts/bike-models.mjs: real size in metres, front wheel along
-// +x, standing on y = 0, and the frame in one material called "paint".
-//
-// Each tube is a rough centre line seen from the side, [x, y] in metres from
-// the back of the tube to the front. It only needs to be inside the tube:
-// BikeScene.js finds the real centre and surface from the model.
+// The bikes a sticker can be shown on (real models, realBike.js; the built
+// ones in BikeScene.js show while they load), kept apart so the page can
+// list them without loading three.js.
+// wheel: outer tyre diameter; tyre: tyre width; r: tube radii (top, down,
+// seat); geometry: chainstay, wheelbase, BB drop, stack, reach, head and seat
+// tube length and angles. bar: "drop" or "flat".
+export const BIKES = {
+  road: { name: "Road", wheel: 672, tyre: 28, r: { top: 16, down: 22, seat: 15 }, cs: 410, wb: 990, drop: 72, stack: 560, reach: 385, ht: 150, hta: 73, st: 530, sta: 73.5, bar: "drop", colour: 0x1d2733 },
+  mountain: { name: "Mountain", wheel: 750, tyre: 60, r: { top: 22, down: 30, seat: 17 }, cs: 435, wb: 1190, drop: 40, stack: 625, reach: 455, ht: 110, hta: 65, st: 420, sta: 76, bar: "flat", colour: 0xc2410c },
+  city: { name: "City", wheel: 710, tyre: 45, r: { top: 18, down: 26, seat: 16 }, cs: 450, wb: 1100, drop: 65, stack: 640, reach: 360, ht: 190, hta: 70, st: 470, sta: 72, bar: "flat", colour: 0x334155 },
+};
 
-export const BIKES = [
-  {
-    key: "road",
-    name: "Road",
-    url: "/models/bikes/road.glb",
-    tubes: {
-      top: [[-0.2, 0.722], [0.289, 0.811]],
-      down: [[-0.067, 0.389], [0.311, 0.711]],
-    },
-    credit: { title: "Road Bike", author: "tanity", url: "https://sketchfab.com/3d-models/road-bike-cb03b0657fbc4693b59194124ba713db" },
-  },
-  {
-    key: "mountain",
-    name: "Mountain",
-    url: "/models/bikes/mountain.glb",
-    tubes: {
-      top: [[-0.233, 0.707], [0.3, 0.871]],
-      down: [[-0.122, 0.367], [0.311, 0.811]],
-    },
-    credit: { title: "MTB Mongoose Tyax", author: "Saushkin", url: "https://sketchfab.com/3d-models/mtb-mongoose-tyax-d5c7ab157aa84eb08e2deaee6165e764" },
-  },
-  {
-    key: "city",
-    name: "City",
-    url: "/models/bikes/city.glb",
-    // A step-through: its low top tube is curved, so stickers go on the down tube.
-    tubes: {
-      down: [[-0.067, 0.4], [0.344, 0.789]],
-    },
-    credit: { title: "Dutch Bicycle", author: "Fairyflosslord7", url: "https://sketchfab.com/3d-models/dutch-bicycle-1967bfe65c164c589351985e7becc8b8" },
-  },
-];
-
-export const bikeOf = (key) => BIKES.find((b) => b.key === key) || BIKES[0];
-
-export const TUBES = { top: "Top tube", down: "Down tube" };
-
-// Frame colours to try the sticker against.
-export const PAINTS = [
-  ["#c8102e", "Red"],
-  ["#111317", "Black"],
-  ["#f2f2ef", "White"],
-  ["#1f4f8f", "Blue"],
-  ["#2f6b4f", "Green"],
-  ["#9aa1ab", "Raw alloy"],
-  ["#f2c230", "Yellow"],
-];

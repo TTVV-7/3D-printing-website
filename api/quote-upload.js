@@ -10,7 +10,8 @@
 import { handleUploadPresigned } from "@vercel/blob/client";
 import { issueSignedToken } from "@vercel/blob";
 
-export const QUOTE_EXTENSIONS = [".stl", ".3mf", ".obj", ".step", ".stp", ".gcode", ".zip", ".jpg", ".jpeg", ".png", ".heic", ".pdf"];
+// Logos come as .svg, .ai or .eps too; api/sticker-file.js serves those as downloads.
+export const QUOTE_EXTENSIONS = [".stl", ".3mf", ".obj", ".step", ".stp", ".gcode", ".zip", ".jpg", ".jpeg", ".png", ".heic", ".pdf", ".svg", ".ai", ".eps"];
 const MAX_BYTES = 25 * 1024 * 1024;
 const PATH = /^requests\/[\w-]{1,40}\/[^/\\]{1,120}$/;
 

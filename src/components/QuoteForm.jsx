@@ -1,11 +1,13 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Loader2, CheckCircle2, AlertCircle, ArrowRight, ChevronDown } from "lucide-react";
 import { clsx } from "clsx";
 import { FileDrop } from "./FileDrop.jsx";
 import { InstantEstimate, useInstantEstimate } from "./InstantEstimate.jsx";
+import { DELIVERY_EMPTY, Delivery, deliveryEntry, useDelivery } from "./Delivery.jsx";
 import { QuoteGolem } from "./QuoteGolem.jsx";
 import { track } from "@vercel/analytics";
 import { printRequests as api } from "../lib/api.js";
+import { NOT_VERIFIED, turnstileHeaders, useTurnstile } from "../lib/turnstile.js";
 import { site, estimate as estimateConfig } from "../../site.config.js";
 
 const IMAGE_EXTENSIONS = [".jpg", ".jpeg", ".png", ".heic"];
@@ -30,6 +32,7 @@ const QUALITIES = [
 const EMPTY = {
   name: "", email: "", details: "", url: "",
   material: "", quality: "", quantity: "1", deadline: "",
+  ...DELIVERY_EMPTY,
 };
 
 function Field({ label, required, hint, children }) {
@@ -56,6 +59,15 @@ function Submitted({ entry, onReset }) {
         a quote and a realistic turnaround.
       </p>
       <p className="mt-3 font-mono text-xs text-ink/40">Ref {entry.id.slice(0, 8).toUpperCase()}</p>
+      {import.meta.env.VITE_ACCOUNTS === "1" && (
+        <p className="mt-3 text-sm text-ink/60">
+          Follow it in{" "}
+          <a href="/account/" className="font-medium text-ink underline decoration-flame underline-offset-4 hover:text-flame">
+            your account
+          </a>
+          , signing in with this email.
+        </p>
+      )}
       <button type="button" className="btn-outline-dark mt-6" onClick={onReset}>
         Send another request
       </button>
@@ -94,16 +106,36 @@ export function QuoteForm({
   titlePrefix = "",
 }) {
   const [form, setForm] = useState(EMPTY);
+
+  // An estimate sent over from the price chat (PriceChat.jsx), on arrival or
+  // while already on the page.
+  useEffect(() => {
+    const take = () => {
+      try {
+        const p = JSON.parse(sessionStorage.getItem("quote-prefill"));
+        if (!p) return;
+        sessionStorage.removeItem("quote-prefill");
+        setForm((f) => ({ ...f, details: p.details || f.details, material: p.material || f.material, quantity: p.quantity || f.quantity }));
+      } catch {
+        // Nothing to fill in.
+      }
+    };
+    take();
+    window.addEventListener("quote:prefill", take);
+    return () => window.removeEventListener("quote:prefill", take);
+  }, []);
   const [files, setFiles] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   const [progress, setProgress] = useState(null);
   const [submitted, setSubmitted] = useState(null);
   const [error, setError] = useState(null);
+  const turnstile = useTurnstile();
   // Phones get the four fields that matter; the rest opens on request.
   // Wider screens always show everything.
   const [more, setMore] = useState(false);
 
   const estimate = useInstantEstimate(files, form);
+  const delivery = useDelivery(form, estimate);
 
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
 
@@ -122,7 +154,14 @@ export function QuoteForm({
   async function handleSubmit(e) {
     e.preventDefault();
     setError(null);
+    if (delivery.method === "ship" && !delivery.zone) {
+      return setError("Add your postal code (like V5K 0A1) so I can work out shipping.");
+    }
     setSubmitting(true);
+    if (turnstile.needed && !(await turnstile.wait())) {
+      setSubmitting(false);
+      return setError(NOT_VERIFIED);
+    }
 
     const id = `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
 
@@ -206,7 +245,9 @@ export function QuoteForm({
       mode: form.url.trim() ? "url" : "description",
       name: form.name.trim(),
       email: form.email.trim(),
-      details: form.details.trim(),
+      // How it gets to them, in the details too, so it shows wherever the
+      // request does (the store backend keeps only the fields it knows).
+      details: `${form.details.trim()}\n\nDelivery: ${delivery.summary}`,
       url: form.url.trim() || null,
       material: form.material || null,
       quality: form.quality || null,
@@ -233,6 +274,7 @@ export function QuoteForm({
               uploaded.some((f) => (f.estimate ? f.estimate.error : !IMAGE_EXTENSIONS.some((x) => f.name.toLowerCase().endsWith(x)))),
           }
         : null,
+      shipping: deliveryEntry(delivery),
       submittedAt: new Date().toISOString(),
     };
 
@@ -242,7 +284,7 @@ export function QuoteForm({
       // The customer's confirmation email (api/quote-confirm.js).
       fetch("/api/quote-confirm", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...turnstileHeaders() },
         keepalive: true,
         body: JSON.stringify(entry),
       }).catch(() => {});
@@ -258,6 +300,7 @@ export function QuoteForm({
       setSubmitted(entry);
       setForm(EMPTY);
       setFiles([]);
+      turnstile.reset();
     } catch (err) {
       setError(err.message || "Something went wrong. Please try again.");
     } finally {
@@ -304,6 +347,8 @@ export function QuoteForm({
         {printOptions}
       </InstantEstimate>
 
+      <Delivery form={form} setForm={setForm} delivery={delivery} hasModel={estimate.parts.some((p) => p.status === "ok" && !p.checks.unreliable)} />
+
       <button
         type="button"
         onClick={() => setMore((m) => !m)}
@@ -347,6 +392,8 @@ export function QuoteForm({
           </span>
         </p>
       )}
+
+      {turnstile.needed && <div ref={turnstile.box} />}
 
       {/* With the golem, leave room above the button for him to stand. */}
       <div className={clsx("relative", golem && "pt-14")}>

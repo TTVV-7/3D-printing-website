@@ -4,7 +4,7 @@
 //
 // A design, drawn bottom to top:
 //   pattern, patternSeed   a generated background (library.js), or "none"
-//   layers                 images and text, in order (below)
+//   layers                 images, text and routes (route.js), in order (below)
 //   ring                   an edge ring with its white frame, or "none"
 //   crop, cropSeed         the cut shape (library.js), or "none" for the label
 // Layer positions and sizes are fractions of the sticker's width, so a design
@@ -15,6 +15,7 @@
 //     letters) or "cutout" (white letters, outlined)
 // x, y are from the centre (y down); rot is in radians.
 import { maskPath, drawDesign, designAlphaMask, drawEdgeRing, ringInner } from "./library.js";
+import { drawRoute } from "./route.js";
 
 // 203 dpi, the usual thermal head: 8 dots per millimetre.
 export const DOTS_PER_MM = 8;
@@ -61,8 +62,8 @@ let measurer = null;
 // A layer's unscaled, unrotated size in mm on a sticker { w, h, shape }.
 export function layerBase(layer, sticker) {
   const { w, h } = sticker;
-  if (layer.kind === "image") {
-    const aspect = layer.img.naturalWidth / layer.img.naturalHeight;
+  if (layer.kind === "image" || layer.kind === "route") {
+    const aspect = layer.kind === "route" ? layer.aspect : layer.img.naturalWidth / layer.img.naturalHeight;
     const d = innerCircle(sticker);
     if (d) {
       // The longer side spans the circle: artwork's corners are usually
@@ -121,6 +122,34 @@ function textLines(ctx, layer, size, draw) {
   lines.forEach((t, i) => draw(t, (i - (lines.length - 1) / 2) * size * 1.15));
 }
 
+// Big uploads shrunk straight to print size in one step alias: edges come out
+// ragged and thin lines drop out once the dots are thresholded. This halves
+// them a step at a time with high-quality smoothing first, as the in-shop
+// Sticker Printer app does, and keeps the result for the next redraw.
+const shrunk = new WeakMap();
+function smoothScaled(img, width, height) {
+  const tw = Math.max(1, Math.round(width)), th = Math.max(1, Math.round(height));
+  let cw = img.naturalWidth || img.width, ch = img.naturalHeight || img.height;
+  if (cw <= tw * 2 && ch <= th * 2) return img;
+  const key = `${tw}x${th}`;
+  const hit = shrunk.get(img);
+  if (hit?.key === key) return hit.canvas;
+  let cur = img;
+  while (cw > tw * 2 || ch > th * 2) {
+    cw = Math.max(tw, Math.round(cw / 2));
+    ch = Math.max(th, Math.round(ch / 2));
+    const c = document.createElement("canvas");
+    c.width = cw;
+    c.height = ch;
+    const g = c.getContext("2d");
+    g.imageSmoothingQuality = "high";
+    g.drawImage(cur, 0, 0, cw, ch);
+    cur = c;
+  }
+  shrunk.set(img, { key, canvas: cur });
+  return cur;
+}
+
 // Returns a canvas the size of the sticker in print dots. Inside the shape is
 // paper and ink; outside it is transparent.
 export function renderThermal(design, { w, h, mode, threshold, invert, paper }) {
@@ -157,13 +186,24 @@ export function renderThermal(design, { w, h, mode, threshold, invert, paper }) 
     };
     ctx.save();
     pg.save();
-    if (layer.kind === "image") {
+    if (layer.kind === "route") {
+      // Crisp black like text, with a white edge over a pattern.
+      const s = (layer.aspect >= 1 ? lw : lh) * D;
+      place(ctx);
+      drawRoute(ctx, layer, s, D, hasPattern);
+      place(pg);
+      pg.globalCompositeOperation = "destination-out";
+      drawRoute(pg, { ...layer, width: layer.width + 1.4 }, s, D, false);
+    } else if (layer.kind === "image") {
+      const src = smoothScaled(layer.img, lw * D, lh * D);
       place(ctx);
       // Multiply: an image's white shows the design under it, like paper.
       ctx.globalCompositeOperation = "multiply";
-      ctx.drawImage(layer.img, (-lw / 2) * D, (-lh / 2) * D, lw * D, lh * D);
+      ctx.imageSmoothingQuality = "high";
+      ctx.drawImage(src, (-lw / 2) * D, (-lh / 2) * D, lw * D, lh * D);
       place(pg);
-      pg.drawImage(layer.img, (-lw / 2) * D, (-lh / 2) * D, lw * D, lh * D);
+      pg.imageSmoothingQuality = "high";
+      pg.drawImage(src, (-lw / 2) * D, (-lh / 2) * D, lw * D, lh * D);
     } else {
       // Text over a photo is crisp, not dotted.
       place(pg);
