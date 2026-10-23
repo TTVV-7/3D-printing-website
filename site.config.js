@@ -158,6 +158,22 @@ export const quoteShipping = {
     rates: [[100, 2.61], [200, 4.29], [300, 5.98], [400, 6.85], [500, 7.36]],
     daysLike: "lettermail",
   },
+  // Tracked, cheapest for small boxes: Regular Parcel. Billed on the actual
+  // weight or the size weight (cm³ / divisor, in kg), whichever is more.
+  // Its price depends on a rate code for the two postal codes, which Canada
+  // Post doesn't publish, so the form shows the lowest and highest price
+  // across all rate codes for each weight: [up to g, low $, high $]. `days`
+  // is a rough guide to business days in the mail, by stickers.shipping zone.
+  regular: {
+    divisor: 6000,
+    rates: [
+      [500, 11.24, 16.23], [750, 11.49, 17.12], [1000, 12.41, 18.92],
+      [1500, 12.5, 19.75], [2000, 12.62, 19.89], [2500, 12.81, 21.01],
+      [3000, 12.99, 21.42], [3500, 13.25, 22.23], [4000, 13.43, 22.99],
+      [4500, 13.61, 23.74], [5000, 13.98, 24.73],
+    ],
+    days: { local: [2, 3], bc: [2, 4], prairies: [3, 6], central: [5, 8], atlantic: [6, 9], north: [8, 12] },
+  },
   // Tracked: Canada Post flat rate boxes, one price anywhere in Canada, up to
   // 5 kg. The parts go in the smallest box they fit (inside size, mm).
   boxes: {

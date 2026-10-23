@@ -47,9 +47,10 @@ export function guessGrams(size, qty, material) {
   return (size[0] * size[1] * size[2] / 1000) * density * cfg.solidGuess * qty;
 }
 
-// Business days in the mail to `zone` (all of Canada without one).
+// Business days in the mail to `zone` (all of Canada without one). `days`
+// is a stickers.delivery key, or days by zone.
 function transit(daysLike, zone) {
-  const days = daysOf(daysLike);
+  const days = typeof daysLike === "string" ? daysOf(daysLike) : daysLike;
   const spans = zone ? [days[zone.key]] : Object.values(days);
   return [Math.min(...spans.map((s) => s[0])), Math.max(...spans.map((s) => s[1]))];
 }
@@ -65,7 +66,8 @@ function boxFor(box) {
 }
 
 // The ways to send a package to `postal` (blank: prices "from", days for
-// anywhere in Canada): [{ key, name, tracked, price, from, days, ok, why }].
+// anywhere in Canada): [{ key, name, tracked, price, low, from, days, ok, why }].
+// `low` is set when the price is a range, low to `price`.
 export function shippingOptions(pkg, postal) {
   const zone = zoneOf(postal);
   const out = [];
@@ -80,6 +82,21 @@ export function shippingOptions(pkg, postal) {
     days: transit(env.daysLike, zone),
     ok: pkg.flat.fits && Boolean(rate),
     why: pkg.flat.why,
+  });
+  const reg = cfg.regular;
+  const cm3 = Math.max(pkg.box.mm[0] * pkg.box.mm[1] * pkg.box.mm[2], pkg.box.volume) / 1000;
+  const billed = Math.max(pkg.box.grams, (cm3 / reg.divisor) * 1000);
+  const regRate = reg.rates.find(([g]) => billed <= g);
+  out.push({
+    key: "regular",
+    name: "Regular Parcel, tracked",
+    tracked: true,
+    price: regRate ? regRate[2] : null,
+    low: regRate ? regRate[1] : null,
+    from: false,
+    days: transit(reg.days, zone),
+    ok: Boolean(regRate),
+    why: regRate ? "" : "too heavy for this guide: I'll quote shipping with your order",
   });
   const fit = boxFor(pkg.box);
   const heavy = pkg.box.grams > cfg.boxes.maxGrams;

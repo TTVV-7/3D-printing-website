@@ -18,10 +18,12 @@ function deliveryText(s) {
   if (!s || s.method !== "ship") return "Pickup in Vancouver";
   const postal = text(s.postal, 10);
   if (!(Number(s.price) > 0)) return `Shipping to ${postal || "you"}, price with the quote`;
-  const by = s.by === "envelope" ? "Envelope, untracked" : "Tracked parcel";
+  const by = { envelope: "Envelope, untracked", regular: "Regular Parcel, tracked" }[s.by] || "Tracked parcel";
+  const low = Number(s.priceLow);
+  const price = low > 0 && low < Number(s.price) ? `$${low.toFixed(2)}–$${Number(s.price).toFixed(2)}` : `$${Number(s.price).toFixed(2)}`;
   const [d0, d1] = Array.isArray(s.days) ? s.days.map((n) => Math.round(Number(n))) : [];
   const days = d0 >= 0 && d1 >= d0 && d1 < 60 ? ` (${d0}–${d1} business days in the mail)` : "";
-  return `${by} to ${postal}, about $${Number(s.price).toFixed(2)}${days}`;
+  return `${by} to ${postal}, about ${price}${days}`;
 }
 
 // A [low, high] dollar pair from the form, or null. Only ever numbers.

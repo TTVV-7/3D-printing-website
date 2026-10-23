@@ -10,6 +10,7 @@ import { guessGrams, packageOf, shippingOptions, zoneOf } from "../lib/quoteShip
 export const DELIVERY_EMPTY = { delivery: "pickup", postal: "", sizeL: "", sizeW: "", sizeH: "", shipBy: "" };
 
 const money = (n) => `$${n.toFixed(2)}`;
+const priceText = (o) => (o.low != null ? `${money(o.low)}–${money(o.price)}` : money(o.price));
 const daysText = ([a, b]) => `${a === b ? a : `${a}–${b}`} business days`;
 
 // What the form sends: { method: "pickup" } or the chosen way to ship, with
@@ -53,7 +54,7 @@ export function useDelivery(form, estimate) {
       pkg,
       postal: form.postal.trim().toUpperCase(),
       summary: chosen
-        ? `${chosen.name} to ${form.postal.trim().toUpperCase() || "(no postal code)"}: about ${chosen.from ? "from " : ""}${money(chosen.price)}, ${daysText(chosen.days)} in the mail. Worked out from ${basis === "model" ? "the model" : "the size they gave"}, about ${Math.round(grams)} g.`
+        ? `${chosen.name} to ${form.postal.trim().toUpperCase() || "(no postal code)"}: about ${chosen.from ? "from " : ""}${priceText(chosen)}, ${daysText(chosen.days)} in the mail. Worked out from ${basis === "model" ? "the model" : "the size they gave"}, about ${Math.round(grams)} g.`
         : "Ship it, but too big to post: arrange delivery.",
     };
   }, [form.delivery, form.postal, form.sizeL, form.sizeW, form.sizeH, form.shipBy, form.quantity, form.material, estimate]);
@@ -67,6 +68,7 @@ export function deliveryEntry(d) {
     postal: d.postal || null,
     by: d.chosen?.key || null,
     price: d.chosen ? Math.round(d.chosen.price * 100) / 100 : null,
+    priceLow: d.chosen?.low != null ? Math.round(d.chosen.low * 100) / 100 : null,
     days: d.chosen?.days || null,
     sizeFrom: d.basis || null,
     grams: d.grams ? Math.round(d.grams) : null,
@@ -139,7 +141,7 @@ export function Delivery({ form, setForm, delivery, hasModel }) {
                       </span>
                     </span>
                     {o.ok && o.price != null && (
-                      <span className="font-semibold">{o.from && <span className="text-xs font-normal text-ink/50">from </span>}{money(o.price)}</span>
+                      <span className="font-semibold">{o.from && <span className="text-xs font-normal text-ink/50">from </span>}{priceText(o)}</span>
                     )}
                   </button>
                 );
