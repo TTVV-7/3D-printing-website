@@ -77,4 +77,23 @@ export const work = [
     alt: "Cream 3D-printed cartoon mask with red nose and cheeks, black eyebrows and a big white toothy grin",
     video: "/work/grin-mask.mp4",
   },
+  {
+    title: "Mascot phone stand",
+    kind: "Multi-colour business gift",
+    photo: "/work/mascot-phone-stand.webp",
+    focus: "center 45%",
+    alt: "3D-printed orange and white dog mascot in a black 5 Star hard hat and t-shirt on a branded base with a pen cup and card tray",
+  },
+  {
+    title: "Mascot phone stand, in use",
+    kind: "Holds a phone either way",
+    photo: "/work/mascot-phone-stand-in-use.webp",
+    alt: "The printed dog mascot holding a phone sideways in its paint scrapers, beside the pen cup and card tray",
+  },
+  {
+    title: "Mascot, straight off the printer",
+    kind: "Before the supports come off",
+    photo: "/work/mascot-supports.webp",
+    alt: "The dog mascot fresh from the printer, wrapped in tree-like support structures before cleanup",
+  },
 ];
