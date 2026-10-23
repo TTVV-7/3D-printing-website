@@ -11,6 +11,7 @@ import { StickerEditor } from "./StickerEditor.jsx";
 import { Checkout } from "./Checkout.jsx";
 import { priceEach, sizeOf, lineTotal, itemLabel, finishesFor, isColour, itemSizeName } from "./pricing.js";
 import { ColourStudio } from "./ColourStudio.jsx";
+import { BikeStudio } from "./BikeStudio.jsx";
 
 // Typefaces for text layers; loaded in stickers/index.html.
 const FONTS = [
@@ -115,22 +116,26 @@ function Label({ children, hint }) {
   );
 }
 
-// The two makers on this page: thermal labels (one ink, preset label sizes,
-// the quickest and cheapest) and full-colour stickers cut to any shape on
-// the Cricut (ColourStudio.jsx). #colour in the address opens the second.
+// The makers on this page: thermal labels (one ink, preset label sizes, the
+// quickest and cheapest), full-colour stickers cut to any shape on the
+// Cricut (ColourStudio.jsx), and bike stickers, shown on a bike
+// (BikeStudio.jsx). #colour or #bike in the address opens the others.
 const MODES = [
   { key: "thermal", name: "Thermal labels", sub: "Black ink on die-cut labels · cheapest" },
   { key: "colour", name: "Full colour, custom cut", sub: "Any image, any shape, cut to fit", soon: !stickers.colour.available },
+  { key: "bike", name: "Bike stickers", sub: "Your name and flag, or your route", soon: !stickers.bike.available },
 ];
+const HASHES = ["colour", "bike"];
 
 export function StickerStudio() {
   const [maker, setMakerState] = useState("thermal");
   useEffect(() => {
-    if (location.hash === "#colour") setMakerState("colour");
+    const hash = location.hash.slice(1);
+    if (HASHES.includes(hash)) setMakerState(hash);
   }, []);
   const setMaker = (m) => {
     setMakerState(m);
-    history.replaceState(null, "", m === "colour" ? "#colour" : location.pathname + location.search);
+    history.replaceState(null, "", HASHES.includes(m) ? `#${m}` : location.pathname + location.search);
   };
   const canvasRef = useRef(null);
   const flatRef = useRef(null);
@@ -189,7 +194,7 @@ export function StickerStudio() {
   const view = useMemo(() => art && previewArt(art, paper), [art, paper]);
 
   useEffect(() => {
-    if (ready && maker === "colour") stage.current.stop();
+    if (ready && maker !== "thermal") stage.current.stop();
   }, [ready, maker, stage]);
 
   useEffect(() => {
@@ -379,11 +384,13 @@ export function StickerStudio() {
           <p className="mt-4 text-ink/65 sm:text-lg">
             {maker === "thermal"
               ? "Thermal printed in crisp black on die-cut labels. Drop in an image or type some text, pick a label and a border, and see it to scale."
-              : "Printed in full colour on vinyl and cut to any shape: around your design, or as a circle or square. Pick a size and see it to scale."}
+              : maker === "colour"
+                ? "Printed in full colour on vinyl and cut to any shape: around your design, or as a circle or square. Pick a size and see it to scale."
+                : "Your name and flag for the top tube, or a favourite ride's route for the down tube. Printed in full colour and shown on a real-size bike."}
           </p>
         </div>
 
-        <div className="mt-8 grid max-w-2xl grid-cols-2 gap-2 rounded-2xl bg-white p-1.5 ring-1 ring-ink/10" role="tablist">
+        <div className="mt-8 grid max-w-3xl gap-2 rounded-2xl sm:grid-cols-3 bg-white p-1.5 ring-1 ring-ink/10" role="tablist">
           {MODES.map((m) => (
             <button
               key={m.key}
@@ -417,6 +424,8 @@ export function StickerStudio() {
             openCheckout={() => setCheckout(true)}
           />
         )}
+
+        {maker === "bike" && <BikeStudio />}
 
         {/* Thermal maker: kept mounted (hidden) on the colour tab so its 3D
             stage survives the switch. */}
