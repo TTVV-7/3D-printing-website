@@ -16,7 +16,7 @@
 //                                    tracking}; "shipped" and "ready" email the
 //                                    customer (admins only)
 //
-// Admins are the emails in ADMIN_EMAILS (comma-separated), or site.email.
+// Admins are the emails in ADMIN_EMAILS (comma-separated), or site.admins.
 // Orders are recorded by recordOrder() as they're filed: quotes as the Worker
 // passes them to the store backend, sticker orders from api/_sticker-order.js.
 import { site } from "../site.config.js";
@@ -68,7 +68,7 @@ const normal = (email) => String(email || "").trim().toLowerCase();
 // Only paths on this site, so a sign-in link can't send someone elsewhere.
 const safeNext = (next) => (typeof next === "string" && /^\/(?!\/)[\w\-./?=&#%]*$/.test(next) ? next : "/account/");
 const admins = (env) =>
-  (env.ADMIN_EMAILS || site.email || "")
+  (env.ADMIN_EMAILS || (site.admins || []).join(",") || site.email || "")
     .split(",")
     .map(normal)
     .filter(Boolean);

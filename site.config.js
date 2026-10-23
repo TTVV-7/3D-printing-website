@@ -33,7 +33,13 @@ export const site = {
 
   // Public contact email: shown in the footer, beside the quote form and in the
   // no-JavaScript fallback. Leave empty to rely on the form.
-  email: "thomas.verigin@gmail.com",
+  // Forwards to Gmail through Cloudflare Email Routing (as does
+  // orders@printyours.ca, the address order emails come from).
+  email: "hello@printyours.ca",
+
+  // Who gets the admin tab on /account/ (signed in with Google). The
+  // ADMIN_EMAILS Worker variable overrides it.
+  admins: ["thomas.verigin@gmail.com"],
 
   // Cloudflare Web Analytics site token (public; the Cloudflare build loads
   // it). Page views are under Cloudflare dashboard > Web Analytics.
