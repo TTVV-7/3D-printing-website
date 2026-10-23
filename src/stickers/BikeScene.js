@@ -81,16 +81,16 @@ export function buildBike(type) {
   const shell = new Mesh(new CylinderGeometry(22, 22, 75, 24), paint);
   shell.rotation.x = Math.PI / 2;
   shell.position.copy(bb);
-  const postTop = stTop.clone().add(stDir.clone().multiplyScalar(type === "bmx" ? 60 : 170));
+  const postTop = stTop.clone().add(stDir.clone().multiplyScalar(170));
   const saddle = new Mesh(new BoxGeometry(260, 40, 130), dark);
   saddle.position.copy(postTop).add(new Vector3(10, 20, 0));
   g.add(shell, tube(stTop, postTop, 13, metal), saddle);
 
   // Stem and bars.
   const steerTop = htTop.clone().add(new Vector3(-Math.cos(deg(s.hta)) * 35, Math.sin(deg(s.hta)) * 35, 0));
-  const stemEnd = steerTop.clone().add(new Vector3(s.bar === "riser" ? 50 : 100, s.bar === "riser" ? 40 : 5, 0));
+  const stemEnd = steerTop.clone().add(new Vector3(100, 5, 0));
   g.add(tube(htTop, steerTop, 16, dark), tube(steerTop, stemEnd, 15, dark));
-  const half = s.bar === "drop" ? 210 : s.bar === "riser" ? 340 : 380;
+  const half = s.bar === "drop" ? 210 : 380;
   const barL = stemEnd.clone().setZ(-half), barR = stemEnd.clone().setZ(half);
   g.add(tube(barL, barR, 12, dark));
   if (s.bar === "drop") {
@@ -101,17 +101,13 @@ export function buildBike(type) {
       g.add(tube(a, b, 12, dark), tube(b, c, 12, dark), tube(c, c.clone().add(new Vector3(-60, 0, 0)), 12, dark));
     }
   }
-  if (s.bar === "riser") {
-    for (const z of [-90, 90]) g.add(tube(stemEnd.clone().setZ(z), stemEnd.clone().add(new Vector3(0, 70, z)), 11, dark));
-    g.add(tube(stemEnd.clone().add(new Vector3(0, 70, -half)), stemEnd.clone().add(new Vector3(0, 70, half)), 12, dark));
-  }
 
   // Drivetrain: chainring, cranks, pedals.
-  const ring = new Mesh(new CylinderGeometry(type === "bmx" ? 75 : 95, type === "bmx" ? 75 : 95, 4, 48), metal);
+  const ring = new Mesh(new CylinderGeometry(95, 95, 4, 48), metal);
   ring.rotation.x = Math.PI / 2;
   ring.position.copy(bb).setZ(48);
   g.add(ring);
-  const crank = type === "kids" ? 120 : 170;
+  const crank = 170;
   for (const [z, a] of [[58, deg(-70)], [-58, deg(110)]]) {
     const end = bb.clone().add(new Vector3(Math.cos(a) * crank, Math.sin(a) * crank, z));
     g.add(tube(bb.clone().setZ(z), end, 10, dark));

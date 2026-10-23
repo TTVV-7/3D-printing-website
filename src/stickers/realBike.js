@@ -2,8 +2,7 @@
 // bike" view, in the same shape as buildBike() (BikeScene.js) so
 // StickerScene.js can use either: { group, tubes: { top, down, seat:
 // { from, to, r } }, spec, centre, real: true }. Each tube's centre line and
-// radius are measured from the model (BikeModelScene.js). Bikes without a
-// model keep the built ones.
+// radius are measured from the model (BikeModelScene.js).
 import { Box3, CircleGeometry, Group, Mesh, MeshPhysicalMaterial, MeshStandardMaterial, Vector3 } from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { DRACOLoader } from "three/examples/jsm/loaders/DRACOLoader.js";
