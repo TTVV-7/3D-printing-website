@@ -61,6 +61,15 @@ export async function stats(request, env) {
     env.DB.prepare("SELECT at, name, source, page, detail FROM events ORDER BY id DESC LIMIT 40").all(),
   ]);
 
+  // Whether payments on printyours.ca will work: the live Stripe key's kind,
+  // never the key itself.
+  const liveKey = env.STRIPE_SECRET_KEY || env.STRIPE_PRODUCTION || env.Stripe_Claude || "";
+  const stripeNote = /^(sk|rk)_live_/.test(liveKey)
+    ? "Stripe: a live key is set, so sticker checkout takes real payments on printyours.ca."
+    : /^(sk|rk)_test_/.test(liveKey)
+      ? "Stripe: the production key is a TEST key, so sticker checkout is switched off on printyours.ca."
+      : "Stripe: no usable production key (it should start sk_live_), so sticker checkout is switched off on printyours.ca.";
+
   const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex"><title>Site stats | Print Yours</title><style>
 body{font:15px/1.5 system-ui,sans-serif;margin:0 auto;max-width:860px;padding:24px 16px;color:#0c1a2e;background:#f7f5f0}
@@ -69,6 +78,7 @@ table{border-collapse:collapse;width:100%;background:#fff;border-radius:12px;ove
 th,td{text-align:left;padding:7px 10px;border-bottom:1px solid #eee;vertical-align:top}th{background:#0c1a2e;color:#fff;font-weight:600}
 td:last-child{word-break:break-word}a{color:#ff5a1f}</style></head><body>
 <h1>Print Yours: what visitors do</h1>
+<p><strong>${esc(stripeNote)}</strong></p>
 <p>Last 30 days. Page views, referrers and countries are in
 <a href="https://dash.cloudflare.com/?to=/:account/web-analytics">Cloudflare Web Analytics</a>.</p>
 ${table("Events", ["Event", "Count"], byName.results.map((r) => [r.name, r.n]))}
