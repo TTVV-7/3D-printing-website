@@ -11,6 +11,7 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import { outline as cutOutline } from "./thermal.js";
 import { buildBike, bendAroundTube } from "./BikeScene.js";
+import { hasRealBike, loadRealBike } from "./realBike.js";
 
 const CARD = { w: 85.6, h: 53.98, t: 0.76 };
 const STICKER_T = 0.35; // a label and its backing, a touch thick so the edge shows
@@ -426,10 +427,13 @@ export async function mountStickers(canvas, { reducedMotion }) {
     },
     // Shows the sticker on a bike of `type` (BikeScene.js BIKES) on its
     // `place` tube ("top", "down", "seat"), or back on the mat with null.
+    // Road, mountain and city show a real model (realBike.js): the built
+    // bike stands in while it loads, or if it can't.
     setBike(type, place = "top") {
       if (bike?.built && bike.type !== type) {
         scene.remove(bike.built.group);
-        bike.built.group.traverse((o) => o.geometry?.dispose());
+        // Real models are kept for next time.
+        if (!bike.built.real) bike.built.group.traverse((o) => o.geometry?.dispose());
       }
       if (!type) {
         bike = null;
@@ -441,6 +445,20 @@ export async function mountStickers(canvas, { reducedMotion }) {
         if (bike?.type !== type) scene.add(built.group);
         bike = { type, place, built };
         mat.visible = card.visible = false;
+        if (!built.real && hasRealBike(type)) {
+          loadRealBike(type)
+            .then((real) => {
+              if (bike?.type !== type || bike.built !== built) return; // moved on
+              scene.remove(built.group);
+              built.group.traverse((o) => o.geometry?.dispose());
+              scene.add(real.group);
+              bike.built = real;
+              if (last) this.update(last);
+              else layout();
+              frameBike();
+            })
+            .catch((err) => console.warn("Bike model skipped:", err));
+        }
       }
       if (last) this.update(last);
       else layout();

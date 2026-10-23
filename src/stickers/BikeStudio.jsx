@@ -153,7 +153,7 @@ export function BikeStudio() {
   const [line, setLine] = useState(LINES[0]);
 
   const bike = bikeOf(bikeKey);
-  const tubes = Object.keys(bike.tubes);
+  const tubes = Object.keys(bike.tubes).filter((t) => TUBES[t]);
   const usual = design === "name" ? "top" : "down";
   const tube = [tubeChoice, usual].find((t) => t && bike.tubes[t]) || tubes[0];
   const { stage, ready } = useBikeStage(

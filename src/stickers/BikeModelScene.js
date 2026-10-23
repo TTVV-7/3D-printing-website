@@ -54,7 +54,7 @@ function nearTube(paint, a, b) {
 }
 
 // The tube's centre line, its usable length, and cross-sections along it.
-function measureTube(paint, line) {
+export function measureTube(paint, line) {
   let a = new Vector3(line[0][0] * 1000, line[0][1] * 1000, 0);
   let b = new Vector3(line[1][0] * 1000, line[1][1] * 1000, 0);
   const near = nearTube(paint, a, b);

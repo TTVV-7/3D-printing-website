@@ -15,6 +15,7 @@ export const BIKE_MODELS = [
     tubes: {
       top: [[-0.2, 0.722], [0.289, 0.811]],
       down: [[-0.067, 0.389], [0.311, 0.711]],
+      seat: [[-0.122, 0.378], [-0.218, 0.711]],
     },
     credit: { title: "Road Bike", author: "tanity", url: "https://sketchfab.com/3d-models/road-bike-cb03b0657fbc4693b59194124ba713db" },
   },
@@ -25,6 +26,7 @@ export const BIKE_MODELS = [
     tubes: {
       top: [[-0.233, 0.707], [0.3, 0.871]],
       down: [[-0.122, 0.367], [0.311, 0.811]],
+      seat: [[-0.133, 0.356], [-0.256, 0.733]],
     },
     credit: { title: "MTB Mongoose Tyax", author: "Saushkin", url: "https://sketchfab.com/3d-models/mtb-mongoose-tyax-d5c7ab157aa84eb08e2deaee6165e764" },
   },
@@ -32,10 +34,14 @@ export const BIKE_MODELS = [
     key: "city",
     name: "City",
     url: "/models/bikes/city.glb",
-    // A step-through: its low top tube is curved, so stickers go on the down tube.
+    // A step-through: its low top tube is curved, so the full-colour maker
+    // only offers the down tube. `step` is the straight, rising part of that
+    // curve, for the thermal maker's "top tube".
     tubes: {
       down: [[-0.067, 0.4], [0.344, 0.789]],
+      seat: [[-0.089, 0.344], [-0.267, 0.878]],
     },
+    step: [[0.033, 0.567], [0.3, 0.844]],
     credit: { title: "Dutch Bicycle", author: "Fairyflosslord7", url: "https://sketchfab.com/3d-models/dutch-bicycle-1967bfe65c164c589351985e7becc8b8" },
   },
 ];
