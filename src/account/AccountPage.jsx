@@ -16,6 +16,18 @@ const STEPS = {
   sticker: ["paid", "printing", "shipped", "done"],
   "sticker-request": ["received", "printing", "shipped", "done"],
 };
+// One colour per status, used for the badge and the admin card's edge.
+const STATUS_STYLE = {
+  received: { badge: "bg-amber-100 text-amber-800", edge: "border-l-amber-400", dot: "bg-amber-400" },
+  quoted: { badge: "bg-violet-100 text-violet-800", edge: "border-l-violet-400", dot: "bg-violet-400" },
+  paid: { badge: "bg-teal-100 text-teal-800", edge: "border-l-teal-400", dot: "bg-teal-400" },
+  printing: { badge: "bg-blue-100 text-blue-800", edge: "border-l-blue-500", dot: "bg-blue-500" },
+  ready: { badge: "bg-lime-100 text-lime-800", edge: "border-l-lime-500", dot: "bg-lime-500" },
+  shipped: { badge: "bg-emerald-100 text-emerald-800", edge: "border-l-emerald-500", dot: "bg-emerald-500" },
+  done: { badge: "bg-ink text-white", edge: "border-l-ink", dot: "bg-ink" },
+  cancelled: { badge: "bg-ink/10 text-ink/60", edge: "border-l-ink/20", dot: "bg-ink/25" },
+};
+const styleOf = (status) => STATUS_STYLE[status] || STATUS_STYLE.received;
 const date = (s) => new Date(s.replace(" ", "T") + "Z").toLocaleDateString("en-CA", { month: "short", day: "numeric", year: "numeric" });
 
 function GoogleIcon() {
@@ -102,9 +114,9 @@ function Progress({ order }) {
   );
 }
 
-function OrderCard({ order, children }) {
+function OrderCard({ order, edge, children }) {
   return (
-    <li className="flex gap-4 rounded-2xl bg-white p-4 ring-1 ring-ink/10">
+    <li className={clsx("flex gap-4 rounded-2xl bg-white p-4 ring-1 ring-ink/10", edge && ["border-l-4", styleOf(order.status).edge])}>
       <span className="flex h-20 w-20 flex-none items-center justify-center overflow-hidden rounded-xl bg-paper">
         {order.thumbnail ? <img src={order.thumbnail} alt="" loading="lazy" className="h-full w-full object-contain" /> : <Package size={28} className="text-ink/25" />}
       </span>
@@ -118,12 +130,7 @@ function OrderCard({ order, children }) {
               {order.total ? ` · $${Number(order.total).toFixed(2)}` : ""}
             </p>
           </div>
-          <span
-            className={clsx(
-              "rounded-full px-2.5 py-1 text-xs font-semibold",
-              order.status === "cancelled" ? "bg-ink/10 text-ink/60" : order.status === "done" ? "bg-ink text-white" : "bg-flame-100 text-flame-600",
-            )}
-          >
+          <span className={clsx("rounded-full px-2.5 py-1 text-xs font-semibold", styleOf(order.status).badge)}>
             {order.statusName}
           </span>
         </div>
@@ -183,10 +190,34 @@ function Designs({ designs, onChange }) {
 }
 
 // Admins: every order, with its status, a note the customer sees and tracking.
+// Filter by status and sort; the choice is remembered in this browser.
+const SORTS = {
+  newest: ["Newest first", (a, b) => b.created_at.localeCompare(a.created_at)],
+  oldest: ["Oldest first", (a, b) => a.created_at.localeCompare(b.created_at)],
+  updated: ["Recently updated", (a, b) => (b.updated_at || "").localeCompare(a.updated_at || "")],
+  status: ["Status", null],
+  customer: ["Customer (A–Z)", (a, b) => a.email.localeCompare(b.email)],
+  total: ["Total (high–low)", (a, b) => (b.total || 0) - (a.total || 0)],
+};
+const remembered = (key, fallback) => {
+  try {
+    return localStorage.getItem(key) || fallback;
+  } catch {
+    return fallback;
+  }
+};
+const remember = (key, value) => {
+  try {
+    localStorage.setItem(key, value);
+  } catch {}
+};
+
 function Admin({ statuses }) {
   const [orders, setOrders] = useState(null);
   const [edits, setEdits] = useState({});
   const [saved, setSaved] = useState({});
+  const [filter, setFilter] = useState(() => remembered("py_admin_filter", "all"));
+  const [sort, setSort] = useState(() => remembered("py_admin_sort", "newest"));
   const load = () =>
     fetch("/api/account/orders")
       .then((r) => r.json())
@@ -198,42 +229,95 @@ function Admin({ statuses }) {
   if (!orders.length) return <p className="text-sm text-ink/60">No orders yet. New quotes and sticker orders show up here as they come in.</p>;
 
   async function save(o) {
-    const e = { status: o.status, note: o.note || "", tracking: o.tracking || "", ...edits[o.id] };
+    const e = { status: o.status, note: o.note || "", tracking: o.tracking || "", notify: true, ...edits[o.id] };
+    const wantsEmail = e.status !== o.status && (e.status === "shipped" || e.status === "ready") && e.notify;
     setSaved((s) => ({ ...s, [o.id]: "saving" }));
     const r = await fetch("/api/account/orders", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: o.id, ...e }) });
     const d = await r.json().catch(() => ({}));
-    setSaved((s) => ({ ...s, [o.id]: r.ok ? (d.emailed ? "Saved, customer emailed" : "Saved") : d.error || "Didn't save" }));
+    const msg = !r.ok ? d.error || "Didn't save" : d.emailed ? "Saved, customer emailed" : wantsEmail ? "Saved, but the email didn't send" : "Saved";
+    setSaved((s) => ({ ...s, [o.id]: msg }));
     setEdits((x) => ({ ...x, [o.id]: undefined }));
     load();
   }
-  const set = (o, k) => (ev) => setEdits((x) => ({ ...x, [o.id]: { ...x[o.id], [k]: ev.target.value } }));
+  const set = (o, k) => (ev) => setEdits((x) => ({ ...x, [o.id]: { ...x[o.id], [k]: ev.target.type === "checkbox" ? ev.target.checked : ev.target.value } }));
+  const pickFilter = (f) => {
+    setFilter(f);
+    remember("py_admin_filter", f);
+  };
+  const pickSort = (v) => {
+    setSort(v);
+    remember("py_admin_sort", v);
+  };
+
+  const order = Object.keys(statuses);
+  const counts = {};
+  for (const o of orders) counts[o.status] = (counts[o.status] || 0) + 1;
+  const byStatus = (a, b) => order.indexOf(a.status) - order.indexOf(b.status) || b.created_at.localeCompare(a.created_at);
+  const shown = orders.filter((o) => filter === "all" || o.status === filter).sort((SORTS[sort] || SORTS.newest)[1] || byStatus);
 
   return (
-    <ul className="space-y-3">
-      {orders.map((o) => {
-        const e = { status: o.status, note: o.note || "", tracking: o.tracking || "", ...edits[o.id] };
-        const emails = e.status !== o.status && (e.status === "shipped" || e.status === "ready");
-        return (
-          <OrderCard key={o.id} order={o}>
-            <p className="mt-1 text-xs text-ink/50">{o.email}</p>
-            <div className="mt-3 grid gap-2 sm:grid-cols-[10rem_1fr_10rem_auto]">
-              <select value={e.status} onChange={set(o, "status")} className="field h-10 py-1" aria-label="Status">
-                {Object.entries(statuses).map(([k, v]) => (
-                  <option key={k} value={k}>{v}</option>
-                ))}
-              </select>
-              <input value={e.note} onChange={set(o, "note")} placeholder="Note the customer sees (optional)" className="field h-10 py-1" />
-              <input value={e.tracking} onChange={set(o, "tracking")} placeholder="Tracking number" className="field h-10 py-1" />
-              <button type="button" onClick={() => save(o)} disabled={!edits[o.id]} className="btn-primary h-10 px-4 text-sm disabled:opacity-40">
-                Save
-              </button>
-            </div>
-            {emails && <p className="mt-1.5 text-xs text-flame-600">Saving emails the customer that it's {e.status === "shipped" ? "shipped" : "ready for pickup"}.</p>}
-            {saved[o.id] && <p className="mt-1.5 text-xs text-ink/55">{saved[o.id] === "saving" ? "Saving…" : saved[o.id]}</p>}
-          </OrderCard>
-        );
-      })}
-    </ul>
+    <>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap gap-1.5">
+          {[["all", "All", orders.length], ...order.filter((k) => counts[k]).map((k) => [k, statuses[k], counts[k]])].map(([k, label, n]) => (
+            <button
+              key={k}
+              type="button"
+              onClick={() => pickFilter(k)}
+              aria-pressed={filter === k}
+              className={clsx(
+                "flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium ring-1 transition",
+                filter === k ? "bg-ink text-white ring-ink" : "bg-white ring-ink/15 hover:ring-ink/40",
+              )}
+            >
+              {k !== "all" && <span className={clsx("h-2 w-2 rounded-full", styleOf(k).dot)} />}
+              {label} <span className="opacity-60">{n}</span>
+            </button>
+          ))}
+        </div>
+        <label className="flex items-center gap-2 text-xs text-ink/60">
+          Sort
+          <select value={sort} onChange={(ev) => pickSort(ev.target.value)} className="field h-9 w-auto py-1 text-sm">
+            {Object.entries(SORTS).map(([k, [label]]) => (
+              <option key={k} value={k}>{label}</option>
+            ))}
+          </select>
+        </label>
+      </div>
+      {!shown.length && <p className="text-sm text-ink/60">No orders with that status right now.</p>}
+      <ul className="space-y-3">
+        {shown.map((o) => {
+          const e = { status: o.status, note: o.note || "", tracking: o.tracking || "", notify: true, ...edits[o.id] };
+          const emailable = e.status !== o.status && (e.status === "shipped" || e.status === "ready");
+          return (
+            <OrderCard key={o.id} order={o} edge>
+              <p className="mt-1 text-xs text-ink/50">{o.email}</p>
+              <div className="mt-3 grid gap-2 sm:grid-cols-[10rem_1fr_10rem_auto]">
+                <select value={e.status} onChange={set(o, "status")} className="field h-10 py-1" aria-label="Status">
+                  {Object.entries(statuses).map(([k, v]) => (
+                    <option key={k} value={k}>{v}</option>
+                  ))}
+                </select>
+                <input value={e.note} onChange={set(o, "note")} placeholder="Note for the customer (optional)" className="field h-10 py-1" />
+                <input value={e.tracking} onChange={set(o, "tracking")} placeholder="Tracking number" className="field h-10 py-1" />
+                <button type="button" onClick={() => save(o)} disabled={!edits[o.id]} className="btn-primary h-10 px-4 text-sm disabled:opacity-40">
+                  Save
+                </button>
+              </div>
+              {emailable ? (
+                <label className="mt-1.5 flex items-center gap-2 text-xs text-flame-600">
+                  <input type="checkbox" checked={e.notify} onChange={set(o, "notify")} className="accent-flame" />
+                  Email the customer that it's {e.status === "shipped" ? "shipped" : "ready for pickup"}, with your note and tracking
+                </label>
+              ) : (
+                edits[o.id] && <p className="mt-1.5 text-xs text-ink/50">No email for this change. The customer sees the new status and note when they check their account.</p>
+              )}
+              {saved[o.id] && <p className="mt-1.5 text-xs text-ink/55">{saved[o.id] === "saving" ? "Saving…" : saved[o.id]}</p>}
+            </OrderCard>
+          );
+        })}
+      </ul>
+    </>
   );
 }
 
