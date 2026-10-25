@@ -88,14 +88,19 @@ export const pricing = {
   ],
 };
 
-// Customer reviews. The section stays hidden until there's at least one
-// review or one link. Copy reviews word-for-word from where they were left
+// Customer reviews. The section (and its nav link) stays hidden until there's at
+// least one review or one link. Copy reviews word-for-word from where they were left
 // and only post ones you have permission to share -- first name + initial is plenty.
 export const reviews = {
   // Your Facebook Marketplace seller profile (Marketplace → your profile → Share → Copy link).
   marketplaceUrl: "",
-  // Your Google Business Profile review link, once you have one.
+  // Your Google Business Profile, where people read your reviews: search "Print Yours"
+  // on Google Maps, open the listing, Share → Copy link.
   googleUrl: "",
+  // The "write a review" link that opens the Google star-rating box straight away:
+  // Google Business Profile → "Ask for reviews" (or "Get more reviews") → copy the link.
+  // Also served at printyours.ca/review, a short link for receipts, cards and QR codes.
+  googleReviewUrl: "",
   items: [
     // { name: "Sarah K.", rating: 5, text: "Printed a replacement dishwasher clip in two days. Fits perfectly.", source: "Facebook Marketplace" },
   ],

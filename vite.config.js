@@ -1,6 +1,6 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
-import { site } from "./site.config.js";
+import { site, reviews } from "./site.config.js";
 
 // Quote requests, uploads and portfolio data are served by the existing store
 // backend (filament-shopping). In production vercel.json proxies /api there;
@@ -9,7 +9,7 @@ const API_ORIGIN = "https://thomasverigin.ca";
 const API_PREFIX = "/3Dprintingstore";
 
 const url = site.url.replace(/\/$/, "");
-const sameAs = Object.values(site.social).filter(Boolean);
+const sameAs = [...Object.values(site.social), reviews.googleUrl].filter(Boolean);
 
 const structuredData = [
   {
@@ -71,6 +71,18 @@ function seo() {
           `  <url><loc>${url}/</loc><changefreq>weekly</changefreq><priority>1.0</priority></url>\n` +
           `</urlset>\n`,
       });
+      // printyours.ca/review: a short link to the Google review box for receipts and QR codes.
+      if (reviews.googleReviewUrl) {
+        const to = reviews.googleReviewUrl.replaceAll("&", "&amp;").replaceAll('"', "&quot;");
+        this.emitFile({
+          type: "asset",
+          fileName: "review/index.html",
+          source:
+            `<!doctype html><meta charset="utf-8"><meta name="robots" content="noindex">` +
+            `<meta http-equiv="refresh" content="0; url=${to}">` +
+            `<title>Review ${site.name}</title><a href="${to}">Leave a review for ${site.name} on Google</a>\n`,
+        });
+      }
     },
   };
 }

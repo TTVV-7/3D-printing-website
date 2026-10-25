@@ -22,13 +22,22 @@ so new requests show up in the same admin panel as before. Nothing to migrate.
 | --- | --- |
 | Business name, description, email, social links | `site.config.js` |
 | Prices | `site.config.js` → `pricing` |
-| Reviews and Marketplace link | `site.config.js` → `reviews` |
+| Reviews, Google and Marketplace links | `site.config.js` → `reviews` |
 | Generator app link ("Design your own") | `site.config.js` → `designerUrl` |
 | Generator cards | `src/components/Designer.jsx` + `public/designer/` |
 | Portfolio photos | `public/work/` + `src/work.js` |
 | Specs & materials (confirm before launch) | `src/components/Materials.jsx` |
 | Link-preview image (1200×630) | `public/og-image.jpg` |
 | Intro terrain (North Shore height map) | `node scripts/topo-heightmap.mjs` → `public/topo/` |
+
+## Google reviews
+
+Paste two links into `site.config.js` → `reviews`:
+
+- `googleUrl`: your listing on Google Maps (Share → Copy link). Shows a "Reviews on Google" button.
+- `googleReviewUrl`: the link from Google Business Profile → "Ask for reviews". Shows a
+  "Write a review" button and a footer link, and makes `printyours.ca/review` forward
+  straight to the review box (handy for receipts, packaging and QR codes).
 
 ## SEO / sharing
 

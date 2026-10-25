@@ -2,13 +2,15 @@ import { useEffect, useState } from "react";
 import { Menu, Sparkles, X } from "lucide-react";
 import { clsx } from "clsx";
 import { Logo } from "./Logo.jsx";
+import { hasReviews } from "./Reviews.jsx";
 
 const NAV = [
   { href: "#design", label: "Design your own" },
   { href: "#services", label: "Pricing" },
   { href: "#work", label: "Work" },
   { href: "#materials", label: "Materials" },
-];
+  hasReviews && { href: "#reviews", label: "Reviews" },
+].filter(Boolean);
 
 export function Header() {
   const [scrolled, setScrolled] = useState(false);
