@@ -1,4 +1,4 @@
-import { site } from "../../site.config.js";
+import { site, reviews } from "../../site.config.js";
 import { Logo } from "./Logo.jsx";
 import { reopenConsent } from "../lib/consent.js";
 import { cookieless } from "./ConsentAnalytics.jsx";
@@ -36,6 +36,11 @@ export function Footer({ home = "" }) {
               {LABELS[key] || key}
             </a>
           ))}
+          {reviews.googleReviewUrl && (
+            <a href={reviews.googleReviewUrl} target="_blank" rel="noopener noreferrer" className="hover:text-white">
+              Leave a review
+            </a>
+          )}
           <a href={`${home}#quote`} className="text-flame hover:text-white">
             Get a quote
           </a>
