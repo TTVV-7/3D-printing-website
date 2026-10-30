@@ -199,11 +199,11 @@ export const reviews = {
   marketplaceUrl: "",
   // Your Google Business Profile, where people read your reviews: search "Print Yours"
   // on Google Maps, open the listing, Share → Copy link.
-  googleUrl: "",
+  googleUrl: "https://g.page/r/Cfy-tqRciC8XEBM",
   // The "write a review" link that opens the Google star-rating box straight away:
   // Google Business Profile → "Ask for reviews" (or "Get more reviews") → copy the link.
   // Also served at printyours.ca/review, a short link for receipts, cards and QR codes.
-  googleReviewUrl: "",
+  googleReviewUrl: "https://g.page/r/Cfy-tqRciC8XEBM/review",
   items: [
     // { name: "Sarah K.", rating: 5, text: "Printed a replacement dishwasher clip in two days. Fits perfectly.", source: "Facebook Marketplace" },
   ],
