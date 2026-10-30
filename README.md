@@ -56,7 +56,7 @@ Paste two links into `site.config.js` → `reviews`:
 - Structured data per page (`pageData` in `vite.config.js`): the business with its
   services and prices, the site name, stickers as a product with a price range, the bike
   page as a service, the models list, and breadcrumbs; model pages add their own
-- The sitemap carries the last commit's date; robots.txt keeps `/api/` and `/account/` out
+- The sitemap carries the last commit's date; robots.txt keeps `/api/` (except the public model files) and `/account/` out
 
 ## Stats
 

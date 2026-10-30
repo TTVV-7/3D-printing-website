@@ -83,6 +83,15 @@ const structuredData = [
   },
 ];
 
+// The most one sticker of this size can cost: one alone, chrome only where
+// chrome is sold in that size (src/stickers/pricing.js has the same rules).
+function stickerTopPrice(z) {
+  const sold = (c) => !c.sizes || c.sizes.includes(z.key) || c.sizes.includes(z.group);
+  const chrome = stickers.finishes.some((f) => f.key === "chrome" && f.colours.some(sold));
+  const { perSqIn, minEach, chromeExtra } = stickers.pricing;
+  return Math.max(minEach, (z.w / 25.4) * (z.h / 25.4) * perSqIn) + (chrome ? chromeExtra : 0);
+}
+
 // Home > page, for the pages under it.
 const breadcrumbs = (name, path) => ({
   "@context": "https://schema.org",
@@ -110,7 +119,7 @@ const pageData = {
         "@type": "AggregateOffer",
         priceCurrency: "CAD",
         lowPrice: Number((stickers.pricing.minEach * (1 - Math.max(...stickers.pricing.breaks.map((b) => b.off)))).toFixed(2)),
-        highPrice: Number(Math.max(...stickers.sizes.map((z) => (z.w / 25.4) * (z.h / 25.4) * stickers.pricing.perSqIn + stickers.pricing.chromeExtra)).toFixed(2)),
+        highPrice: Number(Math.max(...stickers.sizes.map(stickerTopPrice)).toFixed(2)),
         offerCount: stickers.sizes.length,
         availability: "https://schema.org/InStock",
         seller: { "@id": `${url}/#business` },
@@ -184,7 +193,7 @@ function seo() {
       this.emitFile({
         type: "asset",
         fileName: "robots.txt",
-        source: `User-agent: *\nAllow: /\nDisallow: /api/\nDisallow: /account/\n\nSitemap: ${url}/sitemap.xml\n`,
+        source: `User-agent: *\nAllow: /\nAllow: /api/model-file\nDisallow: /api/\nDisallow: /account/\n\nSitemap: ${url}/sitemap.xml\n`,
       });
       this.emitFile({
         type: "asset",
