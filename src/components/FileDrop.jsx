@@ -119,6 +119,7 @@ export function FileDrop({ files, onChange, disabled }) {
                 onClick={() => onChange(files.filter((f) => f !== file))}
                 className="flex-shrink-0 text-ink/30 hover:text-red-500"
                 aria-label={`Remove ${file.name}`}
+                data-track="Remove file"
               >
                 <X size={14} />
               </button>

@@ -33,9 +33,11 @@ export const anonymous = true;
 // left out of every count server side too.)
 const QUIET = /^\/account\//;
 
-// What a click was on: its data-track label, else its accessible name or text.
+// What a click was on: its data-track label, else its text, else its
+// accessible name. Anything showing what a visitor typed or uploaded (a file
+// name...) should carry data-track or data-no-track.
 function clickLabel(el) {
-  const text = el.dataset.track || el.getAttribute("aria-label") || el.title || el.textContent || el.querySelector("img")?.alt || "";
+  const text = el.dataset.track || el.textContent?.trim() || el.getAttribute("aria-label") || el.title || el.querySelector("img")?.alt || "";
   return text.replace(/\s+/g, " ").trim().slice(0, 80);
 }
 function onClick(e) {
@@ -53,13 +55,31 @@ function onClick(e) {
   track("Click", { label: clickLabel(el) || el.tagName.toLowerCase(), ...(href ? { href } : {}) });
 }
 
+// One page view per path, including ones changed without a reload (the 3D
+// models page opens each model with history.pushState).
+let lastPath = null;
+function pageView() {
+  if (location.pathname === lastPath) return;
+  lastPath = location.pathname;
+  if (!QUIET.test(location.pathname)) track("Page view", landing() ? { landing: true } : {});
+}
+
 let started = false;
 export function Analytics() {
   useEffect(() => {
     if (!started) {
       started = true;
-      if (!QUIET.test(location.pathname)) track("Page view", landing() ? { landing: true } : {});
+      pageView();
       document.addEventListener("click", onClick, { capture: true, passive: true });
+      for (const fn of ["pushState", "replaceState"]) {
+        const orig = history[fn];
+        history[fn] = function (...args) {
+          const out = orig.apply(this, args);
+          pageView();
+          return out;
+        };
+      }
+      addEventListener("popstate", pageView);
     }
     if (!TOKEN || document.querySelector("script[data-cf-beacon]")) return;
     const s = document.createElement("script");

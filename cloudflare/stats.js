@@ -40,14 +40,12 @@ const local = (() => {
 })();
 
 // Every local date in the range, oldest first, ending today.
+// Steps calendar days from today's local date, so a DST change can't skip one.
 function dateList(days) {
+  const [y, m, d] = local(new Date().toISOString().replace("T", " ")).date.split("-").map(Number);
   const out = [];
-  const now = Date.now();
-  for (let i = days; i >= 0; i--) {
-    const d = local(new Date(now - i * 86400000).toISOString().replace("T", " "));
-    if (out[out.length - 1] !== d.date) out.push(d.date);
-  }
-  return out.slice(-days);
+  for (let i = days - 1; i >= 0; i--) out.push(new Date(Date.UTC(y, m - 1, d - i, 12)).toISOString().slice(0, 10));
+  return out;
 }
 
 const grid = () => Array.from({ length: 7 }, () => Array(24).fill(0));

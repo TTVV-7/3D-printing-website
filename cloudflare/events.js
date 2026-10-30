@@ -56,7 +56,12 @@ export function ensureColumns(env) {
     for (const [table, cols] of Object.entries(COLUMNS)) {
       const have = new Set((await env.DB.prepare(`PRAGMA table_info(${table})`).all()).results.map((c) => c.name));
       for (const [col, type] of Object.entries(cols)) {
-        if (!have.has(col)) await env.DB.prepare(`ALTER TABLE ${table} ADD COLUMN ${col} ${type}`).run().catch(() => {});
+        if (have.has(col)) continue;
+        // Another instance may have just added it; anything else is retried
+        // on the next call.
+        await env.DB.prepare(`ALTER TABLE ${table} ADD COLUMN ${col} ${type}`).run().catch((err) => {
+          if (!/duplicate column/i.test(err.message)) throw err;
+        });
       }
     }
     await env.DB.prepare("CREATE INDEX IF NOT EXISTS events_visitor ON events(visitor, at)").run();

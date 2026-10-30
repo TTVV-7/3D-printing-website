@@ -8,6 +8,8 @@ import { anonymous, cookieless } from "./ConsentAnalytics.jsx";
 // Never shown where analytics are fully cookieless: nothing there needs
 // asking. On the Cloudflare build visits are counted anonymously either way;
 // accepting adds a visitor id and the city (cloudflare/client/analytics.js).
+// Orders keep the rough place they came from regardless (recordOrder in
+// cloudflare/accounts.js), which the banner says.
 export function CookieBanner() {
   const [open, setOpen] = useState(false);
 
@@ -32,7 +34,7 @@ export function CookieBanner() {
           <p className="font-display text-base font-semibold">Cookies?</p>
           <p className="mt-1 text-sm leading-relaxed text-white/70">
             {anonymous
-              ? "This site counts visits anonymously. If you accept, it also keeps a random ID in your browser so return visits count once, and notes your rough area (city). You can accept or decline; the site works either way."
+              ? "This site counts visits anonymously. If you accept, it also keeps a random ID in your browser so return visits count once, and notes your rough area (city). Orders always note the rough area they were sent from. You can accept or decline; the site works either way."
               : "This site uses cookies and similar storage to remember your preferences and see how the site is used. You can accept or decline; the site works either way."}
           </p>
         </div>

@@ -422,18 +422,21 @@ export function AdminStats() {
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
   const [heat, setHeat] = useState("visits");
+  // Only the latest request's answer is shown, if ranges are switched quickly.
+  const latest = useRef(0);
 
   const load = (d = days) => {
+    const id = ++latest.current;
     setBusy(true);
     setError(null);
     fetch(`/api/account/stats?days=${d}`)
       .then(async (r) => {
         const body = await r.json().catch(() => ({}));
         if (!r.ok) throw new Error(body.error || `Couldn't load stats (${r.status})`);
-        setData(body);
+        if (id === latest.current) setData(body);
       })
-      .catch((e) => setError(e.message))
-      .finally(() => setBusy(false));
+      .catch((e) => id === latest.current && setError(e.message))
+      .finally(() => id === latest.current && setBusy(false));
   };
   useEffect(() => {
     load(days);

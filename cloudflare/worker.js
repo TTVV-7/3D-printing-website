@@ -14,6 +14,7 @@
 //
 // Nothing in api/ or vercel.json changes, so the Vercel deployment keeps
 // working side by side with this one.
+import { AsyncLocalStorage } from "node:async_hooks";
 import { toNode } from "./node-adapter.js";
 import quoteUpload from "./quote-upload.js";
 import stickerAi from "./sticker-ai.js";
@@ -95,32 +96,41 @@ async function quoteRequest(request, env, url) {
   return res;
 }
 
+// The request being handled, for code that runs deep inside an api/ file
+// (api/_sticker-order.js records orders through a global). One isolate serves
+// many requests at once, so a per-request value can't sit in a global itself.
+const current = new AsyncLocalStorage();
+
 export default {
-  async fetch(request, env, ctx) {
-    const url = new URL(request.url);
-    if (!url.pathname.startsWith("/api/")) return env.ASSETS.fetch(request);
-
-    // What the api/ files read through process.env and @vercel/blob.
-    globalThis.__PRINTYOURS_R2 = env.UPLOADS;
-    // Sticker orders filed by api/_sticker-order.js go into accounts too.
-    globalThis.__PRINTYOURS_RECORD = (entry) => recordOrder(env, entry, request.cf);
-    const production = PRODUCTION_HOSTS.has(url.hostname);
-    process.env.VERCEL_ENV = production ? "production" : "preview";
-    for (const [name, alias] of Object.entries(SECRET_ALIASES)) {
-      if (!process.env[name] && env[alias]) process.env[name] = env[alias];
-    }
-
-    const name = url.pathname.slice("/api/".length);
-    if (production && PAYMENT_ROUTES.has(name) && !LIVE_KEY.test(process.env.STRIPE_SECRET_KEY || process.env.STRIPE_PRODUCTION || "")) {
-      console.error("payments: no live Stripe key (STRIPE_PRODUCTION) on the production domain");
-      return Response.json({ error: "Payments are not set up yet" }, { status: 503 });
-    }
-    if (GUARDED.has(name) && request.method !== "GET" && !(await passesTurnstile(env, request.headers.get("x-turnstile"), request))) {
-      return Response.json({ error: "Couldn't confirm you're not a bot. Refresh the page and try again." }, { status: 403 });
-    }
-    const route = Object.hasOwn(routes, name) ? routes[name] : null;
-    if (route) return route(request, env, ctx);
-    if (name === "print-requests" && request.method === "POST") return quoteRequest(request, env, url);
-    return proxyToStore(request, url);
+  fetch(request, env, ctx) {
+    return current.run({ cf: request.cf }, () => handle(request, env, ctx));
   },
 };
+
+async function handle(request, env, ctx) {
+  const url = new URL(request.url);
+  if (!url.pathname.startsWith("/api/")) return env.ASSETS.fetch(request);
+
+  // What the api/ files read through process.env and @vercel/blob.
+  globalThis.__PRINTYOURS_R2 = env.UPLOADS;
+  // Sticker orders filed by api/_sticker-order.js go into accounts too.
+  globalThis.__PRINTYOURS_RECORD = (entry) => recordOrder(env, entry, current.getStore()?.cf);
+  const production = PRODUCTION_HOSTS.has(url.hostname);
+  process.env.VERCEL_ENV = production ? "production" : "preview";
+  for (const [name, alias] of Object.entries(SECRET_ALIASES)) {
+    if (!process.env[name] && env[alias]) process.env[name] = env[alias];
+  }
+
+  const name = url.pathname.slice("/api/".length);
+  if (production && PAYMENT_ROUTES.has(name) && !LIVE_KEY.test(process.env.STRIPE_SECRET_KEY || process.env.STRIPE_PRODUCTION || "")) {
+    console.error("payments: no live Stripe key (STRIPE_PRODUCTION) on the production domain");
+    return Response.json({ error: "Payments are not set up yet" }, { status: 503 });
+  }
+  if (GUARDED.has(name) && request.method !== "GET" && !(await passesTurnstile(env, request.headers.get("x-turnstile"), request))) {
+    return Response.json({ error: "Couldn't confirm you're not a bot. Refresh the page and try again." }, { status: 403 });
+  }
+  const route = Object.hasOwn(routes, name) ? routes[name] : null;
+  if (route) return route(request, env, ctx);
+  if (name === "print-requests" && request.method === "POST") return quoteRequest(request, env, url);
+  return proxyToStore(request, url);
+}

@@ -5,7 +5,23 @@ import { ACCOUNTS, fetchMe, refreshMe, reorder } from "./client.js";
 import { NOT_VERIFIED, turnstileHeaders, useTurnstile } from "../lib/turnstile.js";
 
 // Admins only, so customers never download the charts.
-const AdminStats = lazy(() => import("./AdminStats.jsx").then((m) => ({ default: m.AdminStats })));
+// A failed download (say, the site was updated since this page loaded) shows
+// a reload button instead of blanking the page.
+const AdminStats = lazy(() =>
+  import("./AdminStats.jsx").then(
+    (m) => ({ default: m.AdminStats }),
+    () => ({
+      default: () => (
+        <p className="text-sm text-ink/60">
+          Couldn't load the stats.{" "}
+          <button type="button" onClick={() => location.reload()} className="font-medium underline">
+            Reload the page
+          </button>
+        </p>
+      ),
+    }),
+  ),
+);
 
 // /account/: sign in (Google or an emailed link), then your orders with their
 // status, and the sticker designs you've made. Admins also get every order
