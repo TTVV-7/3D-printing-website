@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import { Cookie } from "lucide-react";
 import { getConsent, setConsent, onConsentChange } from "../lib/consent.js";
-import { cookieless } from "./ConsentAnalytics.jsx";
+import { anonymous, cookieless } from "./ConsentAnalytics.jsx";
 
 // Shown on the first visit until the visitor accepts or declines. Sits bottom
 // left on larger screens so it doesn't cover the golem in the right corner.
-// Never shown where analytics are cookieless (the Cloudflare build): nothing
-// there needs asking.
+// Never shown where analytics are fully cookieless: nothing there needs
+// asking. On the Cloudflare build visits are counted anonymously either way;
+// accepting adds a visitor id and the city (cloudflare/client/analytics.js).
 export function CookieBanner() {
   const [open, setOpen] = useState(false);
 
@@ -30,8 +31,9 @@ export function CookieBanner() {
         <div>
           <p className="font-display text-base font-semibold">Cookies?</p>
           <p className="mt-1 text-sm leading-relaxed text-white/70">
-            This site uses cookies and similar storage to remember your preferences and see how the
-            site is used. You can accept or decline; the site works either way.
+            {anonymous
+              ? "This site counts visits anonymously. If you accept, it also keeps a random ID in your browser so return visits count once, and notes your rough area (city). You can accept or decline; the site works either way."
+              : "This site uses cookies and similar storage to remember your preferences and see how the site is used. You can accept or decline; the site works either way."}
           </p>
         </div>
       </div>

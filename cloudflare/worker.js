@@ -6,6 +6,7 @@
 //   /api/sticker-ai                  -> cloudflare/sticker-ai.js (AI sticker art)
 //   /api/event, /api/stats           -> cloudflare/events.js (site analytics)
 //   /api/auth/*, /api/account/*      -> cloudflare/accounts.js (customer accounts)
+//   /api/account/stats               -> cloudflare/stats.js (admin charts)
 //   any other /api/...               -> the store backend on thomasverigin.ca,
 //                                       as vercel.json's catch-all rewrite does
 //   everything else                  -> the built site in dist/ (static assets;
@@ -21,6 +22,7 @@ import modelFile from "./model-file.js";
 import { event, stats } from "./events.js";
 import { passesTurnstile } from "./turnstile.js";
 import { accountRoutes, recordOrder } from "./accounts.js";
+import { adminStats } from "./stats.js";
 import quoteConfirm from "../api/quote-confirm.js";
 import stickerCheckout from "../api/sticker-checkout.js";
 import stickerConfirm from "../api/sticker-confirm.js";
@@ -56,6 +58,7 @@ const routes = {
   event,
   stats,
   ...accountRoutes,
+  "account/stats": adminStats,
   "quote-confirm": toNode(quoteConfirm),
   "sticker-checkout": toNode(stickerCheckout),
   "sticker-confirm": toNode(stickerConfirm),
@@ -84,7 +87,7 @@ async function quoteRequest(request, env, url) {
   const res = await proxyToStore(request, url, text);
   if (res.ok) {
     try {
-      await recordOrder(env, JSON.parse(text));
+      await recordOrder(env, JSON.parse(text), request.cf);
     } catch {
       // Not JSON: the store backend will have said so.
     }
@@ -100,7 +103,7 @@ export default {
     // What the api/ files read through process.env and @vercel/blob.
     globalThis.__PRINTYOURS_R2 = env.UPLOADS;
     // Sticker orders filed by api/_sticker-order.js go into accounts too.
-    globalThis.__PRINTYOURS_RECORD = (entry) => recordOrder(env, entry);
+    globalThis.__PRINTYOURS_RECORD = (entry) => recordOrder(env, entry, request.cf);
     const production = PRODUCTION_HOSTS.has(url.hostname);
     process.env.VERCEL_ENV = production ? "production" : "preview";
     for (const [name, alias] of Object.entries(SECRET_ALIASES)) {

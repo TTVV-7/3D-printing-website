@@ -59,6 +59,10 @@ referrers. Turn it on once in the Vercel dashboard: project → Analytics → En
 Each successful quote also sends a `Quote submitted` event (material, quantity, whether
 files/link were attached; no names or emails), visible under Analytics → Events.
 
+On the Cloudflare deployment there's more: sign in at `/account/` as an admin and
+open **Stats** for charts of visits, clicks, orders, uploads, busiest hours and
+places (see CLOUDFLARE.md → Analytics).
+
 All absolute URLs default to `https://printyours.ca`; set the `SITE_URL` env var to
 override (e.g. for a staging domain).
 

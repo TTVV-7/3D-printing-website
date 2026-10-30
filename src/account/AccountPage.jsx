@@ -1,12 +1,16 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { ArrowRight, Box, CheckCircle2, Loader2, LogOut, Mail, Package, RotateCcw, Trash2 } from "lucide-react";
 import { clsx } from "clsx";
 import { ACCOUNTS, fetchMe, refreshMe, reorder } from "./client.js";
 import { NOT_VERIFIED, turnstileHeaders, useTurnstile } from "../lib/turnstile.js";
 
+// Admins only, so customers never download the charts.
+const AdminStats = lazy(() => import("./AdminStats.jsx").then((m) => ({ default: m.AdminStats })));
+
 // /account/: sign in (Google or an emailed link), then your orders with their
 // status, and the sticker designs you've made. Admins also get every order
-// with controls to move it along. Server side: cloudflare/accounts.js.
+// with controls to move it along, and a Stats tab of charts (AdminStats.jsx).
+// Server side: cloudflare/accounts.js and cloudflare/stats.js.
 
 const KIND = { quote: "Print quote", club: "Club & team order", sticker: "Sticker order", "sticker-request": "Sticker request" };
 // The usual path an order takes, for the progress bar.
@@ -367,7 +371,7 @@ export function AccountPage() {
                 {[
                   ["orders", `Orders (${me.orders.length})`],
                   ["designs", `My designs (${me.designs.length})`],
-                  ...(me.admin ? [["admin", "All orders (admin)"]] : []),
+                  ...(me.admin ? [["admin", "All orders (admin)"], ["stats", "Stats (admin)"]] : []),
                 ].map(([k, label]) => (
                   <button
                     key={k}
@@ -407,6 +411,11 @@ export function AccountPage() {
                   ))}
                 {tab === "designs" && <Designs designs={me.designs} onChange={reload} />}
                 {tab === "admin" && me.admin && <Admin statuses={me.statuses} />}
+                {tab === "stats" && me.admin && (
+                  <Suspense fallback={<Loader2 className="animate-spin text-ink/40" />}>
+                    <AdminStats />
+                  </Suspense>
+                )}
               </div>
             </>
           )}

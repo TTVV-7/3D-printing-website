@@ -21,6 +21,7 @@
 // passes them to the store backend, sticker orders from api/_sticker-order.js.
 import { site } from "../site.config.js";
 import { esc, layout, sendMail, EMAIL } from "../api/_mail.js";
+import { ensureColumns } from "./events.js";
 
 const SESSION_DAYS = 60;
 const LINK_MINUTES = 20;
@@ -67,7 +68,7 @@ async function sha(text) {
 const normal = (email) => String(email || "").trim().toLowerCase();
 // Only paths on this site, so a sign-in link can't send someone elsewhere.
 const safeNext = (next) => (typeof next === "string" && /^\/(?!\/)[\w\-./?=&#%]*$/.test(next) ? next : "/account/");
-const admins = (env) =>
+export const admins = (env) =>
   (env.ADMIN_EMAILS || (site.admins || []).join(",") || site.email || "")
     .split(",")
     .map(normal)
@@ -82,6 +83,14 @@ export async function currentUser(request, env) {
     .bind(await sha(token))
     .first();
   return row || null;
+}
+
+// Whether this request comes from a signed-in admin. Cheap for everyone
+// else: no session cookie, no database lookup.
+export async function isAdmin(request, env) {
+  if (!cookies(request).py_session) return false;
+  const user = await currentUser(request, env);
+  return Boolean(user && admins(env).includes(user.email));
 }
 
 // Signs in `email` (making the account the first time) and sends them on.
@@ -216,8 +225,10 @@ const isPicture = (path) => /p=stickers%2F/.test(path) || /\.(png|jpe?g|webp|gif
 const orderOut = (o) => ({ ...o, images: o.images ? JSON.parse(o.images) : [], statusName: STATUSES[o.status] || o.status });
 
 // Called as an order is filed. `entry` is the quote-form shape
-// (src/components/QuoteForm.jsx / api/_sticker-order.js fileOrder).
-export async function recordOrder(env, entry) {
+// (src/components/QuoteForm.jsx / api/_sticker-order.js fileOrder); `cf` is
+// the customer's request.cf, for the rough place it was sent from (country,
+// region, city: Cloudflare's guess from the connection).
+export async function recordOrder(env, entry, cf = {}) {
   if (!env.DB || !entry?.id || !EMAIL.test(entry.email || "")) return;
   const id = String(entry.id).slice(0, 80);
   const kind = id.startsWith("sticker-request")
@@ -233,9 +244,12 @@ export async function recordOrder(env, entry) {
     .filter((path) => path && isPicture(path))
     .slice(0, 8);
   const thumb = filePath(entry.thumbnailUrl) || images[0] || null;
+  const files = Array.isArray(entry.files) ? entry.files.filter((f) => f?.url && !/original/.test(f.name || "")).length : 0;
+  const place = (v, n) => (typeof v === "string" && v ? v.slice(0, n) : null);
   try {
+    await ensureColumns(env);
     await env.DB.prepare(
-      "INSERT OR IGNORE INTO orders (id, email, kind, title, status, quantity, total, thumbnail, images) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+      "INSERT OR IGNORE INTO orders (id, email, kind, title, status, quantity, total, thumbnail, images, files, country, region, city) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
     )
       .bind(
         id,
@@ -247,6 +261,10 @@ export async function recordOrder(env, entry) {
         Number.isFinite(Number(entry.totalCost)) ? Number(entry.totalCost) : null,
         thumb,
         JSON.stringify(images),
+        files,
+        place(cf?.country, 2),
+        place(cf?.region, 60),
+        place(cf?.city, 60),
       )
       .run();
   } catch (err) {

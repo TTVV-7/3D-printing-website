@@ -9,10 +9,19 @@ CREATE TABLE IF NOT EXISTS events (
   name TEXT NOT NULL,
   page TEXT,
   detail TEXT,
-  source TEXT
+  source TEXT,
+  visitor TEXT,                  -- random browser id, only after cookie consent
+  visit TEXT,                    -- random id for one visit (tab), same
+  country TEXT,                  -- from Cloudflare (request.cf)
+  region TEXT,                   -- region and city: consenting visitors only
+  city TEXT,
+  device TEXT                    -- phone, tablet or computer
 );
 CREATE INDEX IF NOT EXISTS events_at ON events(at);
 CREATE INDEX IF NOT EXISTS events_name ON events(name, at);
+CREATE INDEX IF NOT EXISTS events_visitor ON events(visitor, at);
+-- Older databases get the newer columns added automatically
+-- (ensureColumns in cloudflare/events.js).
 
 -- Customer accounts (cloudflare/accounts.js): people sign in with Google or
 -- an emailed link; sessions are cookies holding a random token, stored here
@@ -43,6 +52,10 @@ CREATE TABLE IF NOT EXISTS orders (
   images TEXT,                   -- JSON list of picture links
   note TEXT,                     -- shown to the customer
   tracking TEXT,
+  files INTEGER,                 -- how many files were attached
+  country TEXT,                  -- rough place it was sent from (request.cf)
+  region TEXT,
+  city TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
