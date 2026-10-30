@@ -49,7 +49,8 @@ export function Footer({ home = "" }) {
       <div className="border-t border-white/10">
         <div className="container-page flex flex-wrap items-center justify-between gap-2 py-5 text-xs text-white/40">
           <p>
-            © {new Date().getFullYear()} {site.name}. Printed in Vancouver.
+            © {/* The build's year in the prerendered page; the visitor's after hydration. */}
+            <span suppressHydrationWarning>{new Date().getFullYear()}</span> {site.name}. Printed in Vancouver.
           </p>
           {!cookieless && (
             <button type="button" onClick={reopenConsent} className="hover:text-white">

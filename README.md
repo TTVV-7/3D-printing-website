@@ -49,8 +49,14 @@ Paste two links into `site.config.js` → `reviews`:
 - `LocalBusiness` JSON-LD, generated at build time from `site.config.js`
 - `robots.txt` and `sitemap.xml` generated at build time
 - Google Search Console verification tag: `site.config.js` → `googleSiteVerification`
-- The page is prerendered at build time (`scripts/prerender.js`), so crawlers get the
-  full text in the HTML instead of an empty `<div id="root">`
+- Every page (home, stickers, bike, 3D models and each model page) is prerendered at
+  build time (`scripts/prerender.js`), so crawlers and link previews get the full text
+  instead of an empty `<div id="root">`. Anything only a browser can draw (canvas
+  previews) waits for `useHydrated()` so the page hydrates without mismatches.
+- Structured data per page (`pageData` in `vite.config.js`): the business with its
+  services and prices, the site name, stickers as a product with a price range, the bike
+  page as a service, the models list, and breadcrumbs; model pages add their own
+- The sitemap carries the last commit's date; robots.txt keeps `/api/` (except the public model files) and `/account/` out
 
 ## Stats
 

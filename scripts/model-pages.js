@@ -34,6 +34,15 @@ for (const m of shown) {
       isPartOf: { "@type": "Collection", name: m.collection },
       creator: { "@id": `${url}/#business` },
     },
+    {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      itemListElement: [
+        { "@type": "ListItem", position: 1, name: site.name, item: `${url}/` },
+        { "@type": "ListItem", position: 2, name: "3D models", item: `${url}/models/` },
+        { "@type": "ListItem", position: 3, name: m.name, item: page },
+      ],
+    },
     m.video && {
       "@context": "https://schema.org",
       "@type": "VideoObject",
@@ -46,7 +55,10 @@ for (const m of shown) {
     },
   ].filter(Boolean);
 
-  let html = template.replace(/<title>[^<]*<\/title>/, `<title>${esc(title)}</title>`);
+  // The models page's own details (its list and breadcrumbs) give way to this model's.
+  let html = template
+    .replace(/\s*<script type="application\/ld\+json">[\s\S]*?<\/script>/g, "")
+    .replace(/<title>[^<]*<\/title>/, `<title>${esc(title)}</title>`);
   html = set(html, 'name="description"', description);
   html = set(html, 'rel="canonical"', page);
   html = set(html, 'property="og:url"', page);

@@ -23,6 +23,7 @@ import { PRESETS, presetOf } from "./presets.js";
 import { BIKES } from "./bikes.js";
 import { RouteDialog } from "./RouteDialog.jsx";
 import { saveDesigns } from "../account/client.js";
+import { useHydrated } from "../lib/useHydrated.js";
 
 
 // The cart lives in this browser, so it survives a reload or a trip to Stripe
@@ -220,13 +221,14 @@ export function StickerStudio() {
   const crop = stock.crop || "none";
 
 
+  const hydrated = useHydrated();
   const art = useMemo(
     () =>
-      typeof document === "undefined"
+      !hydrated
         ? null
         : renderThermal({ ...d, crop, layers }, { w: size.w, h: size.h, mode, threshold, invert, paper }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [layers, size, d, mode, threshold, invert, paper, fontsReady],
+    [layers, size, d, mode, threshold, invert, paper, fontsReady, hydrated],
   );
   // What the 3D view and editor show: the same dots, smooth at screen size.
   const view = useMemo(() => art && previewArt(art, paper), [art, paper]);

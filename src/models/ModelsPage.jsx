@@ -123,7 +123,8 @@ function Viewer({ model, onClose }) {
 export function ModelsPage() {
   const collections = useMemo(() => [...new Set(SHOWN.map((m) => m.collection))], []);
   const [filter, setFilter] = useState("All");
-  const [open, setOpenState] = useState(fromPath);
+  // Opened after the first render, so the page matches its prerendered HTML.
+  const [open, setOpenState] = useState(null);
   const list = filter === "All" ? SHOWN : SHOWN.filter((m) => m.collection === filter);
 
   // Keep the address in step with the open model, and follow back/forward.
@@ -133,6 +134,7 @@ export function ModelsPage() {
     if (location.pathname !== pathOf(m)) history.pushState(null, "", pathOf(m));
   }
   useEffect(() => {
+    setOpenState(fromPath());
     const onPop = () => setOpenState(fromPath());
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);

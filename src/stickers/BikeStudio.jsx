@@ -6,6 +6,7 @@ import { BIKE_MODELS, PAINTS, TUBES, bikeOf } from "./bikeModels.js";
 import { BIKE_FONTS, FLAGS, loadFlag, nameSticker, routeSticker } from "./bikeArt.js";
 import { bikeRoute, googleMapsLink } from "./places.js";
 import { PlaceInput } from "./PlaceInput.jsx";
+import { useHydrated } from "../lib/useHydrated.js";
 
 // Bike stickers: a name with a flag for the top tube, or a ride's route for
 // the down tube, shown wrapped round a real-size bike (BikeModelScene.js).
@@ -195,8 +196,9 @@ export function BikeStudio() {
     return () => ctl.abort();
   }, [stopKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const hydrated = useHydrated();
   const art = useMemo(() => {
-    if (typeof document === "undefined") return null;
+    if (!hydrated) return null;
     if (design === "name") {
       return nameSticker({ name, font, flag: flagSide === "none" ? null : flag, flagSide, bg, ink, h: nameH }, PREVIEW_PX);
     }
@@ -213,7 +215,7 @@ export function BikeStudio() {
       w: size.w,
       h: size.h,
     }, PREVIEW_PX);
-  }, [design, name, font, flag, flagSide, bg, ink, nameH, route, routeSize, line, fontsReady]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [design, name, font, flag, flagSide, bg, ink, nameH, route, routeSize, line, fontsReady, hydrated]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (ready) stage.current.setBike(bikeKey);
