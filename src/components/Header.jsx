@@ -1,7 +1,10 @@
 import { useEffect, useState } from "react";
-import { Menu, Sparkles, X } from "lucide-react";
+import { Menu, Sparkles, UserRound, X } from "lucide-react";
 import { clsx } from "clsx";
 import { Logo } from "./Logo.jsx";
+
+// Customer accounts: Cloudflare build only (see src/account/client.js).
+const ACCOUNTS = import.meta.env.VITE_ACCOUNTS === "1";
 
 const NAV = [
   { href: "#design", label: "Design your own" },
@@ -9,6 +12,7 @@ const NAV = [
   { href: "#work", label: "Work" },
   { href: "#materials", label: "Materials" },
   { href: "/stickers/", label: "Stickers" },
+  { href: "/models/", label: "3D models" },
 ];
 
 // On other pages (home="/") the section links point back at the home page.
@@ -54,6 +58,11 @@ export function Header({ home = "" }) {
           <a href={link(home, "#design")} className="btn-outline-light h-10 px-5 text-sm hidden lg:inline-flex">
             <Sparkles size={15} className="text-flame" /> Design your own
           </a>
+          {ACCOUNTS && (
+            <a href="/account/" aria-label="Your account and orders" title="Your account and orders" className="hidden h-10 w-10 items-center justify-center rounded-full text-white/75 hover:bg-white/10 hover:text-white md:inline-flex">
+              <UserRound size={19} />
+            </a>
+          )}
           <a href={link(home, "#quote")} className="btn-primary h-9 px-4 text-sm sm:h-10 sm:px-5">
             <span className="sm:hidden">Quote</span>
             <span className="hidden sm:inline">Get a free quote</span>
@@ -82,6 +91,11 @@ export function Header({ home = "" }) {
               {n.label}
             </a>
           ))}
+          {ACCOUNTS && (
+            <a href="/account/" onClick={() => setOpen(false)} className="py-2.5 text-lg font-display">
+              Your account &amp; orders
+            </a>
+          )}
         </nav>
       )}
     </header>

@@ -1,0 +1,38 @@
+// Cloudflare Workers config for printyours. Vercel ignores this file; see
+// CLOUDFLARE.md for setup, and cloudflare/worker.js for how requests route.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  // Must match the Worker's name in the Cloudflare dashboard, or Workers Builds refuses to deploy.
+  "name": "3d-printing-website",
+  "main": "cloudflare/worker.js",
+  "compatibility_date": "2026-10-01",
+  // Buffer and process.env, which the api/ functions use, plus Stripe's SDK.
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    // Pages and files are served straight from the edge; only the API wakes the Worker.
+    "run_worker_first": ["/api/*"]
+  },
+  // Sticker print files and quote attachments (Vercel Blob's job on Vercel).
+  "r2_buckets": [
+    { "binding": "UPLOADS", "bucket_name": "printyours-uploads" },
+    // The 3D models page's files, copied from GitHub on first view (cloudflare/model-file.js).
+    { "binding": "MODELS", "bucket_name": "weave-models" }
+  ],
+  // AI sticker art on /stickers (cloudflare/sticker-ai.js), and its daily limits.
+  "ai": { "binding": "AI" },
+  "kv_namespaces": [{ "binding": "AI_LIMITS", "id": "1d97c22d17824be8b483fa63c36273e7" }],
+  // Analytics events (cloudflare/events.js); tables in cloudflare/schema.sql.
+  "d1_databases": [{ "binding": "DB", "database_name": "printyours", "database_id": "707d8a22-1761-466f-81d3-9ad1b0286eaa" }],
+  "vars": {
+    "AI_PER_VISITOR": "5",
+    "AI_PER_DAY": "60"
+  },
+  // The api/ files import Vercel Blob; on Cloudflare they get R2 instead.
+  "alias": {
+    "@vercel/blob/client": "./cloudflare/blob-r2.js",
+    "@vercel/blob": "./cloudflare/blob-r2.js"
+  },
+  "observability": { "enabled": true }
+}

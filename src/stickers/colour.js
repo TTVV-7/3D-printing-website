@@ -112,47 +112,12 @@ export function cropImage(image, rect) {
   return out;
 }
 
-// A suggested crop: the box around the design, found by looking for what
-// isn't see-through or the plain backdrop colour, with a little room spare.
-// Returns { x, y, w, h } (fractions), or null when there's nothing to trim
-// (a busy photo, or the design already fills the image).
-export function autoCrop(image) {
-  const { width: w, height: h, data: d } = pixels(image, 480).data;
-  const colour = backdropOf(d, w, h);
-  let clear = 0;
-  for (let i = 3; i < d.length; i += 4) if (d[i] < ALPHA_MIN) clear++;
-  if (!colour && clear < (w * h) / 64) return null;
-  const rows = new Uint32Array(h), cols = new Uint32Array(w);
-  for (let y = 0; y < h; y++) {
-    for (let x = 0; x < w; x++) {
-      const i = (y * w + x) * 4;
-      const back = d[i + 3] < ALPHA_MIN || (colour && near(d, i, colour, BACKDROP_TOL * 1.5));
-      if (!back) rows[y]++, cols[x]++;
-    }
-  }
-  // A row or column needs a few design pixels to count, so specks of JPG
-  // noise or dust on a scan don't stretch the box.
-  const span = (counts, len, other) => {
-    const min = Math.max(2, other * 0.004);
-    let a = 0, b = len - 1;
-    while (a < len && counts[a] < min) a++;
-    while (b > a && counts[b] < min) b--;
-    return a > b ? null : [a, b + 1];
-  };
-  const xs = span(cols, w, h), ys = span(rows, h, w);
-  if (!xs || !ys) return null;
-  const pad = 0.03 * Math.max(xs[1] - xs[0], ys[1] - ys[0]);
-  const x0 = Math.max(0, xs[0] - pad), x1 = Math.min(w, xs[1] + pad);
-  const y0 = Math.max(0, ys[0] - pad), y1 = Math.min(h, ys[1] + pad);
-  const rect = { x: x0 / w, y: y0 / h, w: (x1 - x0) / w, h: (y1 - y0) / h };
-  return rect.w > 0.97 && rect.h > 0.97 ? null : rect;
-}
-
 // The art, trimmed to what's visible, optionally with a plain backdrop
 // removed. Returns a canvas, or null if nothing is left.
-export function prepareArt(image, { removeBackdrop }) {
+export function prepareArt(image, { removeBackdrop, backdrop }) {
   const { canvas: src, ctx, data } = pixels(image, MAX_SOURCE_PX);
-  const colour = removeBackdrop && backdropOf(data.data, data.width, data.height);
+  // `backdrop` is the colour from before a shape crop made the corners see-through.
+  const colour = removeBackdrop && (backdropOf(data.data, data.width, data.height) || backdrop);
   if (colour) {
     clearBackdrop(data, colour);
     ctx.putImageData(data, 0, 0);
@@ -361,4 +326,244 @@ export function printFile(art, opts, widthMm) {
     if (dataUrl.length * 0.75 <= MAX_PRINT_BYTES) return { dataUrl, dpi };
   }
   return { dataUrl: renderSticker(art, opts, widthMm, 150 / MM_PER_IN).canvas.toDataURL("image/png"), dpi: 150 };
+}
+
+// Text on a full-colour sticker. Each `texts` entry is { text, font, weight,
+// colour, size, where, outline }: `size` is the letter height as a share of
+// the art's width, `where` is "above" or "below" the art (the sticker grows
+// to fit) or "over" it (across its lower part), and `outline` puts a ring of
+// white, or black for light text, round the letters so they read on any art.
+// Returns the art with the text, or the art itself when there's none.
+export const TEXT_COLOURS = [
+  ["#111111", "Black"],
+  ["#ffffff", "White"],
+  ["#0c1a2e", "Navy"],
+  ["#e8492c", "Red"],
+  ["#f7d84a", "Yellow"],
+  ["#2f8f4e", "Green"],
+  ["#2f6fd6", "Blue"],
+  ["#e05aa0", "Pink"],
+];
+const isLight = (hex) => {
+  const n = parseInt(hex.slice(1), 16);
+  return 0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255) > 160;
+};
+
+export function addText(art, texts) {
+  const list = texts.filter((t) => t.text.trim());
+  if (!list.length) return art;
+  const W = art.width, H = art.height;
+  const scratch = canvasOf(1, 1).getContext("2d");
+  // Each text's lines, measured: font size, stroke width, its box.
+  const blocks = list.map((t) => {
+    const px = Math.max(8, t.size * W);
+    const font = `${t.weight} ${px}px "${t.font}"`;
+    scratch.font = font;
+    const lines = t.text.split("\n").map((s) => s.trim()).filter(Boolean);
+    const stroke = t.outline ? px * 0.16 : 0;
+    const lineH = px * 1.12;
+    const w = Math.max(...lines.map((s) => scratch.measureText(s).width)) + 2 * stroke;
+    return { ...t, px, font, lines, stroke, lineH, w, h: lines.length * lineH + 2 * stroke };
+  });
+  // Small enough that the die-cut border joins the text to the art.
+  const gap = 0.025 * W;
+  const above = blocks.filter((b) => b.where === "above");
+  const below = blocks.filter((b) => b.where === "below");
+  const stack = (bs) => bs.reduce((s, b) => s + b.h + gap, 0);
+  const top = stack(above), bottom = stack(below);
+  const width = Math.max(W, ...blocks.map((b) => b.w));
+  const out = canvasOf(width, top + H + bottom);
+  const ctx = out.getContext("2d");
+  ctx.drawImage(art, (width - W) / 2, top);
+
+  const draw = (b, y) => {
+    ctx.font = b.font;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.lineJoin = "round";
+    b.lines.forEach((line, i) => {
+      const ly = y + b.stroke + (i + 0.5) * b.lineH;
+      if (b.stroke) {
+        ctx.lineWidth = b.stroke * 2;
+        ctx.strokeStyle = isLight(b.colour) ? "#111111" : "#ffffff";
+        ctx.strokeText(line, width / 2, ly);
+      }
+      ctx.fillStyle = b.colour;
+      ctx.fillText(line, width / 2, ly);
+    });
+  };
+  let y = 0;
+  for (const b of above) draw(b, y), (y += b.h + gap);
+  y = top + H + gap;
+  for (const b of below) draw(b, y), (y += b.h + gap);
+  // Over the art: centred, stacked up from near its bottom.
+  y = top + H * 0.92;
+  for (const b of blocks.filter((x) => x.where === "over").reverse()) draw(b, (y -= b.h));
+  return out;
+}
+
+// The plain colour behind a design ([r, g, b]), or null.
+export function backdropColour(image) {
+  const { width: w, height: h, data: d } = pixels(image, 64).data;
+  return backdropOf(d, w, h);
+}
+
+// Auto-crop: a closed outline that hugs the design with a little room spare,
+// as [x, y] corners in fractions of the image, for the crop dialog's shape
+// mode (so a die-cut follows it). The design is whatever isn't see-through or
+// the plain background colour, black included. For a photo, pass `cutout`:
+// the same image with its background already removed (cutout.js). Returns
+// null when there's no background to tell the design from.
+export function outlineOf(image, cutout) {
+  const { width: w, height: h, data: d } = pixels(cutout || image, 400).data;
+  const colour = cutout ? null : backdropOf(d, w, h);
+  const minAlpha = cutout ? 128 : ALPHA_MIN;
+  const solid = new Uint8Array(w * h);
+  let count = 0, clear = 0;
+  for (let p = 0; p < w * h; p++) {
+    const i = p * 4;
+    if (d[i + 3] < ALPHA_MIN) clear++;
+    if (d[i + 3] >= minAlpha && !(colour && near(d, i, colour, BACKDROP_TOL * 1.5))) (solid[p] = 1), count++;
+  }
+  if (!cutout && !colour && clear < (w * h) / 64) return null;
+  if (count < (w * h) / 2000) return null;
+
+  // Grow the design outwards (the room spare, and it joins nearby parts like
+  // separate letters), more each time until one piece holds nearly all of it.
+  const base = Math.max(2, Math.round(Math.max(w, h) * 0.012));
+  let piece;
+  for (let r = base; r <= base * 4; r += base) {
+    const grown = dilate(solid, w, h, r);
+    piece = largestPiece(grown, w, h);
+    if (piece.size >= 0.97 * piece.total) break;
+  }
+  fillHoles(piece.mask, w, h);
+  const ring = trace(piece.mask, w, h);
+  if (ring.length < 3) return null;
+  let eps = Math.max(w, h) * 0.004, path = simplify(ring, eps);
+  while (path.length > 90) path = simplify(ring, (eps *= 1.5));
+  return path.map(([x, y]) => [Math.min(1, Math.max(0, (x + 0.5) / w)), Math.min(1, Math.max(0, (y + 0.5) / h))]);
+}
+
+// Square dilation by r, as two passes of a sliding window.
+function dilate(m, w, h, r) {
+  const pass = (src, len, count, at) => {
+    const out = new Uint8Array(w * h);
+    for (let line = 0; line < count; line++) {
+      let run = 0;
+      for (let k = 0; k < Math.min(r, len); k++) run += src[at(line, k)];
+      for (let k = 0; k < len; k++) {
+        if (k + r < len) run += src[at(line, k + r)];
+        if (k - r - 1 >= 0) run -= src[at(line, k - r - 1)];
+        out[at(line, k)] = run > 0 ? 1 : 0;
+      }
+    }
+    return out;
+  };
+  const rows = pass(m, w, h, (y, x) => y * w + x);
+  return pass(rows, h, w, (x, y) => y * w + x);
+}
+
+// The biggest connected piece of a mask (8-way), its size and the total.
+function largestPiece(m, w, h) {
+  const label = new Int32Array(w * h);
+  let best = 0, bestSize = 0, total = 0, next = 0;
+  for (let s = 0; s < w * h; s++) {
+    if (!m[s] || label[s]) continue;
+    next++;
+    let size = 0;
+    const stack = [s];
+    label[s] = next;
+    while (stack.length) {
+      const p = stack.pop();
+      size++;
+      const x = p % w, y = (p - x) / w;
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          const nx = x + dx, ny = y + dy;
+          if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+          const q = ny * w + nx;
+          if (m[q] && !label[q]) (label[q] = next), stack.push(q);
+        }
+      }
+    }
+    total += size;
+    if (size > bestSize) (bestSize = size), (best = next);
+  }
+  const mask = new Uint8Array(w * h);
+  for (let p = 0; p < w * h; p++) mask[p] = label[p] === best ? 1 : 0;
+  return { mask, size: bestSize, total };
+}
+
+// Fills in any gaps inside a piece, so it has one outer edge.
+function fillHoles(m, w, h) {
+  const out = new Uint8Array(w * h);
+  const stack = [];
+  const push = (p) => !m[p] && !out[p] && ((out[p] = 1), stack.push(p));
+  for (let x = 0; x < w; x++) push(x), push((h - 1) * w + x);
+  for (let y = 0; y < h; y++) push(y * w), push(y * w + w - 1);
+  while (stack.length) {
+    const p = stack.pop();
+    const x = p % w;
+    if (x > 0) push(p - 1);
+    if (x < w - 1) push(p + 1);
+    if (p >= w) push(p - w);
+    if (p < w * (h - 1)) push(p + w);
+  }
+  for (let p = 0; p < w * h; p++) if (!out[p]) m[p] = 1;
+}
+
+// The piece's outer edge, clockwise, by following its border pixels (Moore
+// neighbour tracing).
+const AROUND = [[-1, 0], [-1, -1], [0, -1], [1, -1], [1, 0], [1, 1], [0, 1], [-1, 1]];
+function trace(m, w, h) {
+  const on = (x, y) => x >= 0 && y >= 0 && x < w && y < h && m[y * w + x];
+  let start = -1;
+  for (let p = 0; p < w * h && start < 0; p++) if (m[p]) start = p;
+  if (start < 0) return [];
+  const sx = start % w, sy = (start - sx) / w;
+  const ring = [[sx, sy]];
+  let x = sx, y = sy, back = 0; // came in from the west
+  for (let steps = 0; steps < 4 * w * h; steps++) {
+    let moved = false;
+    for (let k = 1; k <= 8; k++) {
+      const dir = (back + k) % 8;
+      const nx = x + AROUND[dir][0], ny = y + AROUND[dir][1];
+      if (!on(nx, ny)) continue;
+      // The empty neighbour checked just before is where we now look from.
+      const [bx, by] = AROUND[(back + k - 1) % 8];
+      const px = x + bx - nx, py = y + by - ny;
+      back = Math.max(0, AROUND.findIndex(([ax, ay]) => ax === px && ay === py));
+      x = nx, y = ny;
+      moved = true;
+      break;
+    }
+    if (!moved || (x === sx && y === sy)) break;
+    ring.push([x, y]);
+  }
+  return ring;
+}
+
+// Fewer corners, the same shape to within eps pixels (Ramer-Douglas-Peucker,
+// on the ring split at its two farthest-apart points).
+function simplify(ring, eps) {
+  const far = ring.reduce((best, p, i) => {
+    const d = (p[0] - ring[0][0]) ** 2 + (p[1] - ring[0][1]) ** 2;
+    return d > best.d ? { i, d } : best;
+  }, { i: 0, d: -1 }).i;
+  const rdp = (pts) => {
+    if (pts.length < 3) return pts;
+    const [a, b] = [pts[0], pts[pts.length - 1]];
+    const len = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
+    let at = 0, max = 0;
+    for (let i = 1; i < pts.length - 1; i++) {
+      const dist = Math.abs((b[0] - a[0]) * (a[1] - pts[i][1]) - (a[0] - pts[i][0]) * (b[1] - a[1])) / len;
+      if (dist > max) (max = dist), (at = i);
+    }
+    if (max <= eps) return [a, b];
+    return [...rdp(pts.slice(0, at + 1)).slice(0, -1), ...rdp(pts.slice(at))];
+  };
+  const first = rdp(ring.slice(0, far + 1));
+  const second = rdp([...ring.slice(far), ring[0]]);
+  return [...first.slice(0, -1), ...second.slice(0, -1)];
 }

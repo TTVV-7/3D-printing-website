@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  Check, CheckCircle2, X, Crosshair, Hand, ImageUp, ImagePlus, Pencil, RotateCcw, ShoppingBag, Minus, Plus, Trash2, Type,
+  Check, CheckCircle2, X, Crosshair, Hand, ImageUp, ImagePlus, Loader2, Pencil, RotateCcw, ShoppingBag, Minus, Plus, Trash2, Type,
+  WandSparkles, Bike, Route,
 } from "lucide-react";
 import { clsx } from "clsx";
 import { stickers } from "../../site.config.js";
@@ -8,21 +9,21 @@ import { renderThermal, printFile, previewArt, DOTS_PER_MM } from "./thermal.js"
 import { DesignControls } from "./DesignControls.jsx";
 
 import { StickerEditor } from "./StickerEditor.jsx";
-import { Checkout } from "./Checkout.jsx";
+import { Checkout, uploadArt } from "./Checkout.jsx";
+import { DeliveryEstimate } from "./DeliveryEstimate.jsx";
 import { priceEach, sizeOf, lineTotal, itemLabel, finishesFor, isColour, itemSizeName } from "./pricing.js";
 import { ColourStudio } from "./ColourStudio.jsx";
 import { BikeStudio } from "./BikeStudio.jsx";
+import { FONTS, fontOf } from "./fonts.js";
+import { FontPicker } from "./FontPicker.jsx";
+import { removeBackground, warmUp } from "./cutout.js";
+import { prepareArt } from "./colour.js";
+import { AiSticker, STICKER_AI } from "./AiSticker.jsx";
+import { PRESETS, presetOf } from "./presets.js";
+import { BIKES } from "./bikes.js";
+import { RouteDialog } from "./RouteDialog.jsx";
+import { saveDesigns } from "../account/client.js";
 
-// Typefaces for text layers; loaded in stickers/index.html.
-const FONTS = [
-  { family: "Bungee", name: "Bungee", weight: 400 },
-  { family: "Space Grotesk", name: "Grotesk", weight: 700 },
-  { family: "Bebas Neue", name: "Bebas", weight: 400 },
-  { family: "Permanent Marker", name: "Marker", weight: 400 },
-  { family: "Pacifico", name: "Script", weight: 400 },
-  { family: "Special Elite", name: "Typewriter", weight: 400 },
-];
-const fontOf = (family) => FONTS.find((f) => f.family === family) || FONTS[0];
 
 // The cart lives in this browser, so it survives a reload or a trip to Stripe
 // and back. Each line holds its print-ready PNG, a few kB.
@@ -42,6 +43,9 @@ function useCart() {
   const save = (next) =>
     setCart((cur) => {
       const value = typeof next === "function" ? next(cur) : next;
+      // Signed-in customers keep what they make (src/account/client.js).
+      const added = value.filter((it) => !cur.some((c) => c.id === it.id));
+      if (added.length) saveDesigns(added);
       try {
         localStorage.setItem("sticker-cart", JSON.stringify(value));
       } catch {
@@ -116,27 +120,41 @@ function Label({ children, hint }) {
   );
 }
 
-// The makers on this page: thermal labels (one ink, preset label sizes, the
-// quickest and cheapest), full-colour stickers cut to any shape on the
-// Cricut (ColourStudio.jsx), and bike stickers, shown on a bike
-// (BikeStudio.jsx). #colour or #bike in the address opens the others.
+// The tabs on this page: thermal labels (one ink, preset label sizes, the
+// quickest and cheapest), full-colour stickers cut to any shape on the Cricut
+// (ColourStudio.jsx), and bike stickers: the thermal maker with ready-made
+// bike templates (presets.js) to start from, or full-colour bike stickers
+// (BikeStudio.jsx, coming soon). #colour, #bike or #bike-colour in the
+// address opens those.
 const MODES = [
   { key: "thermal", name: "Thermal labels", sub: "Black ink on die-cut labels · cheapest" },
   { key: "colour", name: "Full colour, custom cut", sub: "Any image, any shape, cut to fit", soon: !stickers.colour.available },
-  { key: "bike", name: "Bike stickers", sub: "Your name and flag, or your route", soon: !stickers.bike.available },
+  { key: "bike", name: "Bike", sub: "Frame names, trail stickers, ID" },
 ];
-const HASHES = ["colour", "bike"];
 
 export function StickerStudio() {
   const [maker, setMakerState] = useState("thermal");
   useEffect(() => {
-    const hash = location.hash.slice(1);
-    if (HASHES.includes(hash)) setMakerState(hash);
+    if (location.hash === "#colour") setMakerState("colour");
+    if (location.hash === "#bike" || new URLSearchParams(location.search).has("preset")) setMakerState("bike");
+    if (location.hash === "#bike-colour") {
+      setMakerState("bike");
+      setBikeKind("colour");
+    }
   }, []);
   const setMaker = (m) => {
     setMakerState(m);
-    history.replaceState(null, "", HASHES.includes(m) ? `#${m}` : location.pathname + location.search);
+    history.replaceState(null, "", m === "thermal" ? location.pathname + location.search : `#${m}`);
   };
+  // The Bike tab's two kinds: black thermal templates, or full colour.
+  const [bikeKind, setBikeKindState] = useState("thermal");
+  const setBikeKind = (k) => {
+    setBikeKindState(k);
+    history.replaceState(null, "", k === "colour" ? "#bike-colour" : "#bike");
+  };
+  const bikeColour = maker === "bike" && bikeKind === "colour";
+  // Thermal labels and Bike share the thermal maker.
+  const thermal = maker !== "colour" && !bikeColour;
   const canvasRef = useRef(null);
   const flatRef = useRef(null);
   const fileRef = useRef(null);
@@ -152,6 +170,12 @@ export function StickerStudio() {
   const [finishKey, setFinishKey] = useState(stickers.finishes[0].key);
   const [colourKeys, setColourKeys] = useState({}); // last colour picked per finish
   const [realCard, setRealCard] = useState(false);
+  // Shown on a bike (BikeScene.js) instead of beside a card: the Bike tab
+  // starts there; anyone can switch.
+  const [onBike, setOnBike] = useState(null); // null = follow the tab
+  const [bikeType, setBikeType] = useState("road");
+  const [bikePlace, setBikePlace] = useState("top");
+  const showBike = onBike ?? maker === "bike";
   // Label size, background design and edge ring (DesignControls).
   const [d, setD] = useState({ sizeKey: "round-2in", pattern: "none", patternSeed: 7, ring: "none" });
   // Only the label colours sold in this size; a pick that isn't falls back
@@ -167,14 +191,28 @@ export function StickerStudio() {
   const [invert, setInvert] = useState(false);
   const [qty, setQty] = useState(10);
   const [checkout, setCheckout] = useState(false);
+  // For the delivery estimate; checkout starts from it too.
+  const [postal, setPostal] = useState("");
   const [cart, setCart] = useCart();
   const [added, setAdded] = useState(false);
 
+  // A ready-made start (/stickers/?preset=trail, presets.js), or the sample
+  // image.
   useEffect(() => {
+    const preset = presetOf(new URLSearchParams(location.search).get("preset"));
+    if (preset) return applyPreset(preset);
     loadImage("/stickers/sample.png")
       .then((img) => setLayers((ls) => (ls.length ? ls : [imageLayer(img)])))
       .catch(() => {});
   }, []);
+
+  // A bike template replaces the design (label, background, ring and layers).
+  function applyPreset(preset) {
+    setD((cur) => ({ ...cur, ...preset.design }));
+    setLayers(preset.layers.map((l) => ({ ...l, id: newId() })));
+    setSelected(null);
+    setFileName("");
+  }
 
   const stock = sizeOf(d.sizeKey);
   const size = useMemo(() => ({ w: stock.w, h: stock.h }), [stock]);
@@ -194,22 +232,26 @@ export function StickerStudio() {
   const view = useMemo(() => art && previewArt(art, paper), [art, paper]);
 
   useEffect(() => {
-    if (ready && maker !== "thermal") stage.current.stop();
-  }, [ready, maker, stage]);
+    if (ready && !thermal) stage.current.stop();
+  }, [ready, thermal, stage]);
 
   useEffect(() => {
     // While editing, the 3D view is hidden: catch it up when editing ends.
     // On the full-colour maker it's hidden too, and paused.
-    if (!ready || !view || editing || maker !== "thermal") return;
+    if (!ready || !view || editing || !thermal) return;
     stage.current.update({ art: view, w: size.w, h: size.h, crop, finish, paper });
     stage.current.onCardClick(() => setRealCard((r) => !r));
     stage.current.onStickerClick(() => setEditing(true));
     stage.current.start();
-  }, [ready, view, size, crop, finish, paper, stage, editing, maker]);
+  }, [ready, view, size, crop, finish, paper, stage, editing, thermal]);
 
   useEffect(() => {
     if (ready) stage.current.cardLook(realCard);
   }, [ready, realCard, stage]);
+
+  useEffect(() => {
+    if (ready) stage.current.setBike(showBike ? bikeType : null, bikePlace);
+  }, [ready, showBike, bikeType, bikePlace, stage]);
 
   // The flat, dot-for-dot print preview.
   useEffect(() => {
@@ -237,6 +279,19 @@ export function StickerStudio() {
     });
   }
 
+  // A route (route.js): drawn or from a GPX, new or replacing one.
+  const [routeFor, setRouteFor] = useState(null); // null, "new" or a layer id
+  function placeRoute(r) {
+    if (routeFor && routeFor !== "new") {
+      setLayers((ls) => ls.map((l) => (l.id === routeFor ? { ...l, ...r } : l)));
+    } else {
+      const layer = { id: newId(), kind: "route", ...r, x: 0, y: 0, scale: 0.85, rot: 0 };
+      setLayers((ls) => [...ls, layer]);
+      setSelected(layer.id);
+    }
+    setRouteFor(null);
+  }
+
   // Each new text lands somewhere new, so they don't stack up unseen.
   const TEXT_SPOTS = [0.3, -0.3, 0, 0.15, -0.15];
   function addText() {
@@ -247,6 +302,45 @@ export function StickerStudio() {
     setSelected(layer.id);
     setEditing(true);
   }
+
+  // Cuts the subject out of an image layer's photo (cutout.js), trimmed to
+  // it so it fills the label; `orig` keeps the photo to put back.
+  const [cuttingId, setCuttingId] = useState(null);
+  const [cutError, setCutError] = useState("");
+  async function toggleCutout(id) {
+    const layer = layers.find((l) => l.id === id);
+    if (!layer || cuttingId) return;
+    setCutError("");
+    if (layer.orig) {
+      setLayers((ls) => ls.map((l) => (l.id === id ? { ...l, img: l.orig, orig: null } : l)));
+      return;
+    }
+    setCuttingId(id);
+    try {
+      const trimmed = prepareArt(await removeBackground(layer.img), { removeBackdrop: false });
+      if (!trimmed) throw new Error("nothing left");
+      const img = await loadImage(trimmed.toDataURL("image/png"));
+      setLayers((ls) => ls.map((l) => (l.id === id ? { ...l, img, orig: l.img } : l)));
+    } catch (err) {
+      console.warn("background removal:", err);
+      setCutError("The background couldn't be removed. Check your connection and try again.");
+    }
+    setCuttingId(null);
+  }
+  const mainImage = layers.find((l) => l.kind === "image");
+  const cutButton = (layer, className) =>
+    layer && (
+      <button
+        type="button"
+        onClick={() => toggleCutout(layer.id)}
+        onPointerEnter={warmUp}
+        disabled={!!cuttingId}
+        className={clsx("btn-outline-dark text-sm disabled:opacity-60", className)}
+      >
+        {cuttingId === layer.id ? <Loader2 size={15} className="animate-spin" /> : layer.orig ? <RotateCcw size={15} /> : <WandSparkles size={15} />}
+        {cuttingId === layer.id ? "Removing the background…" : layer.orig ? "Put the background back" : "Remove photo background"}
+      </button>
+    );
 
   // Removes a layer and selects the one next to it, so the next Remove works.
   function removeLayer(id) {
@@ -321,8 +415,35 @@ export function StickerStudio() {
     ink: { mode, threshold, invert },
     fileName,
   });
-  function addToCart() {
-    setCart((c) => [...c, cartItem()].slice(-MAX_CART));
+  // The image on the sticker, as the customer gave it (cut out, if they
+  // removed its background), uploaded alongside the print file so it can be
+  // printed from the in-shop app at full quality. Not for the sample image.
+  async function uploadOriginal() {
+    const layer = layers.find((l) => l.kind === "image");
+    if (!layer || !fileName) return "";
+    let side = 2400;
+    for (let tries = 0; tries < 5; tries++, side = Math.round(side * 0.75)) {
+      const iw = layer.img.naturalWidth || layer.img.width, ih = layer.img.naturalHeight || layer.img.height;
+      const k = Math.min(1, side / Math.max(iw, ih));
+      const c = document.createElement("canvas");
+      c.width = Math.round(iw * k);
+      c.height = Math.round(ih * k);
+      const g = c.getContext("2d");
+      g.imageSmoothingQuality = "high";
+      g.drawImage(layer.img, 0, 0, c.width, c.height);
+      const png = c.toDataURL("image/png");
+      // Under api/sticker-upload.js's 3 MB limit.
+      if (png.length * 0.75 < 2.9 * 1024 * 1024) return uploadArt(png, `${sizeOf(d.sizeKey).code}-original`);
+    }
+    return "";
+  }
+  const [adding, setAdding] = useState(false);
+  async function addToCart() {
+    const item = cartItem();
+    setAdding(true);
+    const sourceUrl = await uploadOriginal();
+    setAdding(false);
+    setCart((c) => [...c, sourceUrl ? { ...item, sourceUrl } : item].slice(-MAX_CART));
     setAdded(true);
   }
   // Something changed since it went in: the button offers to add it again.
@@ -359,6 +480,7 @@ export function StickerStudio() {
           </li>
         ))}
       </ul>
+      <DeliveryEstimate items={cart} postal={postal} onPostal={setPostal} />
       <button type="button" onClick={() => setCheckout(true)} className="btn-primary mt-3 w-full">
         <ShoppingBag size={18} /> Check out · ${cartTotal.toFixed(2)}
       </button>
@@ -382,15 +504,17 @@ export function StickerStudio() {
           <p className="eyebrow">Stickers</p>
           <h1 className="mt-3 text-4xl font-bold sm:text-5xl">Your image, as a sticker.</h1>
           <p className="mt-4 text-ink/65 sm:text-lg">
-            {maker === "thermal"
+            {bikeColour
+              ? "Your name and flag for the top tube, or a favourite ride's route for the down tube. Printed in full colour and shown on a real-size bike."
+              : maker === "bike"
+              ? "Stickers for your bike: start from a template, make it yours, and see it to scale. Printed in crisp black on die-cut labels."
+              : maker === "thermal"
               ? "Thermal printed in crisp black on die-cut labels. Drop in an image or type some text, pick a label and a border, and see it to scale."
-              : maker === "colour"
-                ? "Printed in full colour on vinyl and cut to any shape: around your design, or as a circle or square. Pick a size and see it to scale."
-                : "Your name and flag for the top tube, or a favourite ride's route for the down tube. Printed in full colour and shown on a real-size bike."}
+              : "Printed in full colour on vinyl and cut to any shape: around your design, or as a circle or square. Pick a size and see it to scale."}
           </p>
         </div>
 
-        <div className="mt-8 grid max-w-3xl gap-2 rounded-2xl sm:grid-cols-3 bg-white p-1.5 ring-1 ring-ink/10" role="tablist">
+        <div className="mt-8 grid max-w-3xl grid-cols-1 gap-2 rounded-2xl sm:grid-cols-3 bg-white p-1.5 ring-1 ring-ink/10" role="tablist">
           {MODES.map((m) => (
             <button
               key={m.key}
@@ -416,20 +540,76 @@ export function StickerStudio() {
           ))}
         </div>
 
-        {maker === "colour" && (
+        {/* Both makers stay mounted (the other one hidden), so switching tabs
+            keeps each design as it was. */}
+        <div className={clsx(maker !== "colour" && "hidden")}>
           <ColourStudio
             setCart={setCart}
-            cartPanel={cartPanel}
+            cartPanel={maker === "colour" && cartPanel}
             cartEmpty={!cart.length}
             openCheckout={() => setCheckout(true)}
           />
-        )}
-
-        {maker === "bike" && <BikeStudio />}
+        </div>
 
         {/* Thermal maker: kept mounted (hidden) on the colour tab so its 3D
             stage survives the switch. */}
-        <div className={clsx("mt-10 grid gap-6 lg:grid-cols-[1.4fr_1fr] lg:gap-10", maker !== "thermal" && "hidden")}>
+        {maker === "bike" && (
+          <div className="mt-6 inline-flex flex-wrap gap-1 rounded-2xl bg-white p-1 ring-1 ring-ink/10" role="radiogroup" aria-label="Kind of bike sticker">
+            {[
+              ["thermal", "Black, from a template"],
+              ["colour", "Full colour: name + flag, route"],
+            ].map(([k, name]) => (
+              <button
+                key={k}
+                type="button"
+                role="radio"
+                aria-checked={bikeKind === k}
+                onClick={() => setBikeKind(k)}
+                className={clsx("flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition", bikeKind === k ? "bg-ink text-white" : "hover:bg-paper")}
+              >
+                {name}
+                {k === "colour" && !stickers.bikeColour.available && (
+                  <span className={clsx("rounded-full px-2 py-0.5 text-[10px] uppercase tracking-wider", bikeKind === k ? "bg-flame text-white" : "bg-flame/10 text-flame")}>
+                    Coming soon
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {bikeColour && <BikeStudio />}
+
+        {maker === "bike" && !bikeColour && (
+          <div className="mt-6">
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <p className="text-sm font-semibold">Start from a template</p>
+              <a href="/bike/#clubs" className="text-sm font-medium text-ink/60 underline decoration-flame underline-offset-4 hover:text-flame">
+                Ordering for a club or team?
+              </a>
+            </div>
+            <div className="mt-3 grid gap-3 sm:grid-cols-3">
+              {Object.entries(PRESETS).map(([key, p]) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => applyPreset(p)}
+                  className="flex items-center gap-3 rounded-2xl bg-white p-3 text-left ring-1 ring-ink/10 transition hover:ring-ink/40"
+                >
+                  <span className="flex h-14 w-16 flex-none items-center justify-center rounded-xl bg-[#e9efe9] p-1.5">
+                    <img src={`/bike/${key}.png`} alt="" className="max-h-full max-w-full" />
+                  </span>
+                  <span className="min-w-0 text-sm">
+                    <span className="block font-semibold">{p.name}</span>
+                    <span className="block text-xs text-ink/55">{p.blurb}</span>
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className={clsx("grid gap-6 lg:grid-cols-[1.4fr_1fr] lg:gap-10", maker === "bike" ? "mt-6" : "mt-10", !thermal && "hidden")}>
           {/* Stage: stays in view while the options scroll past */}
           <div className="flex min-w-0 flex-col gap-4 lg:sticky lg:top-20 lg:self-start">
             <div className="relative aspect-square overflow-hidden rounded-3xl bg-ink ring-1 ring-ink/10 sm:aspect-[4/3]">
@@ -495,7 +675,7 @@ export function StickerStudio() {
                 ) : (
                   <>
                     <Hand size={14} /> Click the sticker to edit · drag to turn
-                    <span className="hidden sm:inline"> · grid is 1 cm</span>
+                    <span className="hidden sm:inline">{showBike ? " · scroll to zoom out" : " · grid is 1 cm"}</span>
                   </>
                 )}
               </p>
@@ -504,6 +684,7 @@ export function StickerStudio() {
               <span className="flex items-center gap-2">
                 <span className="h-3 w-3 rounded-sm ring-1 ring-ink/20" style={{ background: paper }} /> Your sticker
               </span>
+              {!showBike && (
               <button
                 type="button"
                 onClick={() => setRealCard((r) => !r)}
@@ -521,7 +702,49 @@ export function StickerStudio() {
                   {realCard ? "show as outline" : "show as a real card"}
                 </span>
               </button>
+              )}
+              <button type="button" onClick={() => setOnBike(!showBike)} className="flex items-center gap-1.5 rounded-full py-0.5 hover:text-ink">
+                <Bike size={15} className="text-flame" />
+                <span className="text-flame underline-offset-2 hover:underline">{showBike ? "Show beside a credit card" : "Show it on a bike"}</span>
+              </button>
             </p>
+            {showBike && (
+              <div className="-mt-1 space-y-2 rounded-2xl bg-white p-3 ring-1 ring-ink/10">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="mr-1 text-xs font-semibold uppercase tracking-wider text-ink/50">Bike</span>
+                  {Object.entries(BIKES).map(([k, b]) => (
+                    <button
+                      key={k}
+                      type="button"
+                      onClick={() => setBikeType(k)}
+                      aria-pressed={bikeType === k}
+                      className={clsx("rounded-full px-3 py-1 text-sm ring-1 transition", bikeType === k ? "bg-ink text-white ring-ink" : "bg-white ring-ink/15 hover:ring-ink/40")}
+                    >
+                      {b.name}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="mr-1 text-xs font-semibold uppercase tracking-wider text-ink/50">On the</span>
+                  {[
+                    ["top", "Top tube"],
+                    ["down", "Down tube"],
+                    ["seat", "Seat tube"],
+                  ].map(([k, name]) => (
+                    <button
+                      key={k}
+                      type="button"
+                      onClick={() => setBikePlace(k)}
+                      aria-pressed={bikePlace === k}
+                      className={clsx("rounded-full px-3 py-1 text-sm ring-1 transition", bikePlace === k ? "bg-ink text-white ring-ink" : "bg-white ring-ink/15 hover:ring-ink/40")}
+                    >
+                      {name}
+                    </button>
+                  ))}
+                  <span className="text-xs text-ink/50">· scroll out to see the whole bike</span>
+                </div>
+              </div>
+            )}
 
             <div className="flex items-center gap-4 rounded-2xl bg-white p-4 ring-1 ring-ink/10">
               <div
@@ -556,7 +779,7 @@ export function StickerStudio() {
                       )}
                     >
                       <button type="button" onClick={() => setSelected(l.id)} className="truncate py-2 pl-3 pr-1.5">
-                        {l.kind === "image" ? "Image" : `“${l.text.split("\n")[0] || "Text"}”`}
+                        {l.kind === "image" ? "Image" : l.kind === "route" ? "Route" : `“${l.text.split("\n")[0] || "Text"}”`}
                       </button>
                       <button
                         type="button"
@@ -573,6 +796,9 @@ export function StickerStudio() {
                   </button>
                   <button type="button" onClick={() => editFileRef.current?.click()} className="btn-outline-dark h-9 px-3 text-sm">
                     <ImagePlus size={15} /> Add image
+                  </button>
+                  <button type="button" onClick={() => setRouteFor("new")} className="btn-outline-dark h-9 px-3 text-sm">
+                    <Route size={15} /> Add route
                   </button>
                   <input
                     ref={editFileRef}
@@ -597,23 +823,7 @@ export function StickerStudio() {
                           className="field resize-none text-base"
                           aria-label="Text"
                         />
-                        <div className="flex flex-wrap gap-2">
-                          {FONTS.map((f) => (
-                            <button
-                              key={f.family}
-                              type="button"
-                              onClick={() => patchSel({ font: f.family, weight: f.weight })}
-                              aria-pressed={sel.font === f.family}
-                              className={clsx(
-                                "rounded-lg px-3 py-1.5 text-base ring-1 transition",
-                                sel.font === f.family ? "bg-ink text-white ring-ink" : "bg-white ring-ink/15 hover:ring-ink/40",
-                              )}
-                              style={{ fontFamily: `"${f.family}"`, fontWeight: f.weight }}
-                            >
-                              {f.name}
-                            </button>
-                          ))}
-                        </div>
+                        <FontPicker value={sel.font} onPick={(f) => patchSel({ font: f.family, weight: f.weight })} />
                       </>
                     )}
                     <div className="grid gap-3 sm:grid-cols-2">
@@ -645,6 +855,12 @@ export function StickerStudio() {
                         />
                       </label>
                     </div>
+                    {sel.kind === "image" && cutButton(sel, "h-9 px-3")}
+                    {sel.kind === "route" && (
+                      <button type="button" onClick={() => setRouteFor(sel.id)} className="btn-outline-dark h-9 px-3 text-sm">
+                        <Route size={15} /> Change the route
+                      </button>
+                    )}
                     <div className="flex flex-wrap gap-2">
                       <button type="button" onClick={() => patchSel({ x: 0, y: 0 })} className="btn-outline-dark h-9 px-3 text-sm">
                         <Crosshair size={15} /> Centre
@@ -702,8 +918,25 @@ export function StickerStudio() {
               />
             </div>
 
+            {STICKER_AI && (
+              <div className="-mt-3">
+                <AiSticker maker="thermal" onImage={(file) => pick(file)} />
+              </div>
+            )}
+            {cutButton(mainImage, "-mt-3 h-11 w-full")}
+            {cutError && <p className="-mt-3 text-sm text-flame-600">{cutError}</p>}
             <button type="button" onClick={addText} className="btn-outline-dark -mt-3 h-11 w-full text-sm">
               <Type size={16} /> Add text to your sticker
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const r = layers.find((l) => l.kind === "route");
+                setRouteFor(r ? r.id : "new");
+              }}
+              className="btn-outline-dark -mt-3 h-11 w-full text-sm"
+            >
+              <Route size={16} /> {layers.some((l) => l.kind === "route") ? "Change the route" : "Add a route: draw, GPX or addresses"}
             </button>
 
             <div>
@@ -846,14 +1079,20 @@ export function StickerStudio() {
               <button
                 type="button"
                 onClick={addToCart}
-                disabled={added}
+                disabled={added || adding}
                 className={clsx("btn mt-4 w-full", added ? "bg-white/10 text-white/70" : "bg-white text-ink hover:bg-paper")}
               >
-                {added ? <><Check size={18} /> In your cart. Design another?</> : <><Plus size={18} /> Add to cart</>}
+                {added ? (
+                  <><Check size={18} /> In your cart. Design another?</>
+                ) : adding ? (
+                  <><Loader2 size={18} className="animate-spin" /> Adding…</>
+                ) : (
+                  <><Plus size={18} /> Add to cart</>
+                )}
               </button>
             </div>
 
-            {maker === "thermal" && cartPanel}
+            {thermal && cartPanel}
             {!cart.length && (
               <button
                 type="button"
@@ -870,10 +1109,18 @@ export function StickerStudio() {
         </div>
       </div>
 
+      {routeFor && (
+
+        <RouteDialog route={routeFor === "new" ? null : layers.find((l) => l.id === routeFor)} onDone={placeRoute} onClose={() => setRouteFor(null)} />
+
+      )}
+
       {checkout && (
         <Checkout
           onClose={() => setCheckout(false)}
           items={cart}
+          postal={postal}
+          onPostal={setPostal}
           onRemove={(id) => setCart((c) => c.filter((x) => x.id !== id))}
           onSent={() => {
             setCheckout(false);

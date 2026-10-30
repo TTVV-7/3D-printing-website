@@ -1,50 +1,123 @@
-// Addresses and bike routes for the route sticker, from free OpenStreetMap
-// services that need no key (fine for a first version; switch to a keyed
-// service such as OpenRouteService before heavy use):
+// Routes for trail stickers: drawn by hand or read from a GPX file (Strava,
+// Garmin, Trailforks, AllTrails and the rest all export one), turned into a
+// clean line and drawn as a "route" layer (thermal.js).
 //
-// - Photon (photon.komoot.io): address search as you type
-// - OSRM's bike router (routing.openstreetmap.de): the route between stops
-//
-// Map data © OpenStreetMap contributors (ODbL): the page credits it.
+// A route layer keeps `points`, centred, the longer side 1 long, y down;
+// `aspect` (width / height); `width` (line, mm); `dash`; `ends` (start dot
+// and finish ring).
 
-const PHOTON = "https://photon.komoot.io/api/";
-const OSRM = "https://routing.openstreetmap.de/routed-bike/route/v1/driving/";
-const NEAR = { lat: 49.28, lon: -123.12 }; // results near Vancouver first
+export const ROUTE_WIDTHS = [
+  ["Thin", 0.8],
+  ["Medium", 1.2],
+  ["Bold", 1.8],
+];
 
-// Places matching `q`: [{ label, sub, short, lon, lat }]. `short` is what
-// goes on the sticker: the place's name, or its street, or its town.
-export async function searchPlaces(q, signal) {
-  const url = `${PHOTON}?${new URLSearchParams({ q, limit: 6, lang: "en", lat: NEAR.lat, lon: NEAR.lon })}`;
-  const res = await fetch(url, { signal });
-  if (!res.ok) throw new Error(`Search failed (${res.status})`);
-  const { features } = await res.json();
-  return features.map(({ properties: p, geometry }) => {
-    const street = [p.housenumber, p.street].filter(Boolean).join(" ");
-    const label = p.name || street || p.city || p.state;
-    const sub = [p.name && street, p.city !== label && p.city, p.state, p.country].filter(Boolean).join(", ");
-    const [lon, lat] = geometry.coordinates;
-    return { label, sub, short: p.name || p.city || street, lon, lat };
-  });
+// Ramer-Douglas-Peucker: drops points that don't change the shape by more
+// than `eps`.
+function simplify(pts, eps) {
+  if (pts.length < 3) return pts;
+  const [ax, ay] = pts[0], [bx, by] = pts[pts.length - 1];
+  const dx = bx - ax, dy = by - ay, len = Math.hypot(dx, dy);
+  let far = 0, at = 0;
+  for (let i = 1; i < pts.length - 1; i++) {
+    // A loop ends where it starts: measure from that point instead.
+    const d = len ? Math.abs(dy * pts[i][0] - dx * pts[i][1] + bx * ay - by * ax) / len : Math.hypot(pts[i][0] - ax, pts[i][1] - ay);
+    if (d > far) (far = d), (at = i);
+  }
+  if (far <= eps) return [pts[0], pts[pts.length - 1]];
+  return [...simplify(pts.slice(0, at + 1), eps).slice(0, -1), ...simplify(pts.slice(at), eps)];
 }
 
-// The bike route through `stops` ([{ lon, lat }], two or more):
-// { coords: [[lon, lat], ...], km }.
-export async function bikeRoute(stops, signal) {
-  const path = stops.map((s) => `${s.lon.toFixed(6)},${s.lat.toFixed(6)}`).join(";");
-  const res = await fetch(`${OSRM}${path}?overview=full&geometries=geojson`, { signal });
-  // A 400 is the router saying it can't get there by bike (another
-  // continent, an island with no bridge).
-  const data = res.ok || res.status === 400 ? await res.json().catch(() => ({})) : {};
-  if (!res.ok && res.status !== 400) throw new Error(`The route service didn't answer (${res.status}). Try again in a moment.`);
-  if (data.code !== "Ok" || !data.routes?.length) throw new Error("No bike route between those places. Check each one is the place you meant.");
-  const [route] = data.routes;
-  return { coords: route.geometry.coordinates, km: route.distance / 1000 };
+// Chaikin corner cutting: rounds off a hand-drawn line, keeping its ends.
+function smooth(pts, rounds = 2) {
+  for (let r = 0; r < rounds && pts.length > 2; r++) {
+    const out = [pts[0]];
+    for (let i = 0; i < pts.length - 1; i++) {
+      const [x0, y0] = pts[i], [x1, y1] = pts[i + 1];
+      out.push([x0 * 0.75 + x1 * 0.25, y0 * 0.75 + y1 * 0.25], [x0 * 0.25 + x1 * 0.75, y0 * 0.25 + y1 * 0.75]);
+    }
+    out.push(pts[pts.length - 1]);
+    pts = out;
+  }
+  return pts;
 }
 
-// The same trip in Google Maps, by bike (no key needed for a link).
-export function googleMapsLink(stops) {
-  const at = (s) => `${s.lat},${s.lon}`;
-  const q = { api: 1, origin: at(stops[0]), destination: at(stops[stops.length - 1]), travelmode: "bicycling" };
-  if (stops.length > 2) q.waypoints = stops.slice(1, -1).map(at).join("|");
-  return `https://www.google.com/maps/dir/?${new URLSearchParams(q)}`;
+// Centres the points and scales the longer side to 1. Null if there's no
+// real line.
+export function normalise(raw, { round = false } = {}) {
+  const xs = raw.map((p) => p[0]), ys = raw.map((p) => p[1]);
+  const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
+  const span = Math.max(maxX - minX, maxY - minY);
+  if (!(span > 0) || raw.length < 2) return null;
+  let pts = raw.map(([x, y]) => [(x - (minX + maxX) / 2) / span, (y - (minY + maxY) / 2) / span]);
+  pts = simplify(pts, 0.004);
+  if (round) pts = smooth(pts);
+  // Plenty for a sticker a few cm across, and small enough to save.
+  while (pts.length > 600) pts = pts.filter((_, i) => i % 2 === 0 || i === pts.length - 1);
+  const w = maxX - minX, h = maxY - minY;
+  return { points: pts.map(([x, y]) => [Math.round(x * 1e4) / 1e4, Math.round(y * 1e4) / 1e4]), aspect: Math.max(0.15, Math.min(6, w / (h || w / 6))) };
 }
+
+// The track (or route) points of a GPX file, as a flat map projection; null
+// if it has none.
+export function readGpx(text) {
+  const doc = new DOMParser().parseFromString(text, "application/xml");
+  let nodes = [...doc.getElementsByTagName("trkpt")];
+  if (nodes.length < 2) nodes = [...doc.getElementsByTagName("rtept")];
+  const ll = nodes.map((n) => [Number(n.getAttribute("lon")), Number(n.getAttribute("lat"))]).filter(([x, y]) => Number.isFinite(x) && Number.isFinite(y));
+  return fromLonLat(ll);
+}
+
+// A route from [lon, lat] points (a GPX track, or a route found between
+// addresses, places.js); null if there's no line.
+export function fromLonLat(ll) {
+  if (ll.length < 2) return null;
+  const lat0 = (ll.reduce((s, p) => s + p[1], 0) / ll.length) * (Math.PI / 180);
+  // East is right, north is up (so y, which runs down, is minus latitude).
+  return normalise(ll.map(([lon, lat]) => [lon * Math.cos(lat0), -lat]));
+}
+
+// Draws a route centred on the origin, `scale` px per unit of its points.
+// `px` is px per mm, for the line width. With `halo`, a white edge first so
+// it reads over a pattern.
+export function drawRoute(ctx, { points, width = 1.2, dash = false, ends = true }, scale, px, halo) {
+  if (!points?.length) return;
+  const lw = width * px;
+  const path = new Path2D();
+  points.forEach(([x, y], i) => (i ? path.lineTo(x * scale, y * scale) : path.moveTo(x * scale, y * scale)));
+  ctx.save();
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  if (halo) {
+    ctx.strokeStyle = "#fff";
+    ctx.lineWidth = lw + 1.4 * px;
+    ctx.setLineDash([]);
+    ctx.stroke(path);
+  }
+  ctx.strokeStyle = "#000";
+  ctx.lineWidth = lw;
+  ctx.setLineDash(dash ? [lw * 1.8, lw * 1.6] : []);
+  ctx.stroke(path);
+  ctx.setLineDash([]);
+  if (ends) {
+    const [sx, sy] = points[0], [ex, ey] = points[points.length - 1];
+    // Start: a solid dot. Finish: a ring (the same spot on a loop).
+    ctx.fillStyle = "#000";
+    ctx.beginPath();
+    ctx.arc(sx * scale, sy * scale, lw * 1.7, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#fff";
+    ctx.lineWidth = lw * 0.9;
+    ctx.beginPath();
+    ctx.arc(ex * scale, ey * scale, lw * (Math.hypot(ex - sx, ey - sy) * scale < lw * 3 ? 2.8 : 1.8), 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+// A sample loop for the trail template, to swap for your own.
+export const SAMPLE_ROUTE = normalise(
+  [[0, 0], [14, -10], [30, -12], [42, -26], [58, -30], [70, -20], [74, -4], [66, 10], [72, 24], [60, 36], [44, 32], [34, 42], [18, 40], [8, 28], [12, 14], [2, 6]],
+  { round: true },
+);

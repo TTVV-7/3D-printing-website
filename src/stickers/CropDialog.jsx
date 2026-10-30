@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { Crop, ExternalLink, PenTool, RotateCcw, Square, Undo2, Wand2, X } from "lucide-react";
-import { autoCrop } from "./colour.js";
+import { Crop, Loader2, PenTool, RotateCcw, Square, Undo2, Wand2, X } from "lucide-react";
+import { outlineOf } from "./colour.js";
 
 // Crops an uploaded image before it becomes a sticker, two ways:
 //  - Box: drag the corners or edges, drag inside to move the box, or drag
@@ -9,16 +9,12 @@ import { autoCrop } from "./colour.js";
 //    and angles) or drag to draw freehand; then drag the corners about, drag
 //    the dots between them to add one, double-click one to remove it. The
 //    sticker keeps only what's inside, and a die-cut follows that outline.
-// "Auto-crop" suggests a box around the design when it sits on a plain or
-// see-through background (colour.js). Photos need their background removed
-// properly first, which is better done by a dedicated tool (REMOVERS).
+// "Auto-crop" traces an outline around the design (colour.js outlineOf): from
+// a see-through or plain background of any colour, or for a photo, from its
+// background removed in the browser (cutout.js).
 
 const WHOLE = { x: 0, y: 0, w: 1, h: 1 };
 const MIN = 0.04; // the smallest box, as a fraction of the image
-const REMOVERS = [
-  ["remove.bg", "https://www.remove.bg/upload"],
-  ["Adobe Express", "https://www.adobe.com/express/feature/image/remove-background"],
-];
 const HANDLES = [
   ["nw", "left-0 top-0 cursor-nwse-resize"],
   ["n", "left-1/2 top-0 cursor-ns-resize"],
@@ -90,6 +86,7 @@ export function CropDialog({ image, initial, fresh, onApply, onClose }) {
   const [closed, setClosed] = useState(!!initial?.path);
   const [trail, setTrail] = useState(null);
   const [note, setNote] = useState("");
+  const [tracing, setTracing] = useState(false);
   const boxRef = useRef(null);
   const drag = useRef(null);
   const iw = image.naturalWidth || image.width;
@@ -205,15 +202,25 @@ export function CropDialog({ image, initial, fresh, onApply, onClose }) {
     setRect((r) => dragged(r, e.shiftKey ? "se" : "move", k[0], k[1]));
   };
 
-  function auto() {
-    const r = autoCrop(image);
-    if (r) {
-      setMode("box");
-      setRect(r);
-      setNote("");
-    } else {
-      setNote("No plain background to trim around, so this one needs cropping by hand.");
+  async function auto() {
+    setNote("");
+    setTracing(true);
+    let path = outlineOf(image);
+    if (!path) {
+      // No plain background: find the subject the way the Photo background option does.
+      try {
+        const { removeBackground } = await import("./cutout.js");
+        path = outlineOf(image, await removeBackground(image));
+      } catch (err) {
+        console.warn("auto-crop:", err);
+      }
     }
+    setTracing(false);
+    if (!path) return setNote("Couldn't find the edge of the design, so this one needs cropping by hand.");
+    setMode("shape");
+    setPts(path);
+    setClosed(true);
+    setTrail(null);
   }
 
   const shape = mode === "shape";
@@ -320,10 +327,10 @@ export function CropDialog({ image, initial, fresh, onApply, onClose }) {
                 onPointerDown={vertexDown(i)}
                 onDoubleClick={() => removeVertex(i)}
                 title={closed ? "Drag to move; double-click to remove" : i === 0 && pts.length >= 3 ? "Tap to close the shape" : undefined}
-                className="absolute flex h-7 w-7 -translate-x-1/2 -translate-y-1/2 cursor-grab items-center justify-center"
+                className={`absolute flex -translate-x-1/2 -translate-y-1/2 cursor-grab items-center justify-center ${pts.length > 24 ? "h-4 w-4" : "h-7 w-7"}`}
                 style={{ left: pct(p[0]), top: pct(p[1]) }}
               >
-                <span className={`h-3.5 w-3.5 rounded-full shadow ring-1 ring-ink/30 ${!closed && i === 0 && pts.length >= 3 ? "bg-flame" : "bg-white"}`} />
+                <span className={`rounded-full shadow ring-1 ring-ink/30 ${pts.length > 24 ? "h-2 w-2" : "h-3.5 w-3.5"} ${!closed && i === 0 && pts.length >= 3 ? "bg-flame" : "bg-white"}`} />
               </span>
             ))}
             {!shape && <div
@@ -364,8 +371,8 @@ export function CropDialog({ image, initial, fresh, onApply, onClose }) {
         )}
 
         <div className="mt-4 flex flex-wrap items-center gap-2">
-          <button type="button" onClick={auto} className="btn-outline-dark h-9 px-3 text-sm">
-            <Wand2 size={14} /> Auto-crop
+          <button type="button" onClick={auto} disabled={tracing} className="btn-outline-dark h-9 px-3 text-sm disabled:opacity-60">
+            {tracing ? <Loader2 size={14} className="animate-spin" /> : <Wand2 size={14} />} {tracing ? "Finding the edge…" : "Auto-crop"}
           </button>
           {shape ? (
             <>
@@ -391,17 +398,8 @@ export function CropDialog({ image, initial, fresh, onApply, onClose }) {
         </div>
         {note && <p className="mt-2 text-sm text-flame-600">{note}</p>}
         <p className="mt-3 text-xs text-ink/55">
-          Is it a photo? For the cut to follow just the subject, remove its background first with a free tool like{" "}
-          {REMOVERS.map(([name, url], i) => (
-            <span key={name}>
-              {i > 0 && " or "}
-              <a href={url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-0.5 font-semibold text-ink underline underline-offset-2">
-                {name}
-                <ExternalLink size={11} />
-              </a>
-            </span>
-          ))}
-          , then upload the PNG it gives you.
+          Auto-crop cuts around the design, trimming a plain background of any colour. For a photo it finds the
+          subject, which takes a few seconds the first time.
         </p>
 
         <div className="mt-5 flex justify-end gap-2">

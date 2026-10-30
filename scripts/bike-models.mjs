@@ -15,7 +15,7 @@
 //   and scaled to the bike's real length, in metres
 // - simplified and Draco-compressed (the decoder is in public/draco)
 //
-// All three are CC BY 4.0: the credits are in src/stickers/bikes.js and on
+// All three are CC BY 4.0: the credits are in src/stickers/bikeModels.js and on
 // the page. Only needed again when a model changes.
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";

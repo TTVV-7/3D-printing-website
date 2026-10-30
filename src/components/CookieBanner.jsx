@@ -1,13 +1,17 @@
 import { useEffect, useState } from "react";
 import { Cookie } from "lucide-react";
 import { getConsent, setConsent, onConsentChange } from "../lib/consent.js";
+import { cookieless } from "./ConsentAnalytics.jsx";
 
 // Shown on the first visit until the visitor accepts or declines. Sits bottom
 // left on larger screens so it doesn't cover the golem in the right corner.
+// Never shown where analytics are cookieless (the Cloudflare build): nothing
+// there needs asking.
 export function CookieBanner() {
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
+    if (cookieless) return;
     setOpen(getConsent() === null);
     return onConsentChange((value) => setOpen(value === null));
   }, []);

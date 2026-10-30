@@ -31,7 +31,7 @@ so new requests show up in the same admin panel as before. Nothing to migrate.
 | Specs & materials (confirm before launch) | `src/components/Materials.jsx` |
 | Link-preview image (1200×630) | `public/og-image.jpg` |
 | Intro terrain (North Shore height map) | `node scripts/topo-heightmap.mjs` → `public/topo/` |
-| Bikes the bike stickers are shown on | `SKETCHFAB_TOKEN=… node scripts/bike-models.mjs` → `public/models/bikes/`, tube positions and credits in `src/stickers/bikes.js` |
+| Real bike models for full-colour bike stickers | `SKETCHFAB_TOKEN=… node scripts/bike-models.mjs` → `public/models/bikes/`, tube positions and credits in `src/stickers/bikeModels.js` |
 | Google Search Console verification | `site.config.js` → `googleSiteVerification` |
 
 ## SEO / sharing
@@ -123,19 +123,20 @@ on the inkjet and let the Cricut cut it. Sizes are capped to Print Then Cut's
 6.75 × 9.25 in area (`stickers.colour.maxMm`); check that against your
 machine.
 
-**Bike stickers** are the third tab (`/stickers/#bike`), also **Coming soon**
-(`stickers.bike.available`): design and preview only, with no cart or
-checkout yet. Two designs, both full colour: a name with a flag beside it
-(any country, from `country-flag-icons`) for the top tube, and a ride's route
-for the down tube. The route comes from addresses typed in, using free
-OpenStreetMap services that need no key: Photon for address search and OSRM's
-bike router for the route (`src/stickers/route.js`). They're fine for a first
-version but have fair-use limits, so move to a keyed service such as
-OpenRouteService before it gets busy. Credit for the map data
-("© OpenStreetMap contributors") is shown on the page. The preview wraps the
-sticker round the tube of a real-size road, mountain or city bike in any
-frame colour. The three bike models are CC BY 4.0 from Sketchfab and are
-credited on the page.
+**Full-colour bike stickers** are the second kind on the Bike tab
+(`/stickers/#bike-colour`), marked **Coming soon** (`stickers.bikeColour.available`):
+design and preview only, with no cart or checkout yet. There are two
+designs: a name with a flag beside it (any country, from `country-flag-icons`)
+for the top tube, and a ride's route for the down tube. The route comes from
+addresses typed in, using free OpenStreetMap services that need no key:
+Photon for address search and OSRM's bike router for the route
+(`src/stickers/places.js`). The thermal route dialog's "From addresses" tab
+uses them too. They're fine for now but have fair-use limits, so move to a
+keyed service such as OpenRouteService before it gets busy. Credit for the
+map data ("© OpenStreetMap contributors") is shown wherever they're used. The
+preview wraps the sticker round the tube of a real-size road, mountain or
+city bike model (`BikeModelScene.js`, `bikeModels.js`) in any frame colour.
+The three models are CC BY 4.0 from Sketchfab and are credited on the page.
 
 **Print files** are stored in this project's own Vercel Blob store
 (`api/sticker-upload.js`). Connect one once: Vercel → printyours → Storage →

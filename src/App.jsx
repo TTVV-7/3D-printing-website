@@ -4,11 +4,13 @@ import { Services } from "./components/Services.jsx";
 import { Designer } from "./components/Designer.jsx";
 import { Materials } from "./components/Materials.jsx";
 import { Work } from "./components/Work.jsx";
+import { Shorts } from "./components/Shorts.jsx";
 import { Reviews } from "./components/Reviews.jsx";
 import { Quote } from "./components/Quote.jsx";
 import { Footer } from "./components/Footer.jsx";
 import { CookieBanner } from "./components/CookieBanner.jsx";
 import { ConsentAnalytics } from "./components/ConsentAnalytics.jsx";
+import { PriceChat } from "./components/PriceChat.jsx";
 
 export function App() {
   return (
@@ -20,12 +22,14 @@ export function App() {
         <Designer />
         <Services />
         <Work />
+        <Shorts />
         <Materials />
         <Reviews />
       </main>
       <Footer />
       <CookieBanner />
       <ConsentAnalytics />
+      <PriceChat />
     </>
   );
 }

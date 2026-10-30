@@ -25,7 +25,7 @@ function signature() {
 <td style="vertical-align:top;border-left:3px solid #f5a623;padding-left:14px;font-size:13px;line-height:1.5;color:#7a8494">
 <div style="font-size:16px;font-weight:700;color:#0c1a2e">Thomas Verigin</div>
 <div>Owner, <strong style="color:#0c1a2e">Print Yours</strong> · Custom 3D printing in Vancouver</div>
-<div style="margin-top:6px;color:#c9ccd2"><a href="${esc(url)}" style="${link};font-weight:700">printyours.ca</a> &nbsp;|&nbsp; <a href="mailto:thomas.verigin@gmail.com" style="${link}">thomas.verigin@gmail.com</a> &nbsp;|&nbsp; <a href="tel:+17789845255" style="${link};white-space:nowrap">778-984-5255</a></div>
+<div style="margin-top:6px;color:#c9ccd2"><a href="${esc(url)}" style="${link};font-weight:700">printyours.ca</a> &nbsp;|&nbsp; <a href="mailto:${esc(site.email)}" style="${link}">${esc(site.email)}</a> &nbsp;|&nbsp; <a href="tel:+17789845255" style="${link};white-space:nowrap">778-984-5255</a></div>
 <div style="font-size:12px">Parts, prototypes &amp; small batches · Free quote in 1 business day · Local pickup</div>
 <table role="presentation" cellpadding="0" cellspacing="0" style="margin-top:10px"><tr><td style="background:#f5a623;border-radius:6px"><a href="${esc(url)}/#quote" style="display:inline-block;padding:7px 12px;font-size:13px;font-weight:700;color:#0c1a2e;text-decoration:none">Get a free quote &rarr;</a></td></tr></table>
 </td></tr></table>`;
@@ -36,7 +36,7 @@ const SIGNATURE_TEXT = `
 --
 Thomas Verigin
 Owner, Print Yours · Custom 3D printing in Vancouver
-printyours.ca | thomas.verigin@gmail.com | 778-984-5255
+printyours.ca | ${site.email} | 778-984-5255
 Parts, prototypes & small batches · Free quote in 1 business day · Local pickup
 Get a free quote: https://printyours.ca/#quote`;
 

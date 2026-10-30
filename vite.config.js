@@ -2,12 +2,26 @@ import { fileURLToPath } from "node:url";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { site } from "./site.config.js";
+import { models } from "./src/models/catalog.js";
 
 // Quote requests, uploads and portfolio data are served by the existing store
 // backend (filament-shopping). In production vercel.json proxies /api there;
 // this does the same for `npm run dev`.
 const API_ORIGIN = "https://thomasverigin.ca";
 const API_PREFIX = "/3Dprintingstore";
+
+// `npm run build:cf` sets CF_BUILD for the Cloudflare deployment: the browser
+// gets Cloudflare stand-ins for Vercel's Blob upload client and analytics
+// (see cloudflare/client/). The Vercel build is unaffected.
+const cloudflare = Boolean(process.env.CF_BUILD);
+const cfClient = (file) => fileURLToPath(new URL(`./cloudflare/client/${file}`, import.meta.url));
+const cloudflareAliases = cloudflare
+  ? [
+      { find: /^@vercel\/blob\/client$/, replacement: cfClient("blob-upload.js") },
+      { find: /^@vercel\/analytics(\/react)?$/, replacement: cfClient("analytics.js") },
+      { find: /^@vercel\/speed-insights\/react$/, replacement: cfClient("analytics.js") },
+    ]
+  : [];
 
 const url = site.url.replace(/\/$/, "");
 const sameAs = Object.values(site.social).filter(Boolean);
@@ -77,6 +91,12 @@ function seo() {
           `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n` +
           `  <url><loc>${url}/</loc><changefreq>weekly</changefreq><priority>1.0</priority></url>\n` +
           `  <url><loc>${url}/stickers/</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>\n` +
+          `  <url><loc>${url}/bike/</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>\n` +
+          `  <url><loc>${url}/models/</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>\n` +
+          models
+            .filter((m) => m.show)
+            .map((m) => `  <url><loc>${url}/models/${m.id}/</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>\n`)
+            .join("") +
           `</urlset>\n`,
       });
     },
@@ -85,11 +105,15 @@ function seo() {
 
 export default defineConfig({
   plugins: [react(), seo()],
+  resolve: { alias: cloudflareAliases },
   build: {
     rollupOptions: {
       input: {
         main: fileURLToPath(new URL("./index.html", import.meta.url)),
         stickers: fileURLToPath(new URL("./stickers/index.html", import.meta.url)),
+        bike: fileURLToPath(new URL("./bike/index.html", import.meta.url)),
+        models: fileURLToPath(new URL("./models/index.html", import.meta.url)),
+        account: fileURLToPath(new URL("./account/index.html", import.meta.url)),
       },
     },
   },

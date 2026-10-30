@@ -13,6 +13,19 @@ const FILE = /^\/api\/sticker-file\?p=requests%2F[\w-]{1,40}%2F[^&#?]{1,200}$/;
 const IMAGE = /\.(png|jpe?g)$/i;
 const text = (v, n) => String(v ?? "").trim().slice(0, n);
 
+// The delivery chosen on the form (src/components/Delivery.jsx), in words.
+function deliveryText(s) {
+  if (!s || s.method !== "ship") return "Pickup in Vancouver";
+  const postal = text(s.postal, 10);
+  if (!(Number(s.price) > 0)) return `Shipping to ${postal || "you"}, price with the quote`;
+  const by = { envelope: "Envelope, untracked", regular: "Regular Parcel, tracked" }[s.by] || "Tracked parcel";
+  const low = Number(s.priceLow);
+  const price = low > 0 && low < Number(s.price) ? `$${low.toFixed(2)}–$${Number(s.price).toFixed(2)}` : `$${Number(s.price).toFixed(2)}`;
+  const [d0, d1] = Array.isArray(s.days) ? s.days.map((n) => Math.round(Number(n))) : [];
+  const days = d0 >= 0 && d1 >= d0 && d1 < 60 ? ` (${d0}–${d1} business days in the mail)` : "";
+  return `${by} to ${postal}, about ${price}${days}`;
+}
+
 // A [low, high] dollar pair from the form, or null. Only ever numbers.
 function range(v) {
   if (!Array.isArray(v) || v.length !== 2) return null;
@@ -68,6 +81,7 @@ export default async function handler(req, res) {
     ["Material", text(o.material, 40) || "Your recommendation"],
     ["Quantity", String(Math.max(1, Math.min(10000, Number(o.quantity) || 1)))],
     ...(o.deadline ? [["Needed by", text(o.deadline, 20)]] : []),
+    ["Delivery", deliveryText(o.shipping)],
     ...(link ? [["Link", link]] : []),
     ...(others.length ? [["Files", others.map((f) => text(f.name, 120)).join(", ")]] : []),
   ];

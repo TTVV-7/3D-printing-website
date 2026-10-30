@@ -5,6 +5,12 @@ import { BufferAttribute, BufferGeometry, Matrix4, Vector3 } from "three";
 import { STLLoader } from "three/examples/jsm/loaders/STLLoader.js";
 import { unzipSync, strFromU8 } from "three/examples/jsm/libs/fflate.module.js";
 
+import { partUsage, partEstimate } from "./estimateMath.js";
+
+// The price maths lives in estimateMath.js (no three.js), so the server's
+// price chat can use it too.
+export { partUsage, partEstimate };
+
 const UNIT_MM = { micron: 0.001, millimeter: 1, centimeter: 10, inch: 25.4, foot: 304.8, meter: 1000 };
 
 // 3MF transforms are "m00 m01 m02 m10 m11 m12 m20 m21 m22 m30 m31 m32"
@@ -166,35 +172,6 @@ export function checkMeasure(m, cfg) {
     unreliable: !(m.volume > 0) || m.volume > boxVolume * 1.01 || m.volume < boxVolume * 0.001,
     tooBig: m.size.some((d) => d > cfg.maxSizeMm),
     tiny: Math.max(...m.size) < PROBABLY_INCHES_MM,
-  };
-}
-
-// Grams and hours for one copy of one part.
-export function partUsage(m, { material, quality }, cfg) {
-  const mat = cfg.materials[material] || cfg.materials[cfg.defaultMaterial];
-  const shell = Math.min(m.volume, m.area * cfg.wallMm);
-  const printed = (shell + (m.volume - shell) * cfg.infill) * cfg.waste; // mm³
-  const grams = (printed / 1000) * mat.density;
-  const rate = cfg.gramsPerHour[quality] ?? cfg.gramsPerHour[""];
-  // A little fixed time per part for heating, homing and first layer.
-  const hours = grams / rate + 0.15;
-  return { grams, hours, perGram: mat.perGram };
-}
-
-// Price range for one part on its own, all copies, setup included. The order
-// minimum applies to the whole order only, so it isn't in here.
-export function partEstimate(m, options, cfg) {
-  const quantity = Math.max(1, Number(options.quantity) || 1);
-  const off = cfg.bulk.find((b) => quantity >= b.min)?.off ?? 0;
-  const u = partUsage(m, options, cfg);
-  const each = u.grams * u.perGram + u.hours * cfg.machinePerHour;
-  const total = (each * quantity + cfg.setupPerPart) * (1 - off);
-  const round1 = (n) => Math.round(n * 10) / 10;
-  return {
-    grams: round1(u.grams * quantity),
-    hours: round1(u.hours * quantity),
-    low: Math.max(1, Math.floor(total * cfg.low)),
-    high: Math.max(1, Math.ceil(total * cfg.high)),
   };
 }
 

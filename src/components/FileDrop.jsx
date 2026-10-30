@@ -5,7 +5,7 @@ import { clsx } from "clsx";
 // Matches the limits enforced by api/quote-upload.js.
 export const ACCEPTED = [
   ".stl", ".3mf", ".obj", ".step", ".stp", ".gcode", ".zip",
-  ".jpg", ".jpeg", ".png", ".heic", ".pdf",
+  ".jpg", ".jpeg", ".png", ".heic", ".pdf", ".svg", ".ai", ".eps",
 ];
 export const MAX_FILE_MB = 25;
 export const MAX_FILES = 5;

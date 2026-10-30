@@ -1,8 +1,11 @@
 import { useEffect, useState } from "react";
 import { X, Lock, CreditCard, ArrowRight, Loader2, Heart, Send, CheckCircle2 } from "lucide-react";
 import { clsx } from "clsx";
+import { track } from "@vercel/analytics";
 import { stickers } from "../../site.config.js";
+import { NOT_VERIFIED, turnstileHeaders, useTurnstile } from "../lib/turnstile.js";
 import { deliveryCost, sizeOf, lineTotal, itemLabel, isColour, itemSizeName } from "./pricing.js";
+import { zoneOf, parcelOf, pieceOf, fits, arrival, dateRange } from "./shipping.js";
 
 // Sends each cart line's print file to api/sticker-upload.js, which stores
 // it in this site's Blob store, then sends the cart to
@@ -42,15 +45,21 @@ function Field({ label, className, ...props }) {
   );
 }
 
-export function Checkout({ items, onRemove, onClose, onSent }) {
+export function Checkout({ items, postal = "", onPostal, onRemove, onClose, onSent }) {
   const [step, setStep] = useState("pay"); // pay -> (Stripe) | preview | sent
   const [family, setFamily] = useState(false); // friends & family: a request, no payment
+  // Requests send email without a payment, so they need the bot check.
+  const turnstile = useTurnstile();
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const [delivery, setDelivery] = useState(stickers.delivery[0]);
-  const [who, setWho] = useState({ name: "", email: "", line1: "", line2: "", city: "", province: "BC", postal: "" });
+  const [who, setWho] = useState({ name: "", email: "", line1: "", line2: "", city: "", province: "BC", postal });
   const [error, setError] = useState("");
-  const set = (k) => (e) => setWho((w) => ({ ...w, [k]: e.target.value }));
+  const set = (k) => (e) => {
+    setWho((w) => ({ ...w, [k]: e.target.value }));
+    // The cart's delivery estimate follows the address.
+    if (k === "postal") onPostal?.(e.target.value);
+  };
   const mailed = delivery.key !== "pickup";
 
   // Once a request is sent, closing empties the cart too.
@@ -63,6 +72,14 @@ export function Checkout({ items, onRemove, onClose, onSent }) {
 
   const subtotal = items.reduce((sum, it) => sum + lineTotal(it), 0);
   const shipping = deliveryCost(delivery, subtotal);
+  const parcel = parcelOf(items.map(pieceOf));
+  const zone = zoneOf(who.postal);
+
+  // Too big for the delivery picked (say it was picked before more went in):
+  // move to the first that fits.
+  useEffect(() => {
+    if (!fits(delivery, parcel)) setDelivery(stickers.delivery.find((d) => fits(d, parcel)) || stickers.delivery[0]);
+  }, [delivery, parcel.grams, parcel.mm]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Emptied the cart from in here: nothing left to pay for.
   useEffect(() => {
@@ -83,6 +100,10 @@ export function Checkout({ items, onRemove, onClose, onSent }) {
     setError(p);
     if (p) return;
     setBusy(true);
+    if (family && turnstile.needed && !(await turnstile.wait())) {
+      setBusy(false);
+      return setError(NOT_VERIFIED);
+    }
     try {
       // The black-on-white print file (thermal) or the full-colour one; carts
       // saved before it existed send the preview. Colour files may already be
@@ -98,7 +119,7 @@ export function Checkout({ items, onRemove, onClose, onSent }) {
       const previews = await Promise.all(items.map((it, i) => uploadArt(it.art, `${i + 1}-preview`)));
       const r = await fetch(family ? "/api/sticker-request" : "/api/sticker-checkout", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...turnstileHeaders() },
         body: JSON.stringify({
           ...(family && { message: message.trim() }),
           items: items.map((it, i) => ({
@@ -112,6 +133,7 @@ export function Checkout({ items, onRemove, onClose, onSent }) {
             file: it.fileName,
             art: arts[i],
             preview: previews[i],
+            source: it.sourceUrl,
           })),
           customer: {
             name: who.name.trim(),
@@ -129,13 +151,20 @@ export function Checkout({ items, onRemove, onClose, onSent }) {
           delivery: delivery.key,
         }),
       });
+      const summary = { stickers: items.reduce((n, it) => n + it.qty, 0), lines: items.length, colour: items.some(isColour), delivery: delivery.key };
       if (family) {
         setBusy(false);
-        if (r.ok) return setStep("sent");
+        if (r.ok) {
+          track("Sticker request", summary);
+          return setStep("sent");
+        }
         return setError("That didn't send. Try again, or email me the design.");
       }
       const { url } = r.ok ? await r.json() : {};
-      if (url) return window.location.assign(url);
+      if (url) {
+        track("Sticker checkout", summary);
+        return window.location.assign(url);
+      }
     } catch {
       // Fall through to the not-set-up message.
     }
@@ -216,24 +245,32 @@ export function Checkout({ items, onRemove, onClose, onSent }) {
             <div className="mt-3 space-y-2" role="radiogroup" aria-label="Delivery">
               {stickers.delivery.map((d) => {
                 const cost = deliveryCost(d, subtotal);
+                const ok = fits(d, parcel);
                 return (
                   <button
                     key={d.key}
                     type="button"
                     role="radio"
                     aria-checked={delivery.key === d.key}
+                    disabled={!ok}
                     onClick={() => setDelivery(d)}
                     className={clsx(
-                      "flex w-full items-start justify-between gap-3 rounded-xl bg-white p-3 text-left ring-1 transition",
+                      "flex w-full items-start justify-between gap-3 rounded-xl bg-white p-3 text-left ring-1 transition disabled:cursor-not-allowed disabled:opacity-50",
                       delivery.key === d.key ? "ring-2 ring-flame" : "ring-ink/15 hover:ring-ink/40",
                     )}
                   >
                     <span className="text-sm">
                       <span className="block font-semibold">{d.name}</span>
-                      <span className="block text-ink/55">{d.body}</span>
+                      <span className="block text-ink/55">{ok ? d.body : "Too many stickers for an envelope. Pick tracked mail or pickup."}</span>
+                      {ok && (
+                        <span className="mt-0.5 block text-xs font-medium text-flame-600">
+                          {d.days ? "Arrives" : "Ready"} {dateRange(arrival(d, zone))}
+                          {d.days && !zone && " (add your postal code for a closer date)"}
+                        </span>
+                      )}
                     </span>
                     <span className="flex-none text-sm font-semibold">
-                      {cost ? `$${cost.toFixed(2)}` : "Free"}
+                      {ok ? (cost ? `$${cost.toFixed(2)}` : "Free") : "–"}
                     </span>
                   </button>
                 );
@@ -290,6 +327,7 @@ export function Checkout({ items, onRemove, onClose, onSent }) {
               </div>
             </dl>
             {error && <p className="mt-4 rounded-xl bg-flame-100 px-3 py-2 text-sm text-flame-600">{error}</p>}
+            {turnstile.needed && <div ref={turnstile.box} className="mt-4" />}
             {family ? (
               <button type="submit" disabled={busy} className="btn-primary mt-6 w-full disabled:opacity-70">
                 {busy ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />} Send request
