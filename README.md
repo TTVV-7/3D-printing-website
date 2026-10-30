@@ -22,7 +22,7 @@ so new requests show up in the same admin panel as before. Nothing to migrate.
 | --- | --- |
 | Business name, description, email, social links | `site.config.js` |
 | Prices | `site.config.js` → `pricing` |
-| Reviews and Marketplace link | `site.config.js` → `reviews` |
+| Reviews, Google and Marketplace links | `site.config.js` → `reviews` |
 | Generator app link ("Design your own") | `site.config.js` → `designerUrl` |
 | Sticker page (/stickers): paper colours, finishes, max width, prices | `site.config.js` → `stickers`, code in `src/stickers/` |
 | Full-colour, custom-cut stickers (/stickers/#colour): materials, size limits, prices | `site.config.js` → `stickers.colour`, code in `src/stickers/ColourStudio.jsx` + `colour.js`, crop / auto-crop in `CropDialog.jsx` |
@@ -33,6 +33,15 @@ so new requests show up in the same admin panel as before. Nothing to migrate.
 | Intro terrain (North Shore height map) | `node scripts/topo-heightmap.mjs` → `public/topo/` |
 | Real bike models for full-colour bike stickers | `SKETCHFAB_TOKEN=… node scripts/bike-models.mjs` → `public/models/bikes/`, tube positions and credits in `src/stickers/bikeModels.js` |
 | Google Search Console verification | `site.config.js` → `googleSiteVerification` |
+
+## Google reviews
+
+Paste two links into `site.config.js` → `reviews`:
+
+- `googleUrl`: your listing on Google Maps (Share → Copy link). Shows a "Reviews on Google" button.
+- `googleReviewUrl`: the link from Google Business Profile → "Ask for reviews". Shows a
+  "Write a review" button and a footer link, and makes `printyours.ca/review` forward
+  straight to the review box (handy for receipts, packaging and QR codes).
 
 ## SEO / sharing
 
@@ -49,6 +58,10 @@ Vercel Web Analytics (`<Analytics />` in `App.jsx`) records visitors, top pages 
 referrers. Turn it on once in the Vercel dashboard: project → Analytics → Enable.
 Each successful quote also sends a `Quote submitted` event (material, quantity, whether
 files/link were attached; no names or emails), visible under Analytics → Events.
+
+On the Cloudflare deployment there's more: sign in at `/account/` as an admin and
+open **Stats** for charts of visits, clicks, orders, uploads, busiest hours and
+places (see CLOUDFLARE.md → Analytics).
 
 All absolute URLs default to `https://printyours.ca`; set the `SITE_URL` env var to
 override (e.g. for a staging domain).

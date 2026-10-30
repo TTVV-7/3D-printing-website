@@ -13,7 +13,7 @@ are as they were, so the Vercel deployment keeps working alongside.
 | Quote uploads go browser → Blob with a presigned token | Browser → `PUT /api/quote-upload` → R2 (`cloudflare/quote-upload.js`); the Cloudflare build swaps the browser client to match |
 | `vercel.json` rewrite of other `/api/*` to thomasverigin.ca | Same forwarding, done in the Worker |
 | `vercel.json` cache headers | `dist/_headers`, written by `build:cf` |
-| Vercel Analytics + Speed Insights | Cloudflare Web Analytics (optional token, below); custom `track()` events are dropped |
+| Vercel Analytics + Speed Insights | Cloudflare Web Analytics (optional token, below), plus our own page views, clicks and `track()` events in D1, charted for admins on `/account/` → Stats (see below) |
 | `VERCEL_ENV=production` picks the live Stripe key | Set per request: live key only on printyours.ca / www.printyours.ca, test key on every other host |
 
 ## Scripts
@@ -45,6 +45,16 @@ are as they were, so the Vercel deployment keeps working alongside.
 4. **Analytics (optional)**: Cloudflare → Analytics & Logs → Web Analytics →
    add the site, copy the token, and add it as a *build* variable
    `VITE_CF_ANALYTICS_TOKEN`.
+   Either way, the site keeps its own counts in D1 (`cloudflare/events.js`):
+   every page view and click, with the visitor's country and device, plus
+   quotes, checkouts and the rest. Sign in at `/account/` with an admin email
+   (`ADMIN_EMAILS`) and open **Stats** for charts: visits and orders over time,
+   busiest hours (Vancouver time), top pages and clicks, where visitors come
+   from, countries, cities, devices, and who's sending files. Visitors who
+   accept the cookie banner also get a random visitor id (so return visits
+   count once) and a city; everyone else is counted anonymously. Your own
+   visits while signed in as an admin, and bots, aren't counted. The new
+   database columns add themselves on first use; nothing to run.
 5. **Test on the workers.dev URL first**: a test-mode sticker checkout, a
    quote with an attachment, and a friends & family request. That host always
    uses the Stripe test key.

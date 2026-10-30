@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Menu, Sparkles, UserRound, X } from "lucide-react";
 import { clsx } from "clsx";
 import { Logo } from "./Logo.jsx";
+import { hasReviews } from "./Reviews.jsx";
 
 // Customer accounts: Cloudflare build only (see src/account/client.js).
 const ACCOUNTS = import.meta.env.VITE_ACCOUNTS === "1";
@@ -13,7 +14,8 @@ const NAV = [
   { href: "#materials", label: "Materials" },
   { href: "/stickers/", label: "Stickers" },
   { href: "/models/", label: "3D models" },
-];
+  hasReviews && { href: "#reviews", label: "Reviews" },
+].filter(Boolean);
 
 // On other pages (home="/") the section links point back at the home page.
 const link = (home, href) => (href.startsWith("#") ? home + href : href);

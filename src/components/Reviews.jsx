@@ -1,4 +1,4 @@
-import { Star, ExternalLink } from "lucide-react";
+import { Star, ExternalLink, PenLine } from "lucide-react";
 import { reviews } from "../../site.config.js";
 
 function Stars({ rating }) {
@@ -11,14 +11,19 @@ function Stars({ rating }) {
   );
 }
 
+// Shared with the header so the nav link only shows when the section does.
+export const hasReviews = Boolean(
+  reviews.items.length || reviews.marketplaceUrl || reviews.googleUrl || reviews.googleReviewUrl,
+);
+
 export function Reviews() {
-  const { items, marketplaceUrl, googleUrl } = reviews;
+  const { items, marketplaceUrl, googleUrl, googleReviewUrl } = reviews;
   const links = [
-    marketplaceUrl && { href: marketplaceUrl, label: "Reviews on Facebook Marketplace" },
     googleUrl && { href: googleUrl, label: "Reviews on Google" },
+    marketplaceUrl && { href: marketplaceUrl, label: "Reviews on Facebook Marketplace" },
   ].filter(Boolean);
 
-  if (!items.length && !links.length) return null;
+  if (!hasReviews) return null;
 
   return (
     <section id="reviews" className="py-16 sm:py-24">
@@ -58,6 +63,25 @@ export function Reviews() {
               </li>
             ))}
           </ul>
+        )}
+
+        {googleReviewUrl && (
+          <div className="mt-12 flex flex-col gap-5 rounded-3xl bg-white p-7 ring-1 ring-ink/5 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="font-display text-xl font-bold">Had something printed?</p>
+              <p className="mt-1 text-ink/65">
+                A quick Google review helps other people in Vancouver find a small shop like this one.
+              </p>
+            </div>
+            <a
+              href={googleReviewUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn-primary shrink-0 self-start sm:self-auto"
+            >
+              <PenLine size={16} /> Write a review
+            </a>
+          </div>
         )}
       </div>
     </section>
