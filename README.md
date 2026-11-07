@@ -33,6 +33,7 @@ so new requests show up in the same admin panel as before. Nothing to migrate.
 | Intro terrain (North Shore height map) | `node scripts/topo-heightmap.mjs` → `public/topo/` |
 | Real bike models for full-colour bike stickers | `SKETCHFAB_TOKEN=… node scripts/bike-models.mjs` → `public/models/bikes/`, tube positions and credits in `src/stickers/bikeModels.js` |
 | Tree magnets on the 3D models page | `node scripts/tree-magnet-models.mjs ../Weave-Trial/pnw-tree-magnets/stl` → `public/models/trees/` (card pictures are renders of the same models) |
+| Construction models on the 3D models page (1:50, in mm) | `node scripts/construction-models.mjs ../Weave-Trial origin/claude/zen-darwin-fzhu3j` → `public/models/construction/`; names and collections in `src/models/catalog.js` |
 | Google Search Console verification | `site.config.js` → `googleSiteVerification` |
 
 ## Google reviews
