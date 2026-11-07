@@ -31,6 +31,33 @@ export const work = [
     alt: "Angled view of the printed Vancouver relief map showing raised North Shore mountains",
   },
   {
+    title: "Downtown Vancouver, framed",
+    kind: "Designed & printed wall map",
+    photo: "/work/vancouver-city-framed.webp",
+    alt: "Framed 3D-printed map of downtown Vancouver on a wall: white buildings on a street grid, green parks and blue water",
+  },
+  {
+    title: "Good Kid figurine",
+    kind: "Designed & printed, multi-colour",
+    photo: "/work/good-kid-figurine.webp",
+    focus: "center top",
+    alt: "Multi-colour 3D-printed figurine of a guitarist in a purple shirt among green vines and blue and orange flowers, on a black base",
+  },
+  {
+    title: "Media keys",
+    kind: "Custom keycaps",
+    photo: "/work/media-keys.webp",
+    alt: "White 3D-printed previous, play/pause and next keycaps on a media controller, glowing pink from its backlight",
+    wide: true,
+  },
+  {
+    title: "Iris iPad holder",
+    kind: "Two-colour design",
+    photo: "/work/ipad-holder-iris.webp",
+    focus: "center 45%",
+    alt: "Black 3D-printed iPad holder with a white iris pattern and curved lines inlaid in its back",
+  },
+  {
     title: "Welsh dragon phone case",
     kind: "Custom two-colour case",
     photo: "/work/dragon-phone-case.webp",

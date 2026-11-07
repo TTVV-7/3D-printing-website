@@ -156,7 +156,13 @@ export function ModelsPage() {
       <section className="bg-paper py-12 sm:py-16">
         <div className="container-page">
           {collections.length > 1 && (
-            <div className="flex flex-wrap gap-2" role="tablist" aria-label="Collections">
+            // One row that scrolls sideways on phones (eleven collections would
+            // otherwise wrap onto six rows); wraps from sm up.
+            <div
+              className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0 [&::-webkit-scrollbar]:hidden"
+              role="tablist"
+              aria-label="Collections"
+            >
               {["All", ...collections].map((c) => (
                 <button
                   key={c}
@@ -165,7 +171,7 @@ export function ModelsPage() {
                   aria-selected={filter === c}
                   onClick={() => setFilter(c)}
                   className={clsx(
-                    "rounded-full px-4 py-1.5 text-sm font-medium ring-1 transition",
+                    "flex-none whitespace-nowrap rounded-full px-4 py-1.5 text-sm font-medium ring-1 ring-inset transition",
                     filter === c ? "bg-ink text-white ring-ink" : "bg-white ring-ink/15 hover:ring-ink/40",
                   )}
                 >
@@ -176,7 +182,9 @@ export function ModelsPage() {
           )}
 
           {list.length ? (
-            <ul className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            // Two small cards a row on phones: 60-odd full-width cards made the
+            // page about 28,000 px long.
+            <ul className="mt-6 grid grid-cols-2 gap-3 sm:mt-8 sm:gap-5 lg:grid-cols-3">
               {list.map((m) => (
                 <li key={m.id}>
                   <a
@@ -186,26 +194,26 @@ export function ModelsPage() {
                       e.preventDefault();
                       setOpen(m);
                     }}
-                    className="group flex h-full w-full flex-col overflow-hidden rounded-3xl bg-white text-left ring-1 ring-ink/10 transition hover:-translate-y-0.5 hover:shadow-xl hover:shadow-ink/5"
+                    className="group flex h-full w-full flex-col overflow-hidden rounded-2xl bg-white sm:rounded-3xl text-left ring-1 ring-ink/10 transition hover:-translate-y-0.5 hover:shadow-xl hover:shadow-ink/5"
                   >
-                    <span className="relative flex aspect-[4/3] items-center justify-center bg-gradient-to-b from-[#eef2ee] to-[#dfe6df] p-4">
+                    <span className="relative flex aspect-[4/3] items-center justify-center bg-gradient-to-b from-[#eef2ee] to-[#dfe6df] p-2 sm:p-4">
                       {m.preview ? (
                         <img src={fileUrl(m.preview)} alt="" loading="lazy" className="max-h-full max-w-full object-contain transition duration-500 group-hover:scale-105" />
                       ) : (
-                        <Box size={48} className="text-ink/25" />
+                        <Box size={40} className="text-ink/25" />
                       )}
                       {m.video && (
-                        <span className="absolute left-3 top-3 flex items-center gap-1 rounded-full bg-ink/80 px-2.5 py-1 text-xs font-medium text-white">
+                        <span className="absolute left-2 top-2 flex items-center gap-1 rounded-full bg-ink/80 px-2 py-0.5 text-[11px] font-medium text-white sm:left-3 sm:top-3 sm:px-2.5 sm:py-1 sm:text-xs">
                           <Play size={10} fill="currentColor" /> Video
                         </span>
                       )}
                     </span>
-                    <span className="flex flex-1 items-end justify-between gap-3 p-5">
-                      <span>
-                        <span className="block text-xs font-medium uppercase tracking-wider text-flame">{m.collection}</span>
-                        <span className="block text-lg font-semibold">{m.name}</span>
+                    <span className="flex flex-1 items-end justify-between gap-3 p-3 sm:p-5">
+                      <span className="min-w-0">
+                        <span className="block text-[10px] font-medium uppercase leading-tight tracking-wider text-flame sm:text-xs">{m.collection}</span>
+                        <span className="mt-0.5 block text-sm font-semibold leading-snug sm:mt-0 sm:text-lg">{m.name}</span>
                       </span>
-                      <span className="flex-none text-sm font-semibold text-ink/60 group-hover:text-flame">View in 3D</span>
+                      <span className="hidden flex-none text-sm font-semibold text-ink/60 group-hover:text-flame sm:block">View in 3D</span>
                     </span>
                   </a>
                 </li>

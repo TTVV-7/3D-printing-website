@@ -52,7 +52,7 @@ function facts() {
 Services:
 ${services}
 Extras: ${pricing.extras.join("; ")}.
-Materials: ${materials}. PLA is the general-purpose choice with the best detail; PETG is tougher, handles heat and sun better and is water resistant (good outdoors); Nylon is very tough and wear resistant; TPU is flexible and rubbery.
+Materials: ${materials}. PLA is the general-purpose choice with the best detail; PETG is tougher, handles heat and sun better and is water resistant (good outdoors); TPU is flexible and rubbery.
 3D print pricing: filament by weight plus $${cfg.machinePerHour}/hour of print time, $${cfg.setupPerPart} setup per different part, $${cfg.orderMinimum} order minimum. ${cfg.bulk.map((b) => `${b.min}+ copies: ${b.off * 100}% off`).join(", ")}. Largest part: ${cfg.maxSizeMm} mm on a side.
 Stickers (made at printyours.ca/stickers, where people design them and see the exact price):
 - Thermal labels, black ink on white or coloured die-cut labels, sizes from 40 × 30 mm to 3" × 4.4". Examples: ${thermal.join("; ")}. Discounts at 25+ and 100+.

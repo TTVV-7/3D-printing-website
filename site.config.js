@@ -105,7 +105,6 @@ export const estimate = {
   materials: {
     PLA: { density: 1.24, perGram: 0.08 },
     PETG: { density: 1.27, perGram: 0.09 },
-    Nylon: { density: 1.08, perGram: 0.2 },
     TPU: { density: 1.21, perGram: 0.15 },
   },
   defaultMaterial: "PLA",
