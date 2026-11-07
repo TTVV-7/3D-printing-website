@@ -16,7 +16,6 @@ const MATERIALS = [
   { value: "", label: "Not sure, recommend one" },
   { value: "PLA", label: "PLA: general purpose, best detail" },
   { value: "PETG", label: "PETG: tougher, water resistant" },
-  { value: "Nylon", label: "Nylon: tough, high wear resistance" },
   { value: "TPU", label: "TPU: flexible" },
 ];
 

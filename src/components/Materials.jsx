@@ -14,7 +14,6 @@ const SPECS = [
 const MATERIALS = [
   { name: "PLA", best: "Display pieces, prototypes, indoor parts", strength: 2, heat: 1, flex: 1, finish: 3 },
   { name: "PETG", best: "Functional parts, outdoor use, anything near water", strength: 3, heat: 2, flex: 2, finish: 2 },
-  { name: "Nylon", best: "Gears, hinges, high-wear mechanical parts", strength: 3, heat: 3, flex: 2, finish: 2 },
   { name: "TPU", best: "Gaskets, bumpers, grips, phone cases", strength: 2, heat: 2, flex: 3, finish: 1 },
 ];
 
