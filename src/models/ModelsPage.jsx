@@ -28,7 +28,7 @@ const fileUrl = (p) =>
 // Fills in the quote form with the model and takes them there.
 function requestPrint(m, sizeMm) {
   track("Get this printed", { model: m.id });
-  const details = `I'd like this printed: ${m.name} (${m.collection}) from the 3D models page${sizeMm ? `, about ${sizeMm.join(" × ")} mm` : ""}. How many / any changes: `;
+  const details = `I'd like this printed: ${m.name} (${m.collection}) from the 3D models page${sizeMm ? `, about ${sizeMm.join(" × ")} mm${m.scale ? ` (${m.scale} scale)` : ""}` : ""}. How many / any changes: `;
   try {
     sessionStorage.setItem("quote-prefill", JSON.stringify({ details }));
   } catch {
@@ -101,7 +101,7 @@ function Viewer({ model, onClose }) {
           <div>
             <p className="text-xs font-medium uppercase tracking-wider text-flame">{model.collection}</p>
             <p className="text-lg font-semibold">{model.name}</p>
-            {state.sizeMm && <p className="text-sm text-ink/55">About {state.sizeMm.join(" × ")} mm</p>}
+            {state.sizeMm && <p className="text-sm text-ink/55">{model.scale ? `${model.scale} scale, about` : "About"} {state.sizeMm.join(" × ")} mm</p>}
           </div>
           <div className="flex flex-wrap gap-2">
             {model.video && (

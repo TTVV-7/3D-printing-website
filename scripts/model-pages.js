@@ -11,7 +11,8 @@ const dist = new URL("../dist/models/", import.meta.url);
 const template = await readFile(new URL("index.html", dist), "utf8");
 
 const esc = (s) => s.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
-const raw = (p) => `https://raw.githubusercontent.com/${MODELS_REPO}/HEAD/${p.split("/").map(encodeURIComponent).join("/")}`;
+// Paths starting with "/" are this site's own files (public/).
+const raw = (p) => p.startsWith("/") ? `${url}${p}` : `https://raw.githubusercontent.com/${MODELS_REPO}/HEAD/${p.split("/").map(encodeURIComponent).join("/")}`;
 // Swaps the content of one <meta>/<link> tag, matched by its attribute.
 const set = (html, attr, value) =>
   html.replace(new RegExp(`(<(?:meta|link) [^>]*${attr}[^>]*(?:content|href)=")[^"]*(")`), `$1${esc(value)}$2`);

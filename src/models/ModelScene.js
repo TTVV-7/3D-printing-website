@@ -2,7 +2,7 @@
 // to the view and lets people turn and zoom it. Its own module so three.js
 // only loads once someone opens a model.
 import {
-  WebGLRenderer, Scene, PerspectiveCamera, PMREMGenerator, ACESFilmicToneMapping, SRGBColorSpace,
+  WebGLRenderer, Scene, PerspectiveCamera, PMREMGenerator, NeutralToneMapping, SRGBColorSpace,
   Box3, DirectionalLight, Mesh, MeshStandardMaterial, Sphere, Vector3,
 } from "three";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
@@ -38,7 +38,9 @@ export async function mountModel(canvas, { url, ext, reducedMotion }) {
   const renderer = new WebGLRenderer({ canvas, alpha: true, antialias: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.outputColorSpace = SRGBColorSpace;
-  renderer.toneMapping = ACESFilmicToneMapping;
+  // Neutral keeps saturated paint (construction yellow, safety orange) true;
+  // ACES washed it out to pastel.
+  renderer.toneMapping = NeutralToneMapping;
 
   const scene = new Scene();
   const pmrem = new PMREMGenerator(renderer);
