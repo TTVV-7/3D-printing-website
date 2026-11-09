@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useState } from "react";
-import { ArrowRight, Box, CheckCircle2, ChevronDown, Loader2, LogOut, Mail, Package, Paperclip, RotateCcw, Trash2 } from "lucide-react";
+import { ArrowRight, Box, CheckCircle2, ChevronDown, Download, Loader2, LogOut, Mail, Package, Paperclip, RotateCcw, Trash2 } from "lucide-react";
 import { clsx } from "clsx";
 import { ACCOUNTS, fetchMe, refreshMe, reorder } from "./client.js";
 import { NOT_VERIFIED, turnstileHeaders, useTurnstile } from "../lib/turnstile.js";
@@ -209,9 +209,10 @@ function Designs({ designs, onChange }) {
   );
 }
 
-// Admins: everything the customer sent, folded away under the card. The title
-// is only the start of the message; `request` (cloudflare/accounts.js) has the
-// rest. Orders from before it was saved show their title and say so.
+// Admins: everything the customer sent, folded away under the card, and a
+// button to download all its files. The title is only the start of the
+// message; `request` (cloudflare/accounts.js) has the rest. Orders from before
+// it was saved show their title and say so.
 function FullRequest({ order }) {
   const r = order.request;
   const facts = r
@@ -223,63 +224,138 @@ function FullRequest({ order }) {
         ["Needed by", r.deadline],
       ].filter(([, v]) => v)
     : [];
+  const [open, setOpen] = useState(false);
+  const hasFiles = order.files > 0 || order.images?.length > 0 || r?.files?.length > 0;
   return (
-    <details className="group mt-2">
-      <summary className="inline-flex cursor-pointer list-none items-center gap-1 text-xs font-medium text-ink/70 hover:text-ink [&::-webkit-details-marker]:hidden">
-        <ChevronDown size={14} className="transition-transform group-open:rotate-180" />
-        <span className="group-open:hidden">Show full request</span>
-        <span className="hidden group-open:inline">Hide full request</span>
-      </summary>
-      <div className="mt-2 space-y-3 rounded-xl bg-paper p-3 text-sm">
-        {r ? (
-          <>
-            {r.details && <p className="whitespace-pre-wrap break-words">{r.details}</p>}
-            {facts.length > 0 && (
-              <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs">
-                {facts.map(([k, v]) => (
-                  <div key={k} className="contents">
-                    <dt className="text-ink/50">{k}</dt>
-                    <dd>{v}</dd>
-                  </div>
-                ))}
-              </dl>
-            )}
-            {r.url && (
-              <p className="text-xs">
-                <span className="text-ink/50">Link: </span>
-                {/^https?:\/\//i.test(r.url) ? (
-                  <a href={r.url} target="_blank" rel="noopener noreferrer nofollow" className="break-all underline decoration-flame underline-offset-2">
-                    {r.url}
-                  </a>
-                ) : (
-                  <span className="break-all">{r.url}</span>
-                )}
-              </p>
-            )}
-            {r.files?.length > 0 && (
-              <ul className="space-y-1 text-xs">
-                {r.files.map((f) => (
-                  <li key={f.path}>
-                    <a href={f.path} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 break-all underline decoration-flame underline-offset-2">
-                      <Paperclip size={12} className="flex-none text-ink/45" /> {f.name}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </>
-        ) : (
-          <>
-            <p className="whitespace-pre-wrap break-words">{order.title}</p>
-            <p className="text-xs text-ink/55">
-              This one came in before full requests were saved here, so only the first 120 characters show. The whole message is in the
-              store admin panel.
-            </p>
-          </>
-        )}
+    <div className="mt-2">
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-1">
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          aria-expanded={open}
+          className="inline-flex items-center gap-1 text-xs font-medium text-ink/70 hover:text-ink"
+        >
+          <ChevronDown size={14} className={clsx("transition-transform", open && "rotate-180")} />
+          {open ? "Hide full request" : "Show full request"}
+        </button>
+        {hasFiles && <DownloadAll order={order} />}
       </div>
-    </details>
+      {open && (
+        <div className="mt-2 space-y-3 rounded-xl bg-paper p-3 text-sm">
+          {r ? (
+            <>
+              {r.details && <p className="whitespace-pre-wrap break-words">{r.details}</p>}
+              {facts.length > 0 && (
+                <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs">
+                  {facts.map(([k, v]) => (
+                    <div key={k} className="contents">
+                      <dt className="text-ink/50">{k}</dt>
+                      <dd>{v}</dd>
+                    </div>
+                  ))}
+                </dl>
+              )}
+              {r.url && (
+                <p className="text-xs">
+                  <span className="text-ink/50">Link: </span>
+                  {/^https?:\/\//i.test(r.url) ? (
+                    <a href={r.url} target="_blank" rel="noopener noreferrer nofollow" className="break-all underline decoration-flame underline-offset-2">
+                      {r.url}
+                    </a>
+                  ) : (
+                    <span className="break-all">{r.url}</span>
+                  )}
+                </p>
+              )}
+              {r.files?.length > 0 && (
+                <ul className="space-y-1 text-xs">
+                  {r.files.map((f) => (
+                    <li key={f.path}>
+                      <a href={f.path} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 break-all underline decoration-flame underline-offset-2">
+                        <Paperclip size={12} className="flex-none text-ink/45" /> {f.name}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </>
+          ) : (
+            <>
+              <p className="whitespace-pre-wrap break-words">{order.title}</p>
+              <p className="text-xs text-ink/55">
+                This one came in before full requests were saved here, so only the first 120 characters show. The whole message is in the
+                store admin panel.
+              </p>
+            </>
+          )}
+        </div>
+      )}
+    </div>
   );
+}
+
+// "Download all files": fetches every file on the order (the list comes from
+// /api/account/order-files) and saves them as one zip, put together here in
+// the browser. One file is saved as it is. Zip entries aren't compressed: the
+// files are already on this computer by then, so it would only cost time.
+function DownloadAll({ order }) {
+  const [status, setStatus] = useState(null);
+  const busy = status && status.endsWith("…");
+  async function run() {
+    try {
+      setStatus("Finding files…");
+      const r = await fetch(`/api/account/order-files?id=${encodeURIComponent(order.id)}`);
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(d.error || "Couldn't find the files");
+      const files = d.files || [];
+      if (!files.length) return setStatus("No files on this order");
+      const got = [];
+      for (const [i, f] of files.entries()) {
+        setStatus(`Downloading ${i + 1} of ${files.length}…`);
+        const res = await fetch(f.path);
+        if (!res.ok) throw new Error(`Couldn't download ${f.name}`);
+        got.push({ name: f.name, data: new Uint8Array(await res.arrayBuffer()) });
+      }
+      if (got.length === 1) {
+        saveFile(new Blob([got[0].data]), got[0].name);
+      } else {
+        const { zipSync } = await import("three/examples/jsm/libs/fflate.module.js");
+        const entries = {};
+        for (const { name, data } of got) entries[uniqueName(entries, name)] = [data, { level: 0 }];
+        saveFile(new Blob([zipSync(entries)], { type: "application/zip" }), zipName(order));
+      }
+      setStatus(null);
+    } catch (err) {
+      setStatus(err.message || "Download failed");
+    }
+  }
+  return (
+    <span className="inline-flex items-center gap-2 text-xs">
+      <button type="button" onClick={run} disabled={busy} className="inline-flex items-center gap-1 font-medium text-ink/70 hover:text-ink disabled:opacity-60">
+        {busy ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />} Download all files
+      </button>
+      {status && <span className="text-ink/50">{status}</span>}
+    </span>
+  );
+}
+
+// "photo.jpg", "photo (2).jpg"... so two files with one name both make it in.
+function uniqueName(taken, name) {
+  const dot = name.lastIndexOf(".");
+  const [base, ext] = dot > 0 ? [name.slice(0, dot), name.slice(dot)] : [name, ""];
+  let out = name;
+  for (let n = 2; out in taken; n++) out = `${base} (${n})${ext}`;
+  return out;
+}
+// printyours-2026-11-08-michaelmiller89.zip
+const zipName = (o) => `printyours-${o.created_at.slice(0, 10)}-${o.email.split("@")[0].replace(/[^\w.-]/g, "_")}.zip`;
+function saveFile(blob, name) {
+  const url = URL.createObjectURL(blob);
+  const a = Object.assign(document.createElement("a"), { href: url, download: name });
+  document.body.append(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
 
 // Admins: every order, with its status, a note the customer sees and tracking.

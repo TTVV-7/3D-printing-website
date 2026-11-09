@@ -15,6 +15,7 @@
 //   POST /api/account/orders         set an order's status {id, status, note,
 //                                    tracking}; "shipped" and "ready" email the
 //                                    customer (admins only)
+//   GET  /api/account/order-files?id= every file on an order (admins only)
 //
 // Admins are the emails in ADMIN_EMAILS (comma-separated), or site.admins.
 // Orders are recorded by recordOrder() as they're filed: quotes as the Worker
@@ -380,6 +381,34 @@ async function adminOrders(request, env) {
   return json({ ok: true, emailed });
 }
 
+// GET /api/account/order-files?id=: every file on one order, for the admin
+// panel's "Download all files". Quote and club attachments are listed from R2
+// itself (requests/<id>/...), so orders recorded before `request` existed get
+// theirs too; sticker print files come from what the order recorded.
+// Names drop the random suffix R2 uploads get (cloudflare/blob-r2.js).
+const uploadName = (key) => key.split("/").pop().replace(/-[0-9a-f]{21}(?=\.[^.]*$|$)/, "");
+async function orderFiles(request, env) {
+  const user = await currentUser(request, env);
+  if (!user || !admins(env).includes(user.email)) return json({ error: "Not found" }, 404);
+  const id = new URL(request.url).searchParams.get("id") || "";
+  const order = await env.DB.prepare("SELECT * FROM orders WHERE id = ?").bind(id).first();
+  if (!order) return json({ error: "No such order" }, 404);
+  const files = new Map();
+  const add = (path, name, size = null) => path && !files.has(path) && files.set(path, { path, name, size });
+  if (env.UPLOADS && /^[\w-]{1,40}$/.test(order.id)) {
+    let cursor;
+    do {
+      const listed = await env.UPLOADS.list({ prefix: `requests/${order.id}/`, cursor });
+      for (const o of listed.objects) add(`/api/sticker-file?p=${encodeURIComponent(o.key)}`, uploadName(o.key), o.size);
+      cursor = listed.truncated ? listed.cursor : undefined;
+    } while (cursor);
+  }
+  const { request: sent, images } = adminOrderOut(order);
+  for (const f of sent?.files || []) add(f.path, f.name);
+  for (const path of images) add(path, uploadName(decodeURIComponent(path.slice(path.indexOf("?p=") + 3))));
+  return json({ files: [...files.values()] });
+}
+
 const needsDb = (fn) => (request, env) => (env.DB ? fn(request, env) : json({ error: "Accounts aren't switched on here" }, 503));
 
 export const accountRoutes = {
@@ -389,4 +418,5 @@ export const accountRoutes = {
   "account/me": needsDb(me),
   "account/designs": needsDb(designs),
   "account/orders": needsDb(adminOrders),
+  "account/order-files": needsDb(orderFiles),
 };
