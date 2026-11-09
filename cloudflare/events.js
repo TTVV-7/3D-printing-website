@@ -48,7 +48,7 @@ export function device(ua = "") {
 // database made from schema.sql already has them all.
 const COLUMNS = {
   events: { visitor: "TEXT", visit: "TEXT", country: "TEXT", region: "TEXT", city: "TEXT", device: "TEXT" },
-  orders: { country: "TEXT", region: "TEXT", city: "TEXT", files: "INTEGER" },
+  orders: { country: "TEXT", region: "TEXT", city: "TEXT", files: "INTEGER", request: "TEXT" },
 };
 let ready;
 export function ensureColumns(env) {

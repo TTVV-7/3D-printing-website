@@ -222,7 +222,36 @@ const filePath = (u) => (typeof u === "string" && /\/api\/sticker-file\?p=[\w%.\
 // Pictures only: print files (stickers/...) and images people attached.
 const isPicture = (path) => /p=stickers%2F/.test(path) || /\.(png|jpe?g|webp|gif)$/i.test(path);
 
-const orderOut = (o) => ({ ...o, images: o.images ? JSON.parse(o.images) : [], statusName: STATUSES[o.status] || o.status });
+// `request` (everything the customer sent) goes to admins only: sticker
+// orders carry printing instructions meant for the shop, not the customer.
+const orderOut = ({ request, ...o }) => ({ ...o, images: o.images ? JSON.parse(o.images) : [], statusName: STATUSES[o.status] || o.status });
+const adminOrderOut = (o) => {
+  let request = null;
+  try {
+    request = o.request ? JSON.parse(o.request) : null;
+  } catch {}
+  return { ...orderOut(o), request };
+};
+
+// What the customer sent, in full, for the admin panel: the title is only
+// the first 120 characters of the message. Files keep only links to this
+// site's own stored files, and text is capped so one request stays small.
+function requestOf(entry) {
+  const text = (v, n) => (typeof v === "string" && v.trim() ? v.trim().slice(0, n) : null);
+  const files = (Array.isArray(entry.files) ? entry.files : [])
+    .map((f) => ({ name: text(f?.name, 120) || "file", path: filePath(f?.url) }))
+    .filter((f) => f.path)
+    .slice(0, 20);
+  return JSON.stringify({
+    name: text(entry.name, 120),
+    details: text(entry.details, 10000),
+    url: text(entry.url, 500),
+    material: text(entry.material, 60),
+    quality: text(entry.quality, 60),
+    deadline: text(entry.deadline, 40),
+    files,
+  });
+}
 
 // Called as an order is filed. `entry` is the quote-form shape
 // (src/components/QuoteForm.jsx / api/_sticker-order.js fileOrder); `cf` is
@@ -249,7 +278,7 @@ export async function recordOrder(env, entry, cf = {}) {
   try {
     await ensureColumns(env);
     await env.DB.prepare(
-      "INSERT OR IGNORE INTO orders (id, email, kind, title, status, quantity, total, thumbnail, images, files, country, region, city) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+      "INSERT OR IGNORE INTO orders (id, email, kind, title, status, quantity, total, thumbnail, images, files, country, region, city, request) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
     )
       .bind(
         id,
@@ -265,6 +294,7 @@ export async function recordOrder(env, entry, cf = {}) {
         place(cf?.country, 2),
         place(cf?.region, 60),
         place(cf?.city, 60),
+        requestOf(entry),
       )
       .run();
   } catch (err) {
@@ -313,7 +343,7 @@ async function adminOrders(request, env) {
   if (!user || !admins(env).includes(user.email)) return json({ error: "Not found" }, 404);
   if (request.method === "GET") {
     const rows = await env.DB.prepare("SELECT * FROM orders ORDER BY created_at DESC LIMIT 200").all();
-    return json({ orders: rows.results.map(orderOut), statuses: STATUSES });
+    return json({ orders: rows.results.map(adminOrderOut), statuses: STATUSES });
   }
   if (request.method !== "POST") return json({ error: "GET or POST" }, 405);
   const body = await request.json().catch(() => ({}));

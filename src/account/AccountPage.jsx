@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useState } from "react";
-import { ArrowRight, Box, CheckCircle2, Loader2, LogOut, Mail, Package, RotateCcw, Trash2 } from "lucide-react";
+import { ArrowRight, Box, CheckCircle2, ChevronDown, Loader2, LogOut, Mail, Package, Paperclip, RotateCcw, Trash2 } from "lucide-react";
 import { clsx } from "clsx";
 import { ACCOUNTS, fetchMe, refreshMe, reorder } from "./client.js";
 import { NOT_VERIFIED, turnstileHeaders, useTurnstile } from "../lib/turnstile.js";
@@ -209,6 +209,79 @@ function Designs({ designs, onChange }) {
   );
 }
 
+// Admins: everything the customer sent, folded away under the card. The title
+// is only the start of the message; `request` (cloudflare/accounts.js) has the
+// rest. Orders from before it was saved show their title and say so.
+function FullRequest({ order }) {
+  const r = order.request;
+  const facts = r
+    ? [
+        ["Name", r.name],
+        ["Material", r.material],
+        ["Quality", r.quality],
+        ["Quantity", order.quantity],
+        ["Needed by", r.deadline],
+      ].filter(([, v]) => v)
+    : [];
+  return (
+    <details className="group mt-2">
+      <summary className="inline-flex cursor-pointer list-none items-center gap-1 text-xs font-medium text-ink/70 hover:text-ink [&::-webkit-details-marker]:hidden">
+        <ChevronDown size={14} className="transition-transform group-open:rotate-180" />
+        <span className="group-open:hidden">Show full request</span>
+        <span className="hidden group-open:inline">Hide full request</span>
+      </summary>
+      <div className="mt-2 space-y-3 rounded-xl bg-paper p-3 text-sm">
+        {r ? (
+          <>
+            {r.details && <p className="whitespace-pre-wrap break-words">{r.details}</p>}
+            {facts.length > 0 && (
+              <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs">
+                {facts.map(([k, v]) => (
+                  <div key={k} className="contents">
+                    <dt className="text-ink/50">{k}</dt>
+                    <dd>{v}</dd>
+                  </div>
+                ))}
+              </dl>
+            )}
+            {r.url && (
+              <p className="text-xs">
+                <span className="text-ink/50">Link: </span>
+                {/^https?:\/\//i.test(r.url) ? (
+                  <a href={r.url} target="_blank" rel="noopener noreferrer nofollow" className="break-all underline decoration-flame underline-offset-2">
+                    {r.url}
+                  </a>
+                ) : (
+                  <span className="break-all">{r.url}</span>
+                )}
+              </p>
+            )}
+            {r.files?.length > 0 && (
+              <ul className="space-y-1 text-xs">
+                {r.files.map((f) => (
+                  <li key={f.path}>
+                    <a href={f.path} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 break-all underline decoration-flame underline-offset-2">
+                      <Paperclip size={12} className="flex-none text-ink/45" /> {f.name}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </>
+        ) : (
+          <>
+            <p className="whitespace-pre-wrap break-words">{order.title}</p>
+            <p className="text-xs text-ink/55">
+              This one came in before full requests were saved here, so only the first 120 characters show. The whole message is in the
+              store admin panel.
+            </p>
+          </>
+        )}
+      </div>
+    </details>
+  );
+}
+
 // Admins: every order, with its status, a note the customer sees and tracking.
 // Filter by status and sort; the choice is remembered in this browser.
 const SORTS = {
@@ -312,6 +385,7 @@ function Admin({ statuses }) {
           return (
             <OrderCard key={o.id} order={o} edge>
               <p className="mt-1 text-xs text-ink/50">{o.email}</p>
+              <FullRequest order={o} />
               <div className="mt-3 grid gap-2 sm:grid-cols-[10rem_1fr_10rem_auto]">
                 <select value={e.status} onChange={set(o, "status")} className="field h-10 py-1" aria-label="Status">
                   {Object.entries(statuses).map(([k, v]) => (
