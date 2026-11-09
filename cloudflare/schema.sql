@@ -56,6 +56,7 @@ CREATE TABLE IF NOT EXISTS orders (
   country TEXT,                  -- rough place it was sent from (request.cf)
   region TEXT,
   city TEXT,
+  request TEXT,                  -- JSON: everything the customer sent (admins only)
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );

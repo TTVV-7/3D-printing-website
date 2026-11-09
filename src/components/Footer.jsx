@@ -12,6 +12,15 @@ const LABELS = {
   makerworld: "MakerWorld",
 };
 
+// The site's main pages, linked from every page so search engines can find
+// each one (/bike/ isn't in the header) and see how the site fits together.
+const PAGES = [
+  { href: "/", label: "3D printing" },
+  { href: "/stickers/", label: "Custom stickers" },
+  { href: "/bike/", label: "Bike stickers & parts" },
+  { href: "/models/", label: "3D models" },
+];
+
 export function Footer({ home = "" }) {
   const socials = Object.entries(site.social).filter(([, href]) => href);
 
@@ -23,6 +32,13 @@ export function Footer({ home = "" }) {
           <p className="mt-2 text-sm">
             Custom 3D printing · {site.city}, {site.region}
           </p>
+          <nav className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-sm" aria-label="Pages">
+            {PAGES.map(({ href, label }) => (
+              <a key={href} href={href} className="hover:text-white">
+                {label}
+              </a>
+            ))}
+          </nav>
         </div>
 
         <nav className="flex flex-wrap gap-x-6 gap-y-2 text-sm" aria-label="Social and contact">
