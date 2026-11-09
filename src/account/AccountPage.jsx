@@ -209,11 +209,17 @@ function Designs({ designs, onChange }) {
   );
 }
 
-// Admins: everything the customer sent, folded away under the card, and a
-// button to download all its files. The title is only the start of the
-// message; `request` (cloudflare/accounts.js) has the rest. Orders from before
-// it was saved show their title and say so.
-function FullRequest({ order }) {
+// Your Gmail, searched for this customer: every email with them, so you can
+// see whether you've replied. `account` (the signed-in admin) picks the right
+// Gmail when the browser is signed in to several Google accounts.
+const gmailSearch = (account, email) =>
+  `https://mail.google.com/mail/?authuser=${encodeURIComponent(account)}#search/${encodeURIComponent(email)}`;
+
+// Admins: everything the customer sent, folded away under the card, a button
+// to download all its files and a link to your emails with them. The title is
+// only the start of the message; `request` (cloudflare/accounts.js) has the
+// rest. Orders from before it was saved show their title and say so.
+function FullRequest({ order, account }) {
   const r = order.request;
   const facts = r
     ? [
@@ -239,6 +245,14 @@ function FullRequest({ order }) {
           {open ? "Hide full request" : "Show full request"}
         </button>
         {hasFiles && <DownloadAll order={order} />}
+        <a
+          href={gmailSearch(account, order.email)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1 text-xs font-medium text-ink/70 hover:text-ink"
+        >
+          <Mail size={13} /> Open in Gmail
+        </a>
       </div>
       {open && (
         <div className="mt-2 space-y-3 rounded-xl bg-paper p-3 text-sm">
@@ -381,7 +395,7 @@ const remember = (key, value) => {
   } catch {}
 };
 
-function Admin({ statuses }) {
+function Admin({ statuses, account }) {
   const [orders, setOrders] = useState(null);
   const [edits, setEdits] = useState({});
   const [saved, setSaved] = useState({});
@@ -461,7 +475,7 @@ function Admin({ statuses }) {
           return (
             <OrderCard key={o.id} order={o} edge>
               <p className="mt-1 text-xs text-ink/50">{o.email}</p>
-              <FullRequest order={o} />
+              <FullRequest order={o} account={account} />
               <div className="mt-3 grid gap-2 sm:grid-cols-[10rem_1fr_10rem_auto]">
                 <select value={e.status} onChange={set(o, "status")} className="field h-10 py-1" aria-label="Status">
                   {Object.entries(statuses).map(([k, v]) => (
@@ -576,7 +590,7 @@ export function AccountPage() {
                     </div>
                   ))}
                 {tab === "designs" && <Designs designs={me.designs} onChange={reload} />}
-                {tab === "admin" && me.admin && <Admin statuses={me.statuses} />}
+                {tab === "admin" && me.admin && <Admin statuses={me.statuses} account={me.user.email} />}
                 {tab === "stats" && me.admin && (
                   <Suspense fallback={<Loader2 className="animate-spin text-ink/40" />}>
                     <AdminStats />
